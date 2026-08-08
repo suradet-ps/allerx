@@ -116,8 +116,7 @@ pub async fn configure_connection(input: &ConnectionInput) -> Result<(), String>
 /// Runs the backend `SELECT 1` smoke test with the **typed** settings (not
 /// the saved ones); returns latency in milliseconds.
 pub async fn test_connection(input: &ConnectionInput) -> Result<u64, String> {
-    let result: ConnectionTestResult =
-        call_struct_arg("test_connection", "input", input).await?;
+    let result: ConnectionTestResult = call_struct_arg("test_connection", "input", input).await?;
     Ok(result.latency_ms)
 }
 
