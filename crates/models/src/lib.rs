@@ -48,6 +48,9 @@ pub struct DrugItem {
     pub icode: String,
     /// Display name (generic / trade as configured by the hospital).
     pub name: String,
+    /// Dose strength as printed on the item, e.g. "500 mg" — helps the
+    /// pharmacist pick the right presentation.
+    pub strength: Option<String>,
 }
 
 /// Complete answer to "has this patient had this drug before?" (AGENTS.md §4).

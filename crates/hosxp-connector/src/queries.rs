@@ -38,18 +38,19 @@ pub const PATIENT_SEARCH_NAME_CONTAINS: &str = "SELECT hn, cid, CONCAT_WS(' ', p
 
 /// Drug autocomplete — prefix match on the display name (AGENTS.md §7.2).
 ///
-/// // SCHEMA-UNVERIFIED: `drugitems.name` per AGENTS.md §6 — confirm against
-/// // the live instance. Trade-name columns are intentionally not used yet.
+/// // SCHEMA-UNVERIFIED: `drugitems.name` and `drugitems.strength` per
+/// // AGENTS.md §6 — confirm both against the live instance. Trade-name
+/// // columns are intentionally not used yet.
 pub const DRUG_SEARCH_PREFIX: &str =
-    "SELECT icode, name FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+    "SELECT icode, name, strength FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
 
 /// Drug autocomplete fallback — contains-match used only when the prefix
 /// match found nothing.
 ///
-/// // SCHEMA-UNVERIFIED: `drugitems.name` per AGENTS.md §6 — confirm against
-/// // the live instance.
+/// // SCHEMA-UNVERIFIED: `drugitems.name` and `drugitems.strength` per
+/// // AGENTS.md §6 — confirm against the live instance.
 pub const DRUG_SEARCH_CONTAINS: &str =
-    "SELECT icode, name FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+    "SELECT icode, name, strength FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
 
 /// Resolves a drug term to its `icode` — exact icode hit first.
 pub const DRUG_RESOLVE_BY_ICODE: &str = "SELECT icode FROM drugitems WHERE icode = ? LIMIT 1";

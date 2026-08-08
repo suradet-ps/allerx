@@ -273,6 +273,12 @@ body {
   font-weight: 500;
 }
 
+.search-result-row__strength {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--slate);
+}
+
 .search-result-row__code {
   font-family: var(--font-mono);
   font-size: 13px;

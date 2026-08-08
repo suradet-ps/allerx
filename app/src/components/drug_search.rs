@@ -128,11 +128,17 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                                     .get()
                                     .into_iter()
                                     .map(|drug| {
+                                        let strength_suffix = drug
+                                            .strength
+                                            .as_deref()
+                                            .map(|s| format!(" ({s})"))
+                                            .unwrap_or_default();
+                                        let term_value = format!("{}{}", drug.name, strength_suffix);
                                         view! {
                                             <li
                                                 class="search-result-row"
                                                 on:click=move |_| {
-                                                    term.set(drug.name.clone());
+                                                    term.set(term_value.clone());
                                                     selected_icode.set(Some(drug.icode.clone()));
                                                     suggestions.set(Vec::new());
                                                     note.set(None);
@@ -140,6 +146,9 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                                             >
                                                 <span class="search-result-row__name">
                                                     {drug.name.clone()}
+                                                    <span class="search-result-row__strength">
+                                                        {strength_suffix}
+                                                    </span>
                                                 </span>
                                                 <span class="search-result-row__code">
                                                     {drug.icode.clone()}

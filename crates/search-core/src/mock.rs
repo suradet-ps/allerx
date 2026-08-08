@@ -149,10 +149,12 @@ mod tests {
             DrugItem {
                 icode: "1-001".into(),
                 name: "พาราเซตามอล".into(),
+                strength: Some("500 mg".into()),
             },
             DrugItem {
                 icode: "1-002".into(),
                 name: "แอมม็อกซิซิลลิน".into(),
+                strength: Some("250 mg".into()),
             },
         ]
     }
