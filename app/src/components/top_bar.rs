@@ -15,7 +15,7 @@ pub fn TopBar(state: AppState) -> impl IntoView {
                 <div class="top-bar__title-block">
                     <h1 class="top-bar__title">"AllerX"</h1>
                     <span class="top-bar__tagline">
-                        "ตรวจประวัติการได้รับยาก่อนการประเมินภูมิแพ้"
+                        "ตรวจประวัติการได้รับยาก่อนการประเมินแพ้ยา"
                     </span>
                 </div>
                 <div class="top-bar__actions">
