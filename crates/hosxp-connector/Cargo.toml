@@ -2,6 +2,7 @@
 name = "allerx-hosxp-connector"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 description = "The only crate allowed to talk to the HOSxP MySQL database — SELECT-only, encrypted credentials"
 

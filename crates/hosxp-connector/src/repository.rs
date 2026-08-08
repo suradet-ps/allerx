@@ -272,11 +272,13 @@ impl HosxRepositoryTrait for HosxRepository {
             .guarded_fetch(DRUG_SEARCH_PREFIX, &[&prefix])
             .await?
             .into_iter()
-            .map(|(icode, name, strength): (String, String, Option<String>)| DrugItem {
-                icode,
-                name,
-                strength,
-            })
+            .map(
+                |(icode, name, strength): (String, String, Option<String>)| DrugItem {
+                    icode,
+                    name,
+                    strength,
+                },
+            )
             .collect();
         if hits.is_empty() {
             let contains = format!("%{term}%");
@@ -284,11 +286,13 @@ impl HosxRepositoryTrait for HosxRepository {
                 .guarded_fetch(DRUG_SEARCH_CONTAINS, &[&contains])
                 .await?
                 .into_iter()
-                .map(|(icode, name, strength): (String, String, Option<String>)| DrugItem {
-                    icode,
-                    name,
-                    strength,
-                })
+                .map(
+                    |(icode, name, strength): (String, String, Option<String>)| DrugItem {
+                        icode,
+                        name,
+                        strength,
+                    },
+                )
                 .collect();
         }
         Ok(hits)
