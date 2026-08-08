@@ -1,0 +1,15 @@
+[package]
+name = "allerx-search-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "AllerX business logic — ranking, matching, repository contract. No sqlx, testable with a mock repository"
+
+[dependencies]
+allerx-models = { path = "../models" }
+async-trait.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+chrono.workspace = true
+tokio.workspace = true

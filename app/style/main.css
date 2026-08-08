@@ -1,0 +1,625 @@
+/* ==========================================================================
+   AllerX — DESIGN.md tokens, plain CSS, no framework
+   ========================================================================== */
+
+:root {
+  /* Brand & chrome */
+  --brand-teal: #1b6b85;
+  --brand-teal-dark: #135262;
+  --brand-teal-soft: #e3eff3;
+
+  /* Semantic — verdict only (reserved, high-contrast, used nowhere else) */
+  --verdict-found: #1e8e4e;
+  --verdict-found-text: #ffffff;
+  --verdict-notfound: #c0392b;
+  --verdict-notfound-text: #ffffff;
+  --verdict-pending: #d3d9d7;
+
+  /* Surface */
+  --canvas: #f7f5f0;
+  --canvas-raised: #ffffff;
+  --surface-muted: #efede7;
+  --hairline: #e3e0d8;
+  --hairline-strong: #c9c5bb;
+
+  /* Text */
+  --ink: #262220;
+  --slate: #5c5750;
+  --steel: #8a857d;
+  --on-teal: #ffffff;
+  --muted-code: #6e7a7d;
+
+  /* Status (non-verdict) */
+  --warning-bg: #fdf3e0;
+  --warning-text: #8a6420;
+
+  /* Elevation (DESIGN.md) */
+  --elev-0: none;
+  --elev-1: rgba(20, 30, 28, 0.06) 0px 1px 3px 0px;
+  --elev-2: rgba(20, 30, 28, 0.1) 0px 2px 8px 0px;
+  --elev-3: rgba(20, 30, 28, 0.16) 0px 8px 24px -4px;
+
+  /* Shapes */
+  --rounded-sm: 4px;
+  --rounded-md: 8px;
+  --rounded-lg: 12px;
+  --rounded-full: 9999px;
+
+  /* Spacing (4px base, 8px increment) */
+  --sp-xs: 4px;
+  --sp-sm: 8px;
+  --sp-md: 16px;
+  --sp-lg: 24px;
+  --sp-xl: 32px;
+  --sp-xxl: 48px;
+
+  /* Typography */
+  --font-thai: "IBM Plex Sans Thai", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-thai);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Layout (DESIGN.md "Structure" — single page, max 960px, centered)
+   ========================================================================== */
+
+.app__content {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--sp-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+/* ==========================================================================
+   Top bar (brand teal, chrome only)
+   ========================================================================== */
+
+.top-bar {
+  background: var(--brand-teal);
+  color: var(--on-teal);
+  padding: var(--sp-sm) var(--sp-lg);
+}
+
+.top-bar__inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-md);
+}
+
+.top-bar__title-block {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-md);
+}
+
+.top-bar__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.top-bar__tagline {
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.top-bar__button {
+  background: transparent;
+  color: var(--on-teal);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: var(--rounded-md);
+  padding: 6px 14px;
+  font-family: var(--font-thai);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.top-bar__button .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.top-bar__button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ==========================================================================
+   Panels & labels
+   ========================================================================== */
+
+.panel {
+  background: var(--canvas-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  padding: var(--sp-lg);
+  box-shadow: var(--elev-0);
+}
+
+.panel__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--slate);
+  margin-bottom: var(--sp-sm);
+}
+
+.panel__label .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.panel__heading {
+  margin: 0 0 var(--sp-md);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel__heading .icon {
+  width: 20px;
+  height: 20px;
+  color: var(--brand-teal);
+}
+
+.placeholder-note {
+  margin: var(--sp-sm) 0 0;
+  font-size: 12px;
+  color: var(--steel);
+}
+
+/* ==========================================================================
+   Search (DESIGN.md: search-input, search-result-row)
+   ========================================================================== */
+
+.search-row {
+  display: flex;
+  gap: var(--sp-sm);
+}
+
+.search-input {
+  flex: 1;
+  height: 48px;
+  padding: 0 var(--sp-md);
+  background: var(--canvas-raised);
+  color: var(--ink);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--rounded-md);
+  font-family: var(--font-thai);
+  font-size: 16px;
+}
+
+.search-input::placeholder {
+  color: var(--steel);
+}
+
+.search-input:focus {
+  outline: none;
+  border: 2px solid var(--brand-teal);
+  padding: 0 calc(var(--sp-md) - 1px);
+  box-shadow: var(--elev-1);
+}
+
+.result-list {
+  list-style: none;
+  margin: var(--sp-sm) 0 0;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  overflow: hidden;
+}
+
+.search-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-md);
+  padding: var(--sp-sm) var(--sp-md);
+  background: var(--canvas-raised);
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.search-result-row:last-child {
+  border-bottom: none;
+}
+
+.search-result-row:hover {
+  background: var(--brand-teal-soft);
+}
+
+.search-result-row__name {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.search-result-row__code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--muted-code);
+}
+
+/* ==========================================================================
+   Buttons (DESIGN.md)
+   ========================================================================== */
+
+.button-primary {
+  background: var(--brand-teal);
+  color: var(--on-teal);
+  border: none;
+  border-radius: var(--rounded-md);
+  padding: 10px 20px;
+  font-family: var(--font-thai);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.button-primary .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.button-primary:active {
+  background: var(--brand-teal-dark);
+}
+
+.button-secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--rounded-md);
+  padding: 10px 20px;
+  font-family: var(--font-thai);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.button-secondary .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.button-primary:disabled,
+.button-secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ==========================================================================
+   Settings dialog (DESIGN.md: elevation level 3)
+   ========================================================================== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 30, 28, 0.35);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--sp-xl) var(--sp-md);
+  z-index: 10;
+}
+
+.modal {
+  background: var(--canvas-raised);
+  border-radius: var(--rounded-lg);
+  box-shadow: var(--elev-3);
+  max-width: 480px;
+  width: 100%;
+  padding: var(--sp-lg);
+}
+
+.modal__title {
+  margin: 0 0 var(--sp-xs);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.modal__status {
+  margin: 0 0 var(--sp-md);
+  font-size: 12px;
+  color: var(--slate);
+}
+
+.modal__note {
+  margin: var(--sp-md) 0 0;
+  font-size: 12px;
+  color: var(--steel);
+}
+
+.modal__message {
+  margin: var(--sp-sm) 0 0;
+  font-size: 13px;
+  color: var(--slate);
+}
+
+.modal__actions {
+  display: flex;
+  gap: var(--sp-sm);
+  justify-content: flex-end;
+  margin-top: var(--sp-lg);
+}
+
+.form-row {
+  display: flex;
+  gap: var(--sp-sm);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+  margin-bottom: var(--sp-md);
+}
+
+.form-field--grow {
+  flex: 1;
+}
+
+.form-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--slate);
+}
+
+.form-input {
+  height: 40px;
+  padding: 0 var(--sp-md);
+  background: var(--canvas-raised);
+  color: var(--ink);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--rounded-md);
+  font-family: var(--font-thai);
+  font-size: 16px;
+}
+
+.form-input::placeholder {
+  color: var(--steel);
+}
+
+.form-input:focus {
+  outline: none;
+  border: 2px solid var(--brand-teal);
+  padding: 0 calc(var(--sp-md) - 1px);
+}
+
+.form-input--mono {
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+/* ==========================================================================
+   Patient bar (DESIGN.md)
+   ========================================================================== */
+
+.patient-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  background: var(--canvas-raised);
+  border-radius: var(--rounded-lg);
+  padding: var(--sp-lg);
+  box-shadow: var(--elev-1);
+}
+
+.patient-bar__icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  color: var(--brand-teal);
+}
+
+.patient-bar__name {
+  margin: 0 0 var(--sp-xs);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.patient-bar__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-md);
+  font-size: 12px;
+  color: var(--slate);
+}
+
+.patient-bar__meta .code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+/* ==========================================================================
+   Icons (lucide-style, stroke-based SVG — DESIGN.md)
+   ========================================================================== */
+
+.icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Verdict band — the signature element (DESIGN.md)
+   ========================================================================== */
+
+.verdict-band {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  border-radius: var(--rounded-lg);
+  padding: var(--sp-lg) var(--sp-xl);
+  box-shadow: var(--elev-2);
+}
+
+.verdict-band__icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  stroke-width: 1.8;
+}
+
+.verdict-band__headline {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.verdict-band__detail {
+  margin: var(--sp-xs) 0 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.verdict-found {
+  background: var(--verdict-found);
+  color: var(--verdict-found-text);
+}
+
+.verdict-notfound {
+  background: var(--verdict-notfound);
+  color: var(--verdict-notfound-text);
+}
+
+.verdict-pending {
+  background: var(--verdict-pending);
+  color: var(--slate);
+}
+
+/* ==========================================================================
+   Timeline (DESIGN.md: timeline-row, badge)
+   ========================================================================== */
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  padding: var(--sp-md) var(--sp-lg);
+  background: var(--canvas-raised);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.timeline-row:last-child {
+  border-bottom: none;
+}
+
+.timeline-row__date {
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.timeline-row__main {
+  min-width: 0;
+}
+
+.timeline-row__drug {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.timeline-row__meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--slate);
+}
+
+.badge {
+  background: var(--surface-muted);
+  color: var(--slate);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--rounded-sm);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   System states (DESIGN.md: banner-warning — amber, never red)
+   ========================================================================== */
+
+.banner-warning {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border-radius: var(--rounded-md);
+  padding: var(--sp-md);
+}
+
+/* ==========================================================================
+   Responsive (DESIGN.md: window & responsive behavior)
+   ========================================================================== */
+
+@media (max-width: 719px) {
+  .app__content {
+    padding: var(--sp-md);
+  }
+
+  .verdict-band__headline {
+    font-size: 24px;
+  }
+
+  .search-row {
+    flex-direction: column;
+  }
+
+  .button-primary {
+    width: 100%;
+  }
+}
