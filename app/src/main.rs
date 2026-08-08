@@ -41,11 +41,19 @@ fn App() -> impl IntoView {
         <div class="app">
             <TopBar state=state.clone() />
             <main class="app__content">
-                <PatientSearch state=state.clone() />
-                <PatientBar state=state.clone() />
-                <DrugSearch state=state.clone() />
-                <VerdictBand state=state.clone() />
-                <Timeline state=state.clone() />
+                <div class="bento__cell bento__patient-search">
+                    <PatientSearch state=state.clone() />
+                    <PatientBar state=state.clone() />
+                </div>
+                <div class="bento__cell bento__drug-search">
+                    <DrugSearch state=state.clone() />
+                </div>
+                <div class="bento__cell bento__verdict">
+                    <VerdictBand state=state.clone() />
+                </div>
+                <div class="bento__cell bento__timeline">
+                    <Timeline state=state.clone() />
+                </div>
             </main>
             <SettingsModal state=state.clone() />
         </div>
