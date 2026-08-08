@@ -111,7 +111,12 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
                                         view! {
                                             <li
                                                 class="search-result-row"
-                                                on:click=move |_| state.patient.set(Some(patient.clone()))
+                                                on:click=move |_| {
+                                                    state.patient.set(Some(patient.clone()));
+                                                    term.set(String::new());
+                                                    results.set(Vec::new());
+                                                    searched.set(false);
+                                                }
                                             >
                                                 <span class="search-result-row__name">
                                                     {p.full_name_th.clone()}
