@@ -54,6 +54,7 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
     view! {
         <section class="panel">
             <label class="panel__label" for="patient-search">
+                <IconSearch class="icon" />
                 "ค้นหาผู้ป่วย"
             </label>
             <div class="search-row">
