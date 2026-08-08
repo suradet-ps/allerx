@@ -19,49 +19,54 @@ so this band is the only loud thing on screen.
 
 Outside that one moment, the palette stays calm and paper-like — closer to a well-typeset
 clinical reference than to a product homepage — because the app is read constantly during a
-shift and visual fatigue matters. The accent color used for chrome (search focus, active
-states, links) is a muted clinical teal-navy, kept deliberately separate from the semantic
+shift and visual fatigue matters. The accent color used for chrome (primary buttons, focused
+inputs, selected rows) is a deep forest green, kept deliberately separate from the semantic
 red/green of the verdict so the two never compete for the same attention.
 
 **Key characteristics:**
-- Paper-white workspace ({colors.canvas}), calm and low-fatigue for repeated all-shift use
-- One loud element only: the full-width verdict band (green = found, red = not found)
-- Muted teal-navy ({colors.brand-teal}) for chrome — never used for the verdict itself
+- Neutral cool paper workspace ({colors.canvas}), calm and low-fatigue for repeated all-shift use
+- Flat, hairline-bordered surfaces — structure comes from 1px borders, not shadows or elevation
+- One loud element only: the verdict band (tinted alert: green = found, red = not found)
+- Deep forest green ({colors.brand-teal}) used with restraint — buttons, focus, selected rows only
 - IBM Plex Sans Thai + IBM Plex Sans for bilingual clarity; IBM Plex Mono for HN/CID/drug codes
-- Rounded-but-restrained corners ({rounded.md}, 8px) — a clinical tool, not a consumer app
-- No decorative imagery, no illustration, no gradients — every pixel is legible information
+- Restrained corners ({rounded.md}, 6px) — a clinical tool, not a consumer app
+- No decorative chrome: no brand mark, no icon chips, no gradients, no hover animations —
+  the information itself is the interface
 
 ## Colors
 
 ### Brand & Chrome
-- **Brand Teal** ({colors.brand-teal}): Primary chrome accent — top bar, active tab, focused input border, links. Never used for the verdict band.
-- **Brand Teal Dark** ({colors.brand-teal-dark}): Pressed/active state of teal elements.
-- **Brand Teal Soft** ({colors.brand-teal-soft}): Pale tint for selected-row background (e.g. selected patient in a result list).
+- **Brand Teal** ({colors.brand-teal}): `#146a46` — deep forest green. Used for primary buttons, focused input borders, selected rows. Never used for the verdict band.
+- **Brand Teal Dark** ({colors.brand-teal-dark}): `#0f5538` — hover/pressed state of green elements.
+- **Brand Teal Soft** ({colors.brand-teal-soft}): `#e9f4ee` — pale tint for selected-row backgrounds.
 
-### Semantic — Verdict (reserved, high-contrast, used nowhere else)
-- **Found Green** ({colors.verdict-found}): Verdict band background when history is found. Saturated, not pastel — this is the one place saturation is allowed.
-- **Found Green Text** ({colors.verdict-found-text}): Text/icon on the found band.
-- **Not-Found Red** ({colors.verdict-notfound}): Verdict band background when no history is found.
-- **Not-Found Red Text** ({colors.verdict-notfound-text}): Text/icon on the not-found band.
-- **Neutral Pending** ({colors.verdict-pending}): Band state while a query is in flight (gray, not red or green — must never imply an answer before one exists).
+### Semantic — Verdict (reserved, used nowhere else)
+Treated as a **tinted system alert** (like a hospital status), not a solid banner: light
+background, colored text, matching hairline border. Reads clearly at a glance without the
+heavy marketing-block look.
 
-### Surface
-- **Canvas** ({colors.canvas}): App background — warm-neutral off-white, not stark white (reduces glare on long shifts).
-- **Canvas Raised** ({colors.canvas-raised}): Cards, panels, the patient info bar.
-- **Surface Muted** ({colors.surface-muted}): Table row stripe, secondary panel backgrounds.
-- **Hairline** ({colors.hairline}): 1px default border/divider.
-- **Hairline Strong** ({colors.hairline-strong}): Input borders, table header rule.
+- **Found** ({colors.verdict-found}): bg `#e9f6ee`, text `#17724a`, border `#b9e2c8` — history found.
+- **Not-Found** ({colors.verdict-notfound}): bg `#fbeded`, text `#b03a2e`, border `#eec4c0` — no history.
+- **Neutral Pending** ({colors.verdict-pending}): bg `#f1f3f4`, text `#5b6770`, border `#d9dfe2` — query in flight; green-gray, never implies an answer.
+
+### Surface — neutral cool paper
+- **Canvas** ({colors.canvas}): `#f7f9fa` — app background, cool neutral off-white.
+- **Canvas Raised** ({colors.canvas-raised}): `#ffffff` — cards, panels, the patient info bar.
+- **Surface Muted** ({colors.surface-muted}): `#eef1f3` — hover backgrounds, badges.
+- **Hairline** ({colors.hairline}): `#d9dfe2` — 1px default border/divider. The structural
+  backbone of the layout — surfaces are separated by hairlines, not shadows.
+- **Hairline Strong** ({colors.hairline-strong}): `#b9c3c9` — input borders, top-bar button.
 
 ### Text
-- **Ink** ({colors.ink}): Primary text — near-black, warm-neutral (not pure #000, matches canvas warmth).
-- **Slate** ({colors.slate}): Secondary text — labels, timestamps.
-- **Steel** ({colors.steel}): Tertiary text — placeholders, disabled states.
-- **On Teal** ({colors.on-teal}): Text on brand-teal surfaces (top bar).
-- **Muted Code** ({colors.muted-code}): HN/CID/drug-code text color when de-emphasized in lists.
+- **Ink** ({colors.ink}): `#17212b` — primary text, near-black with a cool cast.
+- **Slate** ({colors.slate}): `#4b5761` — secondary text — labels, timestamps.
+- **Steel** ({colors.steel}): `#77838c` — tertiary text — placeholders, taglines.
+- **On Teal** ({colors.on-teal}): `#ffffff` — text on brand-teal buttons.
+- **Muted Code** ({colors.muted-code}): `#5c6872` — HN/CID/drug-code text when de-emphasized in lists.
 
 ### Status (non-verdict)
-- **Warning Background** ({colors.warning-bg}): Pale amber — used only for system states (e.g. "connection to HOSxP lost"), never for clinical meaning.
-- **Warning Text** ({colors.warning-text}): Amber text/icon for the same.
+- **Warning Background** ({colors.warning-bg}): `#fdf6e3` — pale amber — used only for system states (e.g. "connection to HOSxP lost"), never for clinical meaning.
+- **Warning Text** ({colors.warning-text}): `#8a6420` — amber text/icon for the same.
 
 ## Typography
 
@@ -74,20 +79,23 @@ red/green of the verdict so the two never compete for the same attention.
 
 | Token | Size | Weight | Line Height | Use |
 |---|---|---|---|---|
-| `{typography.verdict}` | 32px | 600 | 1.20 | The verdict band text — the loudest thing on screen |
-| `{typography.patient-name}` | 24px | 600 | 1.25 | Selected patient's name in the patient bar |
-| `{typography.heading}` | 18px | 600 | 1.30 | Section headings ("ประวัติการได้รับยา") |
-| `{typography.body}` | 16px | 400 | 1.50 | Primary body text, table cells |
-| `{typography.body-medium}` | 16px | 500 | 1.50 | Emphasized body (drug name in a history row) |
-| `{typography.label}` | 13px | 500 | 1.40 | Field labels, table column headers |
+| `{typography.verdict}` | 24px | 700 | 1.25 | The verdict band text — the loudest thing on screen |
+| `{typography.patient-name}` | 20px | 600 | 1.30 | Selected patient's name in the patient bar |
+| `{typography.heading}` | 15px | 600 | 1.30 | Section headings ("ประวัติการได้รับยา") |
+| `{typography.body}` | 15px | 400 | 1.50 | Primary body text, table cells |
+| `{typography.body-medium}` | 15px | 500 | 1.50 | Emphasized body (drug name in a history row) |
+| `{typography.label}` | 13px | 600 | 1.40 | Field labels |
 | `{typography.caption}` | 12px | 400 | 1.40 | Timestamps, secondary metadata |
-| `{typography.code}` | 14px | 400 | 1.45 | HN, CID, drug code (IBM Plex Mono) |
+| `{typography.code}` | 13px | 400 | 1.45 | HN, CID, drug code (IBM Plex Mono) |
 | `{typography.button}` | 14px | 600 | 1.30 | Button labels |
 
 ### Principles
-- No display/hero sizes — the largest text on screen is the verdict, at 32px, not a marketing headline.
-- Weight does the differentiation, not size: 400 for reading, 500 for emphasis, 600 reserved for the verdict, patient name, and headings.
-- Line height stays generous (1.40–1.50) throughout — this is a tool people read carefully, under time pressure, often in imperfect lighting.
+- The scale is compact and dense — this is a work tool, not a landing page; the verdict at
+  24px is the largest text on screen and it must stay that way.
+- Weight does the differentiation, not size: 400 for reading, 500 for emphasis, 600–700
+  reserved for headings, buttons, and the verdict.
+- Line height stays generous (1.40–1.50) throughout — this is a tool people read carefully,
+  under time pressure, often in imperfect lighting.
 - Numerals in HN/CID always render in `{typography.code}` (tabular figures) so columns of numbers align.
 
 ## Layout
@@ -115,71 +123,80 @@ There is no sidebar, no multi-panel layout, no navigation beyond this single flo
 
 ## Elevation & Depth
 
+Elevation is almost never used. Surfaces are separated by hairlines (1px borders); a shadow
+appears only when something must float above the page (the modal).
+
 | Level | Treatment | Use |
 |---|---|---|
-| 0 (flat) | No shadow; `{colors.hairline}` border | Default cards, table rows |
-| 1 (raised) | `rgba(20, 30, 28, 0.06) 0px 1px 3px 0px` | Patient bar, search input on focus |
-| 2 (band) | `rgba(20, 30, 28, 0.10) 0px 2px 8px 0px` | Verdict band — the only element allowed level-2 elevation |
-| 3 (modal) | `rgba(20, 30, 28, 0.16) 0px 8px 24px -4px` | Error/connection-lost dialog |
-
-Elevation is used sparingly and points at meaning: the verdict band is the most elevated
-static element on the page precisely because it is the answer the whole screen exists to give.
+| 0 (flat) | No shadow; `{colors.hairline}` border | Panels, cards, patient bar, verdict band, top bar |
+| 1 (raised) | — (reserved, unused) | — |
+| 2 (band) | — (reserved, unused) | — |
+| 3 (modal) | `rgba(23, 33, 43, 0.16) 0px 8px 24px -4px` | Settings dialog — the only floating element |
 
 ## Shapes
 
 | Token | Value | Use |
 |---|---|---|
-| `{rounded.sm}` | 4px | Badges, code chips (HN/CID pills) |
-| `{rounded.md}` | 8px | Inputs, buttons, table container, cards |
-| `{rounded.lg}` | 12px | Patient bar, verdict band |
-| `{rounded.full}` | 9999px | Status dots only (reserved; no live component uses it yet) |
+| `{rounded.sm}` | 4px | Small inner details |
+| `{rounded.md}` | 6px | Inputs, buttons, result lists |
+| `{rounded.lg}` | 8px | Panels, patient bar, verdict band |
+| `{rounded.full}` | 9999px | Tiny chips only — OPD/IPD badges |
 
-Corners stay modest throughout (8–12px) — restrained enough to read as clinical software,
-not a consumer app chasing friendliness. Pills (`{rounded.full}`) are reserved for the tiny
-status dot, not applied to buttons the way a marketing site would.
+Corners stay tight (4–8px) — restrained enough to read as clinical software, not a consumer
+app chasing friendliness. Pill-shaped (`{rounded.full}`) elements are limited to tiny chips
+(OPD/IPD badges ≤ 20px tall); buttons and panels are never pill-shaped.
 
 ## Components
 
 ### Buttons
 
 **`button-primary`** — Main action (search).
-- Background `{colors.brand-teal}`, text `{colors.on-teal}`, typography `{typography.button}`, padding `10px 20px`, rounded `{rounded.md}`.
-- Pressed: `{colors.brand-teal-dark}`.
+- Background `{colors.brand-teal}`, text `{colors.on-teal}`, border 1px `{colors.brand-teal}`, typography `{typography.button}`, padding `9px 18px`, rounded `{rounded.md}`. No shadow.
+- Hover/pressed: `{colors.brand-teal-dark}`.
 
 **`button-secondary`** — Clear / reset / change patient.
-- Background transparent, text `{colors.ink}`, border `1px solid {colors.hairline-strong}`, typography `{typography.button}`, padding `10px 20px`, rounded `{rounded.md}`.
+- Background `{colors.canvas-raised}`, text `{colors.ink}`, border `1px solid {colors.hairline-strong}`, typography `{typography.button}`, padding `9px 18px`, rounded `{rounded.md}`.
+- Hover: background `{colors.surface-muted}`.
 
 ### Search
 
 **`search-input`** — Patient or drug search field.
-- Background `{colors.canvas-raised}`, text `{colors.ink}`, border `1px solid {colors.hairline-strong}`, rounded `{rounded.md}`, height 48px, padding `0 {spacing.md}`.
-- Focused: border `2px solid {colors.brand-teal}`, elevation level 1.
+- Background `{colors.canvas-raised}`, text `{colors.ink}`, border `1px solid {colors.hairline-strong}`, rounded `{rounded.md}`, height 42px, padding `0 {spacing.md}`.
+- Focused: border `2px solid {colors.brand-teal}` — border color change only, no glow/halo.
 - Placeholder text `{colors.steel}`.
 
 **`search-result-row`** — One row in the patient/drug autocomplete dropdown.
-- Background `{colors.canvas-raised}`, hover/selected background `{colors.brand-teal-soft}`, padding `{spacing.sm} {spacing.md}`, bottom border `1px solid {colors.hairline}`.
+- Background `{colors.canvas-raised}`, hover/selected background `{colors.surface-muted}`, padding `10px {spacing.md}`, bottom border `1px solid {colors.hairline}`.
 - Name in `{typography.body-medium}`, HN/CID in `{typography.code}` `{colors.muted-code}` right-aligned.
+
+### Top Bar
+
+**`top-bar`** — Flat, neutral header, chrome only.
+- Background `{colors.canvas-raised}`, bottom border `1px solid {colors.hairline}`. No brand color, no mark — just the wordmark and the settings action.
+- **`top-bar__title`** — "AllerX", `18px/700`. **`top-bar__tagline`** — `{typography.caption}` `{colors.steel}`.
+- **`top-bar__button`** — small secondary-style button with gear icon; label "ตั้งค่า".
 
 ### Patient Bar
 
 **`patient-bar`** — Persistent strip showing the selected patient.
-- Background `{colors.canvas-raised}`, rounded `{rounded.lg}`, padding `{spacing.lg}`, elevation level 1.
+- Background `{colors.canvas-raised}`, border `1px solid {colors.hairline}`, rounded `{rounded.lg}`, padding `{spacing.md} {spacing.lg}`.
+- **`patient-bar__icon`** — plain 20px user icon in `{colors.slate}`; no chip, no tinted square.
 - Name: `{typography.patient-name}`. HN/CID/DOB/sex as a `{typography.caption}` row beneath, HN/CID in `{typography.code}`.
 - CID always rendered masked (`1-XXXX-XXXXX-XX-1`) here; full value never shown outside an explicit "show full ID" toggle.
 
 ### Verdict Band (signature component)
 
 **`verdict-found`**
-- Background `{colors.verdict-found}`, text `{colors.verdict-found-text}`, typography `{typography.verdict}`, rounded `{rounded.lg}`, padding `{spacing.lg} {spacing.xl}`, elevation level 2.
-- Content: check-circle icon (44px, `{colors.verdict-found-text}`) + "พบประวัติการได้รับยานี้" + most recent date/location inline, in `{typography.body}` beneath the headline.
+- Background `{colors.verdict-found}`, text `{colors.verdict-found-text}`, border `1px solid {colors.verdict-found-border}`, typography `{typography.verdict}`, rounded `{rounded.lg}`, padding `{spacing.md} {spacing.lg}`.
+- Content: check-circle icon (26px, `{colors.verdict-found-text}`) + "พบประวัติการได้รับยานี้" + most recent date/location inline, in `{typography.body}` beneath the headline.
 
 **`verdict-notfound`**
-- Background `{colors.verdict-notfound}`, text `{colors.verdict-notfound-text}`, typography `{typography.verdict}`, rounded `{rounded.lg}`, padding `{spacing.lg} {spacing.xl}`, elevation level 2.
-- Content: x-circle icon (44px, `{colors.verdict-notfound-text}`) + "ไม่พบประวัติการได้รับยานี้".
+- Background `{colors.verdict-notfound}`, text `{colors.verdict-notfound-text}`, border `1px solid {colors.verdict-notfound-border}`, typography `{typography.verdict}`, rounded `{rounded.lg}`, padding `{spacing.md} {spacing.lg}`.
+- Content: x-circle icon (26px, `{colors.verdict-notfound-text}`) + "ไม่พบประวัติการได้รับยานี้".
 
 **`verdict-pending`**
-- Background `{colors.verdict-pending}` (neutral gray, never red/green), text `{colors.slate}`, same shape as the above two.
-- Content: clock icon (44px, `{colors.slate}`) + "รอการค้นหา".
+- Background `{colors.verdict-pending}`, text `{colors.verdict-pending-text}`, border `1px solid {colors.verdict-pending-border}`, same shape as the above two.
+- Content: clock icon (26px, `{colors.verdict-pending-text}`) + "รอการค้นหา".
 - Shown only while a query is in flight — must never be styled to suggest an answer.
 
 Rule: only one verdict band exists on screen at a time, and it always fully replaces the
@@ -188,14 +205,14 @@ previous one — never stack or fade between states in a way that leaves both pa
 ### Timeline (history list)
 
 **`timeline-row`** — One prior administration of the searched drug.
-- Background `{colors.canvas-raised}`, bottom border `1px solid {colors.hairline}`, padding `{spacing.md} {spacing.lg}`.
-- Date in `{typography.body-medium}`, visit type (OPD/IPD) as a small `badge`, prescriber/department in `{typography.caption}` `{colors.slate}`.
+- Background `{colors.canvas-raised}`, bottom border `1px solid {colors.hairline}`, padding `{spacing.sm} {spacing.md}`, hover background `{colors.surface-muted}`.
+- Date in `{typography.code}` (mono, tabular) `{colors.ink}`, visit type (OPD/IPD) as a small `badge`, prescriber/department in `{typography.caption}` `{colors.slate}`.
 - Rows are read top-to-bottom, most recent first — order itself carries clinical meaning, so this is the one place ordering is treated as information, not decoration.
 
 ### Badges
 
-**`badge-opd`** / **`badge-ipd`** — Visit-type tag.
-- Background `{colors.surface-muted}`, text `{colors.slate}`, typography `{typography.label}`, rounded `{rounded.sm}`, padding `2px 8px`.
+**`badge`** — Visit-type tag (OPD/IPD).
+- Background `{colors.surface-muted}`, text `#47545c`, typography `{typography.label}`, pill-shaped (`{rounded.full}`), padding `2px 8px`.
 - OPD/IPD are distinguished by label text only, not color — color is reserved for the verdict.
 
 ### Icons
@@ -203,8 +220,8 @@ previous one — never stack or fade between states in a way that leaves both pa
 All icons are lucide-style stroke SVGs, one per component in `app/src/components/icons.rs`:
 - 24×24 viewBox, 2px stroke, round caps/joins, `fill: none`, `stroke: currentColor` — the
   icon inherits its color from surrounding text, never hardcoded.
-- Sized by CSS via the `.icon` class (18px default; 16px inside buttons, 26px panel headings,
-  44px verdict band, 36px patient bar).
+- Sized by CSS via the `.icon` class (16px default; 15px inside buttons, 26px verdict band,
+  16px panel headings, 20px patient bar).
 - Decorative only (`aria-hidden`) — icons never carry meaning without adjacent text.
 - No icon is used where color is the only differentiator; verdict icons duplicate the band's
   headline text, and OPD/IPD remain text-only badges.
@@ -222,16 +239,19 @@ All icons are lucide-style stroke SVGs, one per component in `app/src/components
 ## Do's and Don'ts
 
 ### Do
-- Reserve `{colors.verdict-found}` / `{colors.verdict-notfound}` exclusively for the verdict band. No other element may use these colors, ever — including future badges, buttons, or charts.
-- Keep the rest of the interface quiet (`{colors.canvas}`, `{colors.brand-teal}`, grays) so the verdict is the only loud moment.
+- Reserve the verdict colors for the verdict band exclusively. No other element may use them, ever — including future badges, buttons, or charts.
+- Structure surfaces with hairlines and flat color, not shadows — a panel is a white box with a 1px border, and nothing more.
+- Use the forest green sparingly: primary buttons, input focus, selected rows. If a new state needs attention, reach for weight/border/spacing first.
+- Keep the type scale compact (15px body, 13px labels) — density is what makes a work tool feel professional.
 - Use `{typography.code}` (monospace) for every HN, CID, and drug code — never render these in the body sans-serif.
 - Mask CID by default everywhere; require an explicit action to reveal it in full.
-- Keep corner radii modest (`{rounded.md}`/`{rounded.lg}`) — this reads as trustworthy clinical software, not a consumer app.
 
 ### Don't
-- Don't use red or green anywhere except the verdict band and its matching status dot — not for buttons, not for links, not for hover states.
+- Don't use red or green anywhere except the verdict band — not for buttons, not for links, not for hover states.
+- Don't add decorative chrome: no brand marks, no icon chips/squares, no gradient or tinted hero areas, no marketing copy.
+- Don't add hover animations, glow/focus rings, or elevation to flat surfaces — interaction feedback is a background color change, nothing more.
 - Don't add a hero, marketing copy, or promotional banner — there is no acquisition funnel here.
-- Don't apply pill-shaped (`{rounded.full}`) buttons — that shape is reserved for the tiny status dot only.
+- Don't apply pill-shaped (`{rounded.full}`) buttons — that shape is limited to tiny chips (OPD/IPD badges ≤ 20px tall), never buttons or panels.
 - Don't animate the verdict band in a way that delays reading it (no fade-ins longer than ~120ms) — the whole point is instant legibility.
 - Don't introduce a second accent color beyond `{colors.brand-teal}` for chrome; new UI needs should be solved with weight/size/spacing, not new hues.
 
