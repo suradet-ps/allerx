@@ -1,0 +1,22 @@
+[package]
+name = "allerx-tauri"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Tauri 2 shell for AllerX — thin command adapters only, no business logic, no SQL"
+
+[lib]
+name = "allerx_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+secrecy.workspace = true
+serde.workspace = true
+tokio.workspace = true
+allerx-models = { path = "../crates/models" }
+allerx-hosxp-connector = { path = "../crates/hosxp-connector" }
+allerx-search-core = { path = "../crates/search-core" }

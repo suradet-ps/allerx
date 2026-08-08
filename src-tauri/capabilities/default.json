@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capabilities for the main window — no fs/shell scopes (AGENTS.md §5.5)",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

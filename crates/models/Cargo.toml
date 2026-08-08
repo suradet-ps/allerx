@@ -1,0 +1,10 @@
+[package]
+name = "allerx-models"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "AllerX domain types — no sqlx, no I/O, no business logic"
+
+[dependencies]
+serde.workspace = true
+chrono.workspace = true

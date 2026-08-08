@@ -1,0 +1,44 @@
+//! Client-side application state (signals shared between components).
+
+use allerx_models::{DrugHistoryRecord, PatientSummary};
+use leptos::prelude::*;
+
+/// Shared state for the single-page flow.
+#[derive(Debug, Clone)]
+pub struct AppState {
+    /// Selected patient; `None` until one is picked from search results.
+    pub patient: RwSignal<Option<PatientSummary>>,
+    /// The current verdict-band state (DESIGN.md, verdict band).
+    pub verdict: RwSignal<VerdictState>,
+    /// Whether encrypted HOSxP connection settings exist on this machine.
+    pub configured: RwSignal<bool>,
+    /// Whether the connection settings dialog is open.
+    pub settings_open: RwSignal<bool>,
+}
+
+/// The one loud thing on screen — only one state at a time, and the new
+/// state fully replaces the old one (DESIGN.md, verdict band rule).
+#[derive(Debug, Clone, Default)]
+pub enum VerdictState {
+    /// Query in flight / nothing searched yet — neutral gray, never implies
+    /// an answer.
+    #[default]
+    Pending,
+    /// History found; `records` are sorted most-recent-first (M4 wiring).
+    #[allow(dead_code)] // constructed by M4 backend wiring only — never by placeholders
+    Found { records: Vec<DrugHistoryRecord> },
+    /// History searched and definitively not found.
+    #[allow(dead_code)] // constructed by M4 backend wiring only — never by placeholders
+    NotFound,
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            patient: RwSignal::new(None),
+            verdict: RwSignal::new(VerdictState::Pending),
+            configured: RwSignal::new(false),
+            settings_open: RwSignal::new(false),
+        }
+    }
+}

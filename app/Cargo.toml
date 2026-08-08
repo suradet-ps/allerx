@@ -1,0 +1,22 @@
+# Separate workspace on purpose (AGENTS-RUST.md §14 override): this crate
+# compiles for wasm32-unknown-unknown and must not share the native graph.
+[workspace]
+
+[package]
+name = "allerx-app"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "allerx-app"
+path = "src/main.rs"
+
+[dependencies]
+leptos = { version = "0.8", features = ["csr"] }
+allerx-models = { path = "../crates/models" }
+allerx-search-core = { path = "../crates/search-core" }
+js-sys = "0.3"                  # Promise handle returned by the Tauri IPC bridge
+serde = { version = "1.0", features = ["derive"] }  # DeserializeOwned bound on command results
+serde-wasm-bindgen = "0.6"      # serde <-> JsValue for invoke args/results
+wasm-bindgen = "0.2"            # __TAURI_INTERNALS__.invoke binding
+wasm-bindgen-futures = "0.4"    # Promise -> Rust Future

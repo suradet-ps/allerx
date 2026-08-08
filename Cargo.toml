@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/models",
+    "crates/search-core",
+    "crates/hosxp-connector",
+    "src-tauri",
+]
+# GUI shell excluded from default commands — `cargo test` at root must stay
+# fast and DB-free. Check it explicitly with `-p allerx-tauri` or --workspace.
+default-members = [
+    "crates/models",
+    "crates/search-core",
+    "crates/hosxp-connector",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[workspace.dependencies]
+async-trait = "0.1"                                   # async repository trait in search-core
+chrono = { version = "0.4", default-features = false, features = ["serde", "std"] }  # NaiveDate in domain types
+encryptman = "0.2.2"                                  # AES-256-GCM for connection settings at rest (AGENTS.md §9)
+encryptman-keyring = "0.1.2"                          # OS-keychain storage of the encryptman master key
+serde = { version = "1.0", features = ["derive"] }    # serialization across the Tauri IPC boundary
+serde_json = "1.0"                                    # config file (encrypted values) on disk
+secrecy = { version = "0.10", features = ["serde"] }  # SecretString: password zeroized on drop, Debug-redacted
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "mysql", "chrono", "tls-rustls-ring-native-roots"] }  # SELECT-only MySQL access
+thiserror = "2"                                       # structured errors in library crates
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }  # async runtime + timeouts
+tempfile = "3"                                        # dev: test-only config files

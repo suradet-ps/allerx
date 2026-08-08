@@ -1,0 +1,28 @@
+[package]
+name = "allerx-hosxp-connector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The only crate allowed to talk to the HOSxP MySQL database — SELECT-only, encrypted credentials"
+
+[dependencies]
+allerx-models = { path = "../models" }
+allerx-search-core = { path = "../search-core" }
+async-trait.workspace = true
+chrono.workspace = true
+encryptman.workspace = true
+encryptman-keyring.workspace = true
+secrecy.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["fs"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[features]
+# Integration tests against a test/staging HOSxP instance only — never
+# production, never part of the default `cargo test` run (AGENTS.md §12).
+integration-tests = []
