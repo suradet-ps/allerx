@@ -221,3 +221,29 @@ pub async fn fetch_drug_history(
         .await
         .map_err(|err| map_repo_error(err, "ตรวจสอบประวัติ"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn connection_error_is_translated_independently_of_action() {
+        let msg = map_repo_error(RepositoryError::Connection, "ค้นหาผู้ป่วย");
+        assert_eq!(msg, "เชื่อมต่อฐานข้อมูล HOSxP ไม่สำเร็จ");
+    }
+
+    #[test]
+    fn guard_error_is_translated_independently_of_action() {
+        let msg = map_repo_error(RepositoryError::Guard, "ค้นหายา");
+        assert_eq!(msg, "ระบบความปลอดภัยของแอปปฏิเสธคำสั่งนี้");
+    }
+
+    #[test]
+    fn query_error_renders_the_action_that_failed() {
+        let msg = map_repo_error(
+            RepositoryError::Query("row not found".to_string()),
+            "ตรวจสอบประวัติ",
+        );
+        assert_eq!(msg, "ตรวจสอบประวัติไม่สำเร็จ");
+    }
+}
