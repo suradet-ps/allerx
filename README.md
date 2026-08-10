@@ -8,4 +8,4 @@ Desktop tool for pharmacists/physicians: check a patient's medication history be
 - Rust workspace: `models` / `hosxp-connector` / `search-core`
 - Read-only against HOSxP, enforced in layers (DB grants, read-only session, query guard)
 
-See `AGENTS.md` (product/architecture) and `DESIGN.md` (visual system) for details.
+See `AGENTS.md` (product/architecture) and `docs/DESIGN.md` (visual system) for details.
