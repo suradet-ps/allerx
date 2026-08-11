@@ -1,8 +1,8 @@
 //! AllerX frontend (Leptos 0.8, CSR).
 //!
-//! Single-page flow per DESIGN.md. On launch the app asks the backend
-//! whether encrypted connection settings exist; if not, the settings dialog
-//! opens automatically so the first run is configurable without hunting.
+//! Two-panel desktop layout: sidebar (input) + main canvas (output).
+//! On launch the app checks for stored connection settings; if absent,
+//! the settings dialog opens automatically.
 
 mod api;
 mod components;
@@ -23,7 +23,7 @@ fn main() {
     leptos::mount::mount_to_body(|| view! { <App /> });
 }
 
-/// Single-page layout (DESIGN.md "Structure", top to bottom).
+/// Two-panel desktop layout (DESIGN.md "Structure").
 #[component]
 fn App() -> impl IntoView {
     let state = AppState::new();
@@ -40,21 +40,17 @@ fn App() -> impl IntoView {
     view! {
         <div class="app">
             <TopBar state=state.clone() />
-            <main class="app__content">
-                <div class="bento__cell bento__patient-search">
+            <div class="app__body">
+                <aside class="sidebar">
                     <PatientSearch state=state.clone() />
                     <PatientBar state=state.clone() />
-                </div>
-                <div class="bento__cell bento__drug-search">
                     <DrugSearch state=state.clone() />
-                </div>
-                <div class="bento__cell bento__verdict">
+                </aside>
+                <main class="main-canvas">
                     <VerdictBand state=state.clone() />
-                </div>
-                <div class="bento__cell bento__timeline">
                     <Timeline state=state.clone() />
-                </div>
-            </main>
+                </main>
+            </div>
             <SettingsModal state=state.clone() />
         </div>
     }

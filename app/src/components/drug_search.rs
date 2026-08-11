@@ -1,8 +1,5 @@
-//! Drug search + autocomplete (DESIGN.md: search-input, AGENTS.md §7.2).
-//!
-//! M3/M4: suggestions come from the backend `drugitems` table (250 ms
-//! debounce); submitting runs the full history lookup and drives the
-//! verdict band. Requires a selected patient first.
+//! Drug search — sidebar section (DESIGN.md: sidebar__section).
+//! Autocomplete drug search with submit button, disabled until patient selected.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -11,13 +8,11 @@ use std::time::Duration;
 use leptos::prelude::*;
 
 use crate::api;
-use crate::components::icons::{IconClock, IconPill};
+use crate::components::icons::{IconPill, IconSearch, IconX};
 use crate::state::{AppState, VerdictState};
 
-/// Autocomplete debounce (AGENTS.md §7.1/§7.2).
 const DEBOUNCE_MS: u64 = 250;
 
-/// Drug-name search box; the verdict band sits directly below this.
 #[component]
 pub fn DrugSearch(state: AppState) -> impl IntoView {
     let term = RwSignal::new(String::new());
@@ -32,7 +27,7 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
             return;
         }
         let Some(patient) = state.patient.get_untracked() else {
-            note.set(Some("กรุณาเลือกผู้ป่วยก่อนค้นหาประวัติ".to_string()));
+            note.set(Some("เลือกผู้ป่วยก่อน".to_string()));
             return;
         };
         note.set(None);
@@ -57,17 +52,27 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
     let run_check_click = Rc::clone(&run_check);
     let debounce = Rc::new(Cell::new(None::<TimeoutHandle>));
 
+    let clear_input = move |_| {
+        term.set(String::new());
+        suggestions.set(Vec::new());
+        selected_icode.set(None);
+        note.set(None);
+    };
+
+    let is_disabled = move || state.patient.get().is_none();
+
     view! {
-        <section class="panel">
-            <label class="panel__label" for="drug-search">
+        <div class="sidebar__section">
+            <div class="sidebar__label">
                 <IconPill class="icon" />
-                "ค้นหายาที่ต้องการตรวจประวัติ"
-            </label>
-            <div class="search-row">
+                "ค้นหายา"
+            </div>
+            <div class="search-wrapper">
+                <IconSearch class="search-icon" />
                 <input
-                    id="drug-search"
                     class="search-input"
                     placeholder="ชื่อยา (สามัญ / การค้า)"
+                    prop:disabled=move || is_disabled()
                     prop:value=move || term.get()
                     on:input=move |ev| {
                         let value = event_target_value(&ev);
@@ -106,14 +111,30 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                         }
                     }
                 />
-                <button class="button-primary" on:click=move |_| run_check_click()>
-                    <IconClock class="icon" />
+                {move || (!term.get().is_empty()).then(|| {
+                    view! {
+                        <button
+                            class="search-clear"
+                            on:click=clear_input
+                            aria-label="ล้าง"
+                        >
+                            <IconX class="icon" />
+                        </button>
+                    }.into_any()
+                })}
+            </div>
+            <div style="margin-top: var(--sp-sm);">
+                <button
+                    class="button-primary"
+                    prop:disabled=move || is_disabled()
+                    on:click=move |_| run_check_click()
+                >
                     "ตรวจประวัติ"
                 </button>
             </div>
             {move || {
                 note.get().map(|text| {
-                    view! { <p class="placeholder-note">{text}</p> }.into_any()
+                    view! { <p class="sidebar__empty">{text}</p> }.into_any()
                 })
             }}
             {move || {
@@ -122,48 +143,47 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                 } else {
                     Some(
                         view! {
-                        <ul class="result-list">
-                            {move || {
-                                suggestions
-                                    .get()
-                                    .into_iter()
-                                    .map(|drug| {
-                                        let strength_suffix = drug
-                                            .strength
-                                            .as_deref()
-                                            .map(|s| format!(" ({s})"))
-                                            .unwrap_or_default();
-                                        let term_value = format!("{}{}", drug.name, strength_suffix);
-                                        view! {
-                                            <li
-                                                class="search-result-row"
-                                                on:click=move |_| {
-                                                    term.set(term_value.clone());
-                                                    selected_icode.set(Some(drug.icode.clone()));
-                                                    suggestions.set(Vec::new());
-                                                    note.set(None);
-                                                }
-                                            >
-                                                <span class="search-result-row__name">
-                                                    {drug.name.clone()}
-                                                    <span class="search-result-row__strength">
-                                                        {strength_suffix}
+                            <ul class="result-list">
+                                {move || {
+                                    suggestions
+                                        .get()
+                                        .into_iter()
+                                        .map(|drug| {
+                                            let strength_suffix = drug
+                                                .strength
+                                                .as_deref()
+                                                .map(|s| format!(" ({s})"))
+                                                .unwrap_or_default();
+                                            let term_value = format!(
+                                                "{}{}", drug.name, strength_suffix
+                                            );
+                                            view! {
+                                                <li
+                                                    class="search-result-row"
+                                                    on:click=move |_| {
+                                                        term.set(term_value.clone());
+                                                        selected_icode.set(Some(drug.icode.clone()));
+                                                        suggestions.set(Vec::new());
+                                                        note.set(None);
+                                                    }
+                                                >
+                                                    <span class="search-result-row__name">
+                                                        {drug.name.clone()}
                                                     </span>
-                                                </span>
-                                                <span class="search-result-row__code">
-                                                    {drug.icode.clone()}
-                                                </span>
-                                            </li>
-                                        }
-                                    })
-                                    .collect_view()
-                            }}
-                        </ul>
+                                                    <span class="search-result-row__code">
+                                                        {drug.icode.clone()}
+                                                    </span>
+                                                </li>
+                                            }
+                                        })
+                                        .collect_view()
+                                }}
+                            </ul>
                         }
                         .into_any(),
                     )
                 }
             }}
-        </section>
+        </div>
     }
 }
