@@ -72,7 +72,7 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                 <input
                     class="search-input"
                     placeholder="ชื่อยา (สามัญ / การค้า)"
-                    prop:disabled=move || is_disabled()
+                    prop:disabled=is_disabled
                     prop:value=move || term.get()
                     on:input=move |ev| {
                         let value = event_target_value(&ev);
@@ -126,7 +126,7 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
             <div style="margin-top: var(--sp-sm);">
                 <button
                     class="button-primary"
-                    prop:disabled=move || is_disabled()
+                    prop:disabled=is_disabled
                     on:click=move |_| run_check_click()
                 >
                     "ตรวจประวัติ"
