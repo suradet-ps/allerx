@@ -1,14 +1,18 @@
-//! Patient bar — persistent strip showing the selected patient
-//! (DESIGN.md: patient-bar). Hidden until a patient is selected.
+//! Patient bar — compact sidebar context strip (DESIGN.md: patient-bar).
+//! Shows selected patient info with a "change patient" button.
 
 use leptos::prelude::*;
 
-use crate::components::icons::IconUser;
+use crate::components::icons::{IconUser, IconX};
 use crate::state::AppState;
 
-/// Shows the selected patient; renders nothing until one is chosen.
 #[component]
 pub fn PatientBar(state: AppState) -> impl IntoView {
+    let clear_patient = move |_| {
+        state.patient.set(None);
+        state.verdict.set(crate::state::VerdictState::Pending);
+    };
+
     move || {
         let patient = state.patient.get()?;
         let cid = patient
@@ -27,25 +31,38 @@ pub fn PatientBar(state: AppState) -> impl IntoView {
             .unwrap_or_else(|| "—".to_string());
         Some(
             view! {
-                <section class="patient-bar">
-                    <IconUser class="patient-bar__icon" />
-                    <div>
-                        <h2 class="patient-bar__name">{patient.full_name_th.clone()}</h2>
-                        <div class="patient-bar__meta">
-                            <span class="code">{"HN "}{patient.hn.clone()}</span>
-                            <span class="code">{"CID "}{cid}</span>
-                            <span>{"เกิด "}{dob}</span>
-                            <span>{"เพศ "}{sex}</span>
+                <div class="sidebar__section">
+                    <div class="patient-bar">
+                        <IconUser class="patient-bar__icon" />
+                        <div class="patient-bar__info">
+                            <p class="patient-bar__name">{patient.full_name_th.clone()}</p>
+                            <div class="patient-bar__meta">
+                                <span class="code">"HN " {patient.hn.clone()}</span>
+                                <span class="sep">"·"</span>
+                                <span class="code">"CID " {cid}</span>
+                                <span class="sep">"·"</span>
+                                <span>{dob}</span>
+                                <span class="sep">"·"</span>
+                                <span>{sex}</span>
+                            </div>
+                        </div>
+                        <div class="patient-bar__change">
+                            <button
+                                class="button-ghost"
+                                on:click=clear_patient
+                                data-tooltip="เปลี่ยนผู้ป่วย"
+                            >
+                                <IconX class="icon" />
+                            </button>
                         </div>
                     </div>
-                </section>
+                </div>
             }
             .into_any(),
         )
     }
 }
 
-/// CID is always masked on display: `1-XXXX-XXXXX-XX-1` (DESIGN.md).
 fn mask_cid(cid: &str) -> String {
     let chars: Vec<char> = cid.chars().collect();
     if chars.len() != 13 {
@@ -64,8 +81,6 @@ fn mask_cid(cid: &str) -> String {
     masked
 }
 
-/// HOSxP sex codes on this instance: `1` = ชาย, `2` = หญิง. Anything else
-/// renders as "ไม่ระบุ" rather than leaking a raw code to the operator.
 fn sex_label(sex: &str) -> String {
     match sex {
         "1" => "ชาย".to_string(),

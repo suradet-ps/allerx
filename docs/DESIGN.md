@@ -33,6 +33,21 @@ red/green of the verdict so the two never compete for the same attention.
 - No decorative chrome: no brand mark, no icon chips, no gradients, no hover animations —
   the information itself is the interface
 
+### Design Principles (informed by Microsoft UX Guidelines & Desktop Design Systems)
+
+1. **Progressive disclosure** — Show only what's needed at each step. Patient search first,
+   drug search only after a patient is selected. Verdict appears only after a query.
+2. **Asymmetric information hierarchy** — Patient search is the primary action (wider column);
+   drug search is secondary (narrower column). Layout reflects the natural task order.
+3. **Density over whitespace** — This is a work tool, not a landing page. Compact spacing
+   lets pharmacists scan more information per glance.
+4. **Keyboard-first navigation** — Every interactive element must be reachable via Tab/Enter.
+   Visible focus rings on all inputs and buttons.
+5. **Native feel** — Hover/focus transitions at 200ms, no bounce/elastic animations.
+   Respects `prefers-reduced-motion`.
+6. **Inverted pyramid** — The verdict (answer) is the most prominent element. Supporting
+   details (timeline, patient info) are secondary. System chrome is tertiary.
+
 ## Colors
 
 ### Brand & Chrome
@@ -103,35 +118,74 @@ heavy marketing-block look.
 ### Spacing
 - Base unit 4px, primary increment 8px.
 - Tokens: `{spacing.xs}` (4px) through `{spacing.xxl}` (48px). No `hero`-scale token exists in this system — there is no hero.
-- Single-window app: content max-width 960px, centered, with `{spacing.lg}` (24px) side padding on smaller windows.
 
-### Structure (single page, top to bottom)
+### Structure — Two-Panel Desktop Layout
+
 ```
-┌───────────────────────────────────────────┐
-│ Top bar (brand-teal, app name)             │
-├───────────────────────────────────────────┤
-│ Patient search (or) Patient bar if selected│
-├───────────────────────────────────────────┤
-│ Drug search                                │
-├───────────────────────────────────────────┤
-│ VERDICT BAND (appears only after search)   │
-├───────────────────────────────────────────┤
-│ Timeline list (only if found)              │
-└───────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│ Top bar (40px: app name · connection dot · settings)            │
+├───────────────────────┬─────────────────────────────────────────┤
+│                       │                                         │
+│  SIDEBAR (360px)      │  MAIN CANVAS (remaining)               │
+│                       │                                         │
+│  ┌─────────────────┐  │  ┌───────────────────────────────────┐  │
+│  │ Patient search  │  │  │                                   │  │
+│  │ [input]         │  │  │  VERDICT BAND (full width)        │  │
+│  │ [results]       │  │  │  พบประวัติ / ไม่พบประวัติ        │  │
+│  ├─────────────────┤  │  │                                   │  │
+│  │ Patient bar     │  │  └───────────────────────────────────┘  │
+│  │ (when selected) │  │                                         │
+│  ├─────────────────┤  │  ┌───────────────────────────────────┐  │
+│  │ Drug search     │  │  │                                   │  │
+│  │ [input]         │  │  │  TIMELINE (full width)             │  │
+│  │ [results]       │  │  │  ประวัติการได้รับยา               │  │
+│  │ [button]        │  │  │  ┌─ row ──────────────────────┐   │  │
+│  └─────────────────┘  │  │  │ date · badge · drug · meta │   │  │
+│                       │  │  └────────────────────────────┘   │  │
+│                       │  │  ┌─ row ──────────────────────┐   │  │
+│                       │  │  │ date · badge · drug · meta │   │  │
+│                       │  │  └────────────────────────────┘   │  │
+│                       │  │                                   │  │
+│                       │  └───────────────────────────────────┘  │
+│                       │                                         │
+└───────────────────────┴─────────────────────────────────────────┘
 ```
-There is no sidebar, no multi-panel layout, no navigation beyond this single flow — matching the one-task-at-a-time nature of the work.
+
+**Two-panel rationale:** This is a classic desktop application pattern (VS Code, TablePlus,
+medical record systems). The sidebar is the **input panel** — all user actions happen here.
+The main canvas is the **output panel** — results appear here. This spatial separation maps
+directly to the pharmacist's mental model: "I tell it who + what on the left, I see the
+answer on the right."
+
+**Sidebar (360px fixed):**
+- Contains the complete search workflow: patient search → patient bar → drug search.
+- Stays fixed while the main canvas scrolls (important for long timelines).
+- 1px right border (`{colors.hairline}`) separates it from the canvas.
+- Background `{colors.canvas}` (same as app background) — the sidebar is part of the
+  workspace, not a separate surface.
+
+**Main Canvas (fluid):**
+- Takes remaining width after sidebar.
+- Scrollable vertically when timeline exceeds viewport height.
+- Verdict band sits at the top — always visible without scrolling.
+- Timeline rows fill the rest, dense and scrollable.
+- Background `{colors.canvas-raised}` (white) — the canvas is the "paper" where results live.
+
+**Why not bento/grid:** Bento grids work when all cells are equal inputs. Here the two
+sides have fundamentally different roles (input vs output) and different scroll behaviors
+(sidebar fixed, canvas scrollable). A two-panel layout handles this correctly.
 
 ## Elevation & Depth
 
-Elevation is almost never used. Surfaces are separated by hairlines (1px borders); a shadow
-appears only when something must float above the page (the modal).
+Elevation is minimal. The sidebar and canvas are distinguished by background color
+(canvas = white, sidebar = off-white), not shadows. Shadows float only the modal.
 
 | Level | Treatment | Use |
 |---|---|---|
-| 0 (flat) | No shadow; `{colors.hairline}` border | Panels, cards, patient bar, verdict band, top bar |
-| 1 (raised) | — (reserved, unused) | — |
+| 0 (flat) | No shadow; `{colors.hairline}` border | Sidebar, top bar, verdict band, timeline rows |
+| 1 (canvas) | `background: {colors.canvas-raised}` | Main canvas surface (white on off-white bg) |
 | 2 (band) | — (reserved, unused) | — |
-| 3 (modal) | `rgba(23, 33, 43, 0.16) 0px 8px 24px -4px` | Settings dialog — the only floating element |
+| 3 (modal) | `0 8px 24px rgba(23,33,43,0.16)` | Settings dialog — the only floating element |
 
 ## Shapes
 
@@ -148,93 +202,80 @@ app chasing friendliness. Pill-shaped (`{rounded.full}`) elements are limited to
 
 ## Components
 
-### Buttons
-
-**`button-primary`** — Main action (search).
-- Background `{colors.brand-teal}`, text `{colors.on-teal}`, border 1px `{colors.brand-teal}`, typography `{typography.button}`, padding `9px 18px`, rounded `{rounded.md}`. No shadow.
-- Hover/pressed: `{colors.brand-teal-dark}`.
-
-**`button-secondary`** — Clear / reset / change patient.
-- Background `{colors.canvas-raised}`, text `{colors.ink}`, border `1px solid {colors.hairline-strong}`, typography `{typography.button}`, padding `9px 18px`, rounded `{rounded.md}`.
-- Hover: background `{colors.surface-muted}`.
-
-### Search
-
-**`search-input`** — Patient or drug search field.
-- Background `{colors.canvas-raised}`, text `{colors.ink}`, border `1px solid {colors.hairline-strong}`, rounded `{rounded.md}`, height 42px, padding `0 {spacing.md}`.
-- Focused: border `2px solid {colors.brand-teal}` — border color change only, no glow/halo.
-- Placeholder text `{colors.steel}`.
-
-**`search-result-row`** — One row in the patient/drug autocomplete dropdown.
-- Background `{colors.canvas-raised}`, hover/selected background `{colors.surface-muted}`, padding `10px {spacing.md}`, bottom border `1px solid {colors.hairline}`.
-- Name in `{typography.body-medium}`, HN/CID in `{typography.code}` `{colors.muted-code}` right-aligned.
-
 ### Top Bar
 
-**`top-bar`** — Flat, neutral header, chrome only.
-- Background `{colors.canvas-raised}`, bottom border `1px solid {colors.hairline}`. No brand color, no mark — just the wordmark and the settings action.
-- **`top-bar__title`** — "AllerX", `18px/700`. **`top-bar__tagline`** — `{typography.caption}` `{colors.steel}`.
-- **`top-bar__button`** — small secondary-style button with gear icon; label "ตั้งค่า".
+**`top-bar`** — Thin (40px), flat, neutral header spanning full width.
+- Background `{colors.canvas-raised}`, bottom border `1px solid {colors.hairline}`.
+- **`top-bar__title`** — "AllerX", `16px/700`, left-aligned. No tagline on this layout.
+- **`top-bar__status`** — Connection indicator: 8px dot + text, right-aligned next to settings.
+- **`top-bar__button`** — Ghost button with gear icon, tooltip "ตั้งค่า".
 
-### Patient Bar
+### Sidebar
 
-**`patient-bar`** — Persistent strip showing the selected patient.
-- Background `{colors.canvas-raised}`, border `1px solid {colors.hairline}`, rounded `{rounded.lg}`, padding `{spacing.md} {spacing.lg}`.
-- **`patient-bar__icon`** — plain 20px user icon in `{colors.slate}`; no chip, no tinted square.
-- Name: `{typography.patient-name}`. HN/CID/DOB/sex as a `{typography.caption}` row beneath, HN/CID in `{typography.code}`.
-- CID always rendered masked (`1-XXXX-XXXXX-XX-1`) here; full value never shown outside an explicit "show full ID" toggle.
+**`sidebar`** — Fixed-width (360px) left panel, full height below top bar.
+- Background `{colors.canvas}` (off-white, same as app bg), right border `1px solid {colors.hairline}`.
+- Contains three stacked sections separated by hairlines:
+  1. Patient search
+  2. Patient bar (when patient selected)
+  3. Drug search
+- **Stays fixed** while main canvas scrolls.
 
-### Verdict Band (signature component)
+### Patient Search (sidebar)
 
-**`verdict-found`**
-- Background `{colors.verdict-found}`, text `{colors.verdict-found-text}`, border `1px solid {colors.verdict-found-border}`, typography `{typography.verdict}`, rounded `{rounded.lg}`, padding `{spacing.md} {spacing.lg}`.
-- Content: check-circle icon (26px, `{colors.verdict-found-text}`) + "พบประวัติการได้รับยานี้" + most recent date/location inline, in `{typography.body}` beneath the headline.
+**`sidebar__section`** — Section inside sidebar with heading.
+- Padding `{spacing.md}`, border-bottom `1px solid {colors.hairline}`.
+- Heading: `{typography.label}` with icon, e.g. "ค้นหาผู้ป่วย".
 
-**`verdict-notfound`**
-- Background `{colors.verdict-notfound}`, text `{colors.verdict-notfound-text}`, border `1px solid {colors.verdict-notfound-border}`, typography `{typography.verdict}`, rounded `{rounded.lg}`, padding `{spacing.md} {spacing.lg}`.
-- Content: x-circle icon (26px, `{colors.verdict-notfound-text}`) + "ไม่พบประวัติการได้รับยานี้".
+**`search-input`** — Full-width input inside sidebar section.
+- Height 40px (compact for sidebar), border `{colors.hairline-strong}`, rounded `{rounded-md}`.
+- Focused: border `2px solid {colors.brand-teal}`.
 
-**`verdict-pending`**
-- Background `{colors.verdict-pending}`, text `{colors.verdict-pending-text}`, border `1px solid {colors.verdict-pending-border}`, same shape as the above two.
-- Content: clock icon (26px, `{colors.verdict-pending-text}`) + "รอการค้นหา".
-- Shown only while a query is in flight — must never be styled to suggest an answer.
+**`search-result-row`** — Autocomplete dropdown row.
+- Compact: padding `8px {spacing.md}`, two lines (name + HN/CID code).
 
-Rule: only one verdict band exists on screen at a time, and it always fully replaces the
-previous one — never stack or fade between states in a way that leaves both partially visible.
+### Patient Bar (sidebar)
 
-### Timeline (history list)
+**`patient-bar`** — Compact patient context strip inside sidebar.
+- Background `{colors.brand-teal-soft}`, border `1px solid {colors.verdict-found-border}`, rounded `{rounded-md}`, padding `{spacing.sm} {spacing.md}`.
+- **Layout:** Icon (16px) | Name (15px/600) + meta (12px: HN · CID masked · DOB · sex) | Change button (ghost, X icon).
+- CID always masked (`1-XXXX-XXXXX-XX-1`).
+- **Change patient button:** Ghost button at top-right, tooltip "เปลี่ยนผู้ป่วย". Clears patient + resets verdict.
 
-**`timeline-row`** — One prior administration of the searched drug.
-- Background `{colors.canvas-raised}`, bottom border `1px solid {colors.hairline}`, padding `{spacing.sm} {spacing.md}`, hover background `{colors.surface-muted}`.
-- Date in `{typography.code}` (mono, tabular) `{colors.ink}`, visit type (OPD/IPD) as a small `badge`, prescriber/department in `{typography.caption}` `{colors.slate}`.
-- Rows are read top-to-bottom, most recent first — order itself carries clinical meaning, so this is the one place ordering is treated as information, not decoration.
+### Drug Search (sidebar)
 
-### Badges
+**`drug-search`** — Same input style as patient search, but disabled until patient selected.
+- Placeholder: "ชื่อยา (สามัญ / การค้า)".
+- **Disabled state:** `opacity: 0.5`, `cursor: default`, no pointer events.
+- Submit button: Primary style, full-width, disabled until patient selected.
+- Autocomplete dropdown appears below input.
 
-**`badge`** — Visit-type tag (OPD/IPD).
-- Background `{colors.surface-muted}`, text `#47545c`, typography `{typography.label}`, pill-shaped (`{rounded.full}`), padding `2px 8px`.
-- OPD/IPD are distinguished by label text only, not color — color is reserved for the verdict.
+### Main Canvas
 
-### Icons
+**`main-canvas`** — Fluid right panel, scrollable.
+- Background `{colors.canvas-raised}` (white), left border `1px solid {colors.hairline}`.
+- Padding `{spacing-lg}`.
+- Scrollable via `overflow-y: auto`.
 
-All icons are lucide-style stroke SVGs, one per component in `app/src/components/icons.rs`:
-- 24×24 viewBox, 2px stroke, round caps/joins, `fill: none`, `stroke: currentColor` — the
-  icon inherits its color from surrounding text, never hardcoded.
-- Sized by CSS via the `.icon` class (16px default; 15px inside buttons, 26px verdict band,
-  16px panel headings, 20px patient bar).
-- Decorative only (`aria-hidden`) — icons never carry meaning without adjacent text.
-- No icon is used where color is the only differentiator; verdict icons duplicate the band's
-  headline text, and OPD/IPD remain text-only badges.
+### Verdict Band (main canvas, top)
 
-**`status-dot`** — Small found/not-found/pending indicator (used in compact contexts, e.g. a future multi-drug list).
-- 8px circle, rounded `{rounded.full}`, fill matches the corresponding verdict color.
-- Currently superseded by the verdict-band icons; kept as a spec for compact lists.
+**`verdict-band`** — Full-width result banner at top of canvas.
+- Rounded `{rounded-lg}`, padding `{spacing-lg}`, border `{colors.hairline}`.
+- **Found:** bg `{colors.verdict-found}`, text `{colors.verdict-found-text}`, border `{colors.verdict-found-border}`. Check-circle icon (32px) + headline (24px/700) + detail line.
+- **Not-Found:** bg `{colors.verdict-notfound}`, text `{colors.verdict-notfound-text}`, border `{colors.verdict-notfound-border}`. X-circle icon + headline + detail.
+- **Pending:** bg `{colors.verdict-pending}`, text `{colors.verdict-pending-text}`. Clock icon + headline + contextual hint.
+- Only one verdict on screen at a time. Never fade between states.
 
-### System States
+### Timeline (main canvas, below verdict)
 
-**`banner-warning`** — Non-clinical system messages (e.g. "HOSxP connection lost, retrying…").
-- Background `{colors.warning-bg}`, text `{colors.warning-text}`, rounded `{rounded.md}`, padding `{spacing.md}`.
-- Deliberately amber, not red — must never be visually confused with the not-found verdict.
+**`timeline`** — Dense scrollable list of medication history records.
+- List-style: no bullets, no outer padding.
+- **`timeline-row`** — One record per row. Two-line layout:
+  - Line 1: `{typography.code}` date (80px min-width) | OPD/IPD badge | drug name (`{typography.body-medium}`)
+  - Line 2: prescriber @ department · quantity · route (`{typography.caption}`, `{colors.slate}`)
+- Row padding `8px {spacing.md}`, border-bottom `1px solid {hairline}`.
+- Hover: background `{colors.surface-muted}`.
+- Most recent first — order carries clinical meaning.
+- **`timeline-footer`** — "แสดงทั้งหมด N รายการ" in `{typography.caption}`, centered.
 
 ## Do's and Don'ts
 
@@ -245,6 +286,9 @@ All icons are lucide-style stroke SVGs, one per component in `app/src/components
 - Keep the type scale compact (15px body, 13px labels) — density is what makes a work tool feel professional.
 - Use `{typography.code}` (monospace) for every HN, CID, and drug code — never render these in the body sans-serif.
 - Mask CID by default everywhere; require an explicit action to reveal it in full.
+- Add `font-variant-numeric: tabular-nums` on all numeric/code displays for column alignment.
+- Provide visible focus rings on every interactive element for keyboard navigation.
+- Use `200ms ease-out` for hover transitions, `150ms ease-out` for focus transitions.
 
 ### Don't
 - Don't use red or green anywhere except the verdict band — not for buttons, not for links, not for hover states.
@@ -254,6 +298,8 @@ All icons are lucide-style stroke SVGs, one per component in `app/src/components
 - Don't apply pill-shaped (`{rounded.full}`) buttons — that shape is limited to tiny chips (OPD/IPD badges ≤ 20px tall), never buttons or panels.
 - Don't animate the verdict band in a way that delays reading it (no fade-ins longer than ~120ms) — the whole point is instant legibility.
 - Don't introduce a second accent color beyond `{colors.brand-teal}` for chrome; new UI needs should be solved with weight/size/spacing, not new hues.
+- Don't use bounce/elastic easing for any UI element.
+- Don't hide keyboard focus indicators — this is a clinical tool used by professionals who may prefer keyboard navigation.
 
 ## Window & Responsive Behavior
 
@@ -262,12 +308,24 @@ still resizable by the user:
 
 | Window width | Behavior |
 |---|---|
-| < 720px | Single-column, patient bar and drug search stack fully; verdict band text drops to 24px |
-| 720–959px | Content area fills width up to `{spacing.xxl}` side padding |
-| ≥ 960px | Content area caps at 960px max-width, centered — prevents line lengths from becoming unreadable on wide monitors |
+| < 720px | **Stacked mode:** sidebar collapses to full-width, main canvas below it. Sidebar shows patient search + drug search stacked. Verdict + timeline below. |
+| 720–959px | **Two-panel:** sidebar 300px, canvas fills rest. Verdict text drops to 20px. |
+| ≥ 960px | **Two-panel standard:** sidebar 360px, canvas fills rest. Full verdict text. |
 
-Minimum supported window size: 480×600px. Below that, the app should still be usable
-(no cut-off verdict band), even if cramped.
+Minimum supported window size: 480×600px.
+
+### Focus Management
+
+- **Visible focus ring:** All interactive elements display `2px solid {colors.brand-teal}` on `:focus-visible`.
+- **Tab order:** Patient search → result list → patient bar (change button) → drug search → drug results → search button → timeline rows.
+- **Escape key:** Closes any open dropdown/modal. Returns focus to last active input.
+
+### Motion
+
+- **Hover transitions:** `background-color 200ms ease-out` on buttons, rows.
+- **Focus transitions:** `border-color 150ms ease-out` on inputs.
+- **Reduced motion:** `@media (prefers-reduced-motion: reduce)` disables all transitions.
+- **Never:** bounce/elastic easing, fade-ins longer than 120ms.
 
 ## Iteration Guide
 
@@ -282,3 +340,18 @@ Minimum supported window size: 480×600px. Below that, the app should still be u
 - Dark mode is out of scope for M0–M6 (see `AGENTS.md` milestones); token names above should support a future dark variant without renaming, but dark values are not yet defined.
 - Print/export styling (e.g. printing a patient's drug history) not yet designed.
 - Multi-drug batch search (checking several drugs at once) is not yet in scope; `status-dot` exists partly in anticipation of this but has no live use case yet.
+
+## Future: Dark Mode Tokens
+
+When dark mode is implemented, the following tokens need dark variants:
+
+```
+--canvas:        #f7f9fa → #1a1d21
+--canvas-raised: #ffffff → #242830
+--surface-muted: #eef1f3 → #2d3239
+--hairline:      #d9dfe2 → #3a4049
+--ink:           #17212b → #e8eaed
+--slate:         #4b5761 → #9aa0a6
+--steel:         #77838c → #6b7280
+--brand-teal:    #146a46 → #2d9d6a (lighter for dark bg contrast)
+```

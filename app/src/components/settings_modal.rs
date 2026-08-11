@@ -141,7 +141,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                         />
                     </div>
                     <div class="form-row">
-                        <div class="form-field">
+                        <div class="form-field" style="max-width: 100px;">
                             <label for="cfg-port">"Port"</label>
                             <input
                                 id="cfg-port"
@@ -184,7 +184,13 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
 
                     {move || {
                         message.get().map(|text| {
-                            view! { <p class="modal__message">{text}</p> }
+                            let is_success = text.contains("สำเร็จ");
+                            let class = if is_success {
+                                "modal__message modal__message--success"
+                            } else {
+                                "modal__message modal__message--error"
+                            };
+                            view! { <p class=class>{text}</p> }
                         })
                     }}
 

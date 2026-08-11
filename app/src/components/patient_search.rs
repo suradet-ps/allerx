@@ -1,7 +1,5 @@
-//! Patient search box (DESIGN.md: search-input + search-result-row).
-//!
-//! M2: wired to the real backend — input auto-detects HN / CID / name
-//! (AGENTS.md §7.1) and searches with a 250 ms debounce.
+//! Patient search — sidebar section (DESIGN.md: sidebar__section).
+//! Compact search box with autocomplete, adapted for sidebar layout.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -10,13 +8,11 @@ use std::time::Duration;
 use leptos::prelude::*;
 
 use crate::api;
-use crate::components::icons::IconSearch;
+use crate::components::icons::{IconSearch, IconUser, IconX};
 use crate::state::AppState;
 
-/// Search-box debounce (AGENTS.md §7.1).
 const DEBOUNCE_MS: u64 = 250;
 
-/// Single search box for HN / CID / name (AGENTS.md §7.1).
 #[component]
 pub fn PatientSearch(state: AppState) -> impl IntoView {
     let term = RwSignal::new(String::new());
@@ -47,21 +43,26 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
         });
     });
     let run_search_enter = Rc::clone(&run_search);
-    let run_search_click = Rc::clone(&run_search);
-    let run_search_typed = Rc::clone(&run_search);
     let debounce = Rc::new(Cell::new(None::<TimeoutHandle>));
 
+    let clear_input = move |_| {
+        term.set(String::new());
+        results.set(Vec::new());
+        searched.set(false);
+        error.set(None);
+    };
+
     view! {
-        <section class="panel">
-            <label class="panel__label" for="patient-search">
-                <IconSearch class="icon" />
+        <div class="sidebar__section">
+            <div class="sidebar__label">
+                <IconUser class="icon" />
                 "ค้นหาผู้ป่วย"
-            </label>
-            <div class="search-row">
+            </div>
+            <div class="search-wrapper">
+                <IconSearch class="search-icon" />
                 <input
-                    id="patient-search"
                     class="search-input"
-                    placeholder="เลข HN / เลขบัตรประชาชน / ชื่อ-นามสกุล"
+                    placeholder="HN / CID / ชื่อ"
                     prop:value=move || term.get()
                     on:input=move |ev| {
                         let value = event_target_value(&ev);
@@ -69,7 +70,7 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
                         if let Some(handle) = debounce.get() {
                             handle.clear();
                         }
-                        let schedule = Rc::clone(&run_search_typed);
+                        let schedule = Rc::clone(&run_search);
                         if let Ok(handle) = set_timeout_with_handle(
                             move || schedule(),
                             Duration::from_millis(DEBOUNCE_MS),
@@ -83,24 +84,24 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
                         }
                     }
                 />
-                <button class="button-primary" on:click=move |_| run_search_click()>
-                    <IconSearch class="icon" />
-                    "ค้นหา"
-                </button>
+                {move || (!term.get().is_empty()).then(|| {
+                    view! {
+                        <button
+                            class="search-clear"
+                            on:click=clear_input
+                            aria-label="ล้าง"
+                        >
+                            <IconX class="icon" />
+                        </button>
+                    }.into_any()
+                })}
             </div>
             {move || {
                 if let Some(message) = error.get() {
-                    view! { <p class="placeholder-note">{message}</p> }.into_any()
+                    view! { <p class="sidebar__empty">{message}</p> }.into_any()
                 } else if searched.get() && results.get().is_empty() {
-                    view! { <p class="placeholder-note">"ไม่พบผู้ป่วย"</p> }.into_any()
-                } else if results.get().is_empty() {
-                    view! {
-                        <p class="placeholder-note">
-                            "พิมพ์เลข HN / เลขบัตรประชาชน / ชื่อ-นามสกุล เพื่อค้นหา"
-                        </p>
-                    }
-                        .into_any()
-                } else {
+                    view! { <p class="sidebar__empty">"ไม่พบผู้ป่วย"</p> }.into_any()
+                } else if !results.get().is_empty() {
                     view! {
                         <ul class="result-list">
                             {move || {
@@ -133,8 +134,10 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
                         </ul>
                     }
                         .into_any()
+                } else {
+                    view! { <span hidden></span> }.into_any()
                 }
             }}
-        </section>
+        </div>
     }
 }
