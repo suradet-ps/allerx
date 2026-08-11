@@ -36,7 +36,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             .get_untracked()
             .trim()
             .parse::<u16>()
-            .map_err(|_| "หมายเลขพอร์ตไม่ถูกต้อง".to_string())?;
+            .map_err(|_| "พอร์ตไม่ถูกต้อง".to_string())?;
         let input = ConnectionInput {
             host: host.get_untracked(),
             port: port_value,
@@ -48,7 +48,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             || input.database.trim().is_empty()
             || input.user.trim().is_empty()
         {
-            return Err("กรุณากรอก Host, ชื่อฐานข้อมูล และผู้ใช้ให้ครบ".to_string());
+            return Err("กรอก Host, Database, User ให้ครบ".to_string());
         }
         Ok(input)
     });
@@ -71,7 +71,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             busy.set(true);
             leptos::task::spawn_local(async move {
                 match test_connection(&input).await {
-                    Ok(_) => message.set(Some("เชื่อมต่อสำเร็จ".to_string())),
+                    Ok(_) => message.set(Some("เชื่อมต่อได้".to_string())),
                     Err(error) => message.set(Some(error)),
                 }
                 busy.set(false);
@@ -119,19 +119,19 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             on:click=move |_| close()
         >
             <section class="modal" on:click=move |ev| ev.stop_propagation()>
-                    <h2 class="modal__title">"ตั้งค่าการเชื่อมต่อ HOSxP"</h2>
+                    <h2 class="modal__title">"ตั้งค่า HOSxP"</h2>
                     <p class="modal__status">
                         {move || {
                             if state.configured.get() {
-                                "ตั้งค่าแล้ว — ข้อมูลการเชื่อมต่อถูกเข้ารหัสเก็บในเครื่องนี้"
+                                "เชื่อมต่อแล้ว — เข้ารหัสเก็บในเครื่อง"
                             } else {
-                                "ยังไม่ได้ตั้งค่า — ต้องตั้งค่าก่อนใช้งาน"
+                                "ยังไม่ได้ตั้งค่า"
                             }
                         }}
                     </p>
 
                     <div class="form-field">
-                        <label for="cfg-host">"ที่อยู่เครื่อง (IP / ชื่อเครื่อง)"</label>
+                        <label for="cfg-host">"Host"</label>
                         <input
                             id="cfg-host"
                             class="form-input"
@@ -151,7 +151,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                             />
                         </div>
                         <div class="form-field form-field--grow">
-                            <label for="cfg-database">"ชื่อฐานข้อมูล"</label>
+                            <label for="cfg-database">"Database"</label>
                             <input
                                 id="cfg-database"
                                 class="form-input"
@@ -162,7 +162,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                         </div>
                     </div>
                     <div class="form-field">
-                        <label for="cfg-user">"ผู้ใช้ฐานข้อมูล"</label>
+                        <label for="cfg-user">"User"</label>
                         <input
                             id="cfg-user"
                             class="form-input"
@@ -172,7 +172,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                         />
                     </div>
                     <div class="form-field">
-                        <label for="cfg-password">"รหัสผ่าน"</label>
+                        <label for="cfg-password">"Password"</label>
                         <input
                             id="cfg-password"
                             class="form-input form-input--mono"
@@ -184,7 +184,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
 
                     {move || {
                         message.get().map(|text| {
-                            let is_success = text.contains("สำเร็จ");
+                            let is_success = text.contains("ได้");
                             let class = if is_success {
                                 "modal__message modal__message--success"
                             } else {
@@ -194,10 +194,6 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                         })
                     }}
 
-                    <p class="modal__note">
-                        "ข้อมูลถูกเข้ารหัสเก็บในเครื่องเท่านั้น — แอปอ่านฐานข้อมูลได้อย่างเดียว"
-                    </p>
-
                     <div class="modal__actions">
                         <button
                             class="button-secondary"
@@ -205,7 +201,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                             prop:disabled=move || busy.get()
                         >
                             <IconPlug class="icon" />
-                            "ทดสอบการเชื่อมต่อ"
+                            "ทดสอบ"
                         </button>
                         <button class="button-secondary" on:click=move |_| close()>
                             <IconX class="icon" />
