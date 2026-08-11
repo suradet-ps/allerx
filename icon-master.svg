@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Drop shadow for dimension on screen -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+    
+    <!-- Circular background gradient -->
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FF5252"/>
+      <stop offset="100%" stop-color="#D32F2F"/>
+    </linearGradient>
+
+    <!-- Pill bottle cap gradient -->
+    <linearGradient id="cap-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E0E0E0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Warning circle background -->
+  <circle cx="256" cy="256" r="236" fill="url(#bg-gradient)" filter="url(#shadow)"/>
+
+  <!-- White outer ring -->
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-opacity="0.3"/>
+
+  <!-- Pill bottle and warning mark group -->
+  <g transform="translate(0, 0)">
+    <!-- Bottle cap -->
+    <rect x="206" y="100" width="100" height="32" rx="6" fill="url(#cap-gradient)"/>
+    <rect x="216" y="132" width="80" height="16" fill="#BDBDBD"/>
+
+    <!-- Bottle body (rounded shape) -->
+    <path d="M 166 160 
+             C 166 148, 176 148, 186 148 
+             L 326 148 
+             C 336 148, 346 148, 346 160 
+             L 346 370 
+             C 346 392, 328 410, 306 410 
+             L 206 410 
+             C 184 410, 166 392, 166 370 
+             Z" 
+          fill="#FFFFFF"/>
+
+    <!-- Drug label on bottle (light tone) -->
+    <rect x="186" y="180" width="140" height="200" rx="12" fill="#FFEBEE"/>
+
+    <!-- Warning triangle & exclamation mark -->
+    <!-- Orange-red warning triangle -->
+    <path d="M 256 205 
+             L 310 295 
+             C 314 302, 309 310, 300 310 
+             L 212 310 
+             C 203 310, 198 302, 202 295 
+             Z" 
+          fill="#D32F2F"/>
+    
+    <!-- White exclamation mark (!) -->
+    <path d="M 256 235 L 256 270" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="256" cy="287" r="4.5" fill="#FFFFFF"/>
+
+    <!-- Allergy indicator / warning bars below the label -->
+    <line x1="216" y1="340" x2="296" y2="340" stroke="#D32F2F" stroke-width="8" stroke-linecap="round"/>
+    <line x1="216" y1="360" x2="276" y2="360" stroke="#B0BEC5" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>
