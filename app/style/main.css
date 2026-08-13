@@ -315,6 +315,66 @@ code, .mono, .code {
 }
 
 /* ==========================================================================
+   Drug Chips (ROADMAP Phase 5 — batch check queue)
+   ========================================================================== */
+
+.chip-list {
+  list-style: none;
+  margin: var(--sp-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-muted);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-full);
+  padding: 3px 6px 3px 10px;
+  font-size: 12px;
+  color: var(--ink);
+  max-width: 100%;
+}
+
+.chip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip__remove {
+  background: none;
+  border: none;
+  border-radius: var(--rounded-full);
+  padding: 2px;
+  color: var(--slate);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chip__remove .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.chip__remove:hover {
+  color: var(--ink);
+  background: var(--hairline);
+}
+
+.chip__remove:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+/* ==========================================================================
    Search Inputs
    ========================================================================== */
 
@@ -727,6 +787,128 @@ code, .mono, .code {
   border-color: var(--verdict-unresolved-border);
 }
 
+/* Batch verdicts (ROADMAP Phase 5) — one compact band per drug.
+   Stacked on small windows (scroll handles the overflow); a 2-column
+   grid on large windows so many-drug batches stay glanceable. */
+
+.verdict-batch {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-sm);
+  flex-shrink: 0;
+}
+
+@media (min-width: 960px) {
+  .verdict-batch {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Timeline filter (many-drug batches): one chip per checked drug */
+
+.timeline-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--sp-sm);
+  flex-shrink: 0;
+}
+
+.timeline-filter__chip {
+  background: var(--canvas-raised);
+  color: var(--slate);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-full);
+  padding: 2px 10px;
+  font-family: var(--font-thai);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.timeline-filter__chip:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.timeline-filter__chip--active {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand-dark);
+}
+
+.timeline-filter__chip:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.verdict-band--compact {
+  padding: var(--sp-sm) var(--sp-md);
+  border-radius: var(--rounded-md);
+}
+
+.verdict-band--compact .verdict-band__icon {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+
+.verdict-band--compact .verdict-band__term {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.verdict-band--compact .verdict-band__detail {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+
+.candidate-list {
+  list-style: none;
+  margin: var(--sp-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.candidate-button {
+  background: var(--canvas-raised);
+  color: var(--ink);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--rounded-full);
+  padding: 3px 10px;
+  font-family: var(--font-thai);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.candidate-button:hover {
+  background: var(--surface-muted);
+}
+
+.candidate-button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+/* ==========================================================================
+   Print Toolbar (ROADMAP Phase 5)
+   ========================================================================== */
+
+.print-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.button-secondary--inline {
+  width: auto;
+  padding: 0 var(--sp-lg);
+}
+
 /* ==========================================================================
    Timeline
    ========================================================================== */
@@ -912,6 +1094,117 @@ code, .mono, .code {
   margin-top: var(--sp-lg);
 }
 
+/* Patient detail modal (ROADMAP Phase 5) */
+
+.modal--wide {
+  max-width: 520px;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  margin-bottom: var(--sp-xs);
+}
+
+.modal__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal__title-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--brand);
+}
+
+.modal__section-title {
+  margin: var(--sp-lg) 0 var(--sp-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-md);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.detail-row__label {
+  color: var(--slate);
+  width: 64px;
+  flex-shrink: 0;
+}
+
+.detail-row__value {
+  color: var(--ink);
+  min-width: 0;
+}
+
+.detail-row__value--mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.med-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-md);
+  overflow: hidden;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.med-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  padding: 8px var(--sp-md);
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13px;
+}
+
+.med-row:last-child {
+  border-bottom: none;
+}
+
+.med-row__name {
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.med-row__meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--slate);
+  flex-shrink: 0;
+}
+
 .form-row {
   display: flex;
   gap: var(--sp-sm);
@@ -1010,8 +1303,95 @@ code, .mono, .code {
 }
 
 /* ==========================================================================
-   Tooltip
+   Print Sheet (ROADMAP Phase 5) — hidden on screen, the only thing in print
    ========================================================================== */
+
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  /* The print sheet is a CHILD of .app — hiding the whole app with
+     `display: none` would swallow its subtree too (a child's own display
+     cannot override an ancestor's none), which is exactly why the printed
+     output was empty. Hide the chrome *siblings* instead. */
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff;
+  }
+
+  .app {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .top-bar,
+  .app__body,
+  .modal-backdrop {
+    display: none !important;
+  }
+
+  .print-sheet {
+    display: block !important;
+    font-family: var(--font-thai);
+    font-size: 12px;
+    color: #000000;
+    line-height: 1.5;
+    width: 100%;
+  }
+
+  .print-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 4px 0 12px;
+    font-size: 11px;
+  }
+
+  .print-sheet td,
+  .print-sheet th {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .print-sheet h1 {
+    font-size: 16px;
+    margin: 0 0 2px;
+  }
+
+  .print-sheet h2 {
+    font-size: 13px;
+    margin: 10px 0 4px;
+    border-bottom: 1px solid #000;
+    padding-bottom: 2px;
+  }
+
+  .print-sheet p {
+    margin: 2px 0;
+  }
+
+  .print-sheet__header {
+    border-bottom: 2px solid #000;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+  }
+
+  .print-sheet__footer {
+    margin-top: 16px;
+    font-size: 10px;
+    color: #444;
+    border-top: 1px solid #999;
+    padding-top: 6px;
+  }
+}
 
 [data-tooltip] {
   position: relative;

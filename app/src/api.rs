@@ -12,7 +12,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use allerx_models::{DrugItem, HistoryVerdict, PatientSummary};
+use allerx_models::{ConcurrentMedication, DrugCheckResult, DrugItem, PatientSummary};
 use js_sys::{Object, Reflect};
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::prelude::*;
@@ -219,21 +219,44 @@ pub async fn search_drugs(prefix: &str) -> Result<Vec<DrugItem>, ApiError> {
     call_string_arg("search_drugs", "term", prefix).await
 }
 
-/// Full medication history for a patient + drug, merged most-recent-first
-/// (M4). The three-state contract (ROADMAP Phase 1): `Resolved` with empty
-/// records is a legitimate "no history"; `Unresolved` means the drug term
-/// could not be matched to the formulary and carries disambiguation
-/// candidates — the UI must never show "ไม่พบประวัติ" for it.
-pub async fn fetch_history(hn: &str, drug: &str) -> Result<HistoryVerdict, ApiError> {
-    let mut args = HashMap::new();
-    args.insert("hn", hn);
-    args.insert("drug", drug);
-    call_raw(
-        "fetch_drug_history",
-        to_value(&args).map_err(|_| ApiError {
+/// Full medication history for a patient + one or more drugs (ROADMAP
+/// Phase 5 — a single drug is a batch of one). The backend checks each drug
+/// concurrently and merges OPD+IPD most-recent-first. The per-drug
+/// three-state contract (ROADMAP Phase 1): `Resolved` with empty records is
+/// a legitimate "no history"; `Unresolved` means the term could not be
+/// matched to the formulary and carries disambiguation candidates — the UI
+/// must never show "ไม่พบประวัติ" for it.
+pub async fn check_history(hn: &str, drugs: &[String]) -> Result<Vec<DrugCheckResult>, ApiError> {
+    let args = Object::new();
+    Reflect::set(
+        &args,
+        &JsValue::from_str("hn"),
+        &to_value(hn).map_err(|_| ApiError {
             kind: ApiErrorKind::Query,
             message: "สร้างคำขอไม่สำเร็จ".to_string(),
         })?,
     )
-    .await
+    .map_err(|_| ApiError {
+        kind: ApiErrorKind::Query,
+        message: "สร้างคำขอไม่สำเร็จ".to_string(),
+    })?;
+    Reflect::set(
+        &args,
+        &JsValue::from_str("drugs"),
+        &to_value(drugs).map_err(|_| ApiError {
+            kind: ApiErrorKind::Query,
+            message: "สร้างคำขอไม่สำเร็จ".to_string(),
+        })?,
+    )
+    .map_err(|_| ApiError {
+        kind: ApiErrorKind::Query,
+        message: "สร้างคำขอไม่สำเร็จ".to_string(),
+    })?;
+    call_raw("check_drugs", args.into()).await
+}
+
+/// Recent concurrent medications for a patient (ROADMAP Phase 5) — the
+/// "ยาที่ได้รับล่าสุด" snapshot in the patient detail view.
+pub async fn fetch_concurrent_medications(hn: &str) -> Result<Vec<ConcurrentMedication>, ApiError> {
+    call_string_arg("fetch_concurrent_medications", "hn", hn).await
 }

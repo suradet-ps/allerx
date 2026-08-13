@@ -1,10 +1,12 @@
 //! Verdict band — prominent result banner at top of main canvas.
-//! The signature element. Only one verdict on screen at a time.
+//! The signature element. One verdict per checked drug; a single-drug
+//! check renders the full-size band, a batch renders stacked compact bands
+//! (ROADMAP Phase 5).
 
 use leptos::prelude::*;
 
 use crate::components::icons::{IconCheckCircle, IconClock, IconXCircle};
-use crate::state::{AppState, VerdictState};
+use crate::state::{AppState, DrugVerdictState, VerdictState};
 
 #[component]
 pub fn VerdictBand(state: AppState) -> impl IntoView {
@@ -32,51 +34,83 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
                 .into_any(),
             )
         }
-        VerdictState::Found { records, truncated } => {
-            let latest = records.first()?;
-            let visit_type = match latest.visit_type {
-                allerx_models::VisitType::Opd => "OPD",
-                allerx_models::VisitType::Ipd => "IPD",
+        VerdictState::Results { results } => {
+            if results.is_empty() {
+                return None;
+            }
+            if results.len() == 1 {
+                Some(render_single(&results[0], &state).into_any())
+            } else {
+                Some(render_batch(&results, &state).into_any())
+            }
+        }
+    }
+}
+
+/// The single-drug verdict — the full-size band (DESIGN.md). The resolved
+/// drug's name/strength always labels the verdict, so an icode search
+/// shows which drug it refers to (pilot feedback).
+fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl IntoView {
+    match &result.state {
+        DrugVerdictState::Found {
+            drug,
+            records,
+            truncated,
+        } => {
+            let identity = crate::state::drug_identity(drug);
+            let latest = records.first();
+            let (date, visit_type, prescriber, department) = match latest {
+                Some(record) => {
+                    let visit_type = match record.visit_type {
+                        allerx_models::VisitType::Opd => "OPD",
+                        allerx_models::VisitType::Ipd => "IPD",
+                    };
+                    (
+                        record.visit_date.format("%d/%m/%Y").to_string(),
+                        visit_type,
+                        record.prescriber.as_deref().unwrap_or("—").to_string(),
+                        record.department.as_deref().unwrap_or("—").to_string(),
+                    )
+                }
+                None => ("—".to_string(), "—", "—".to_string(), "—".to_string()),
             };
-            let date = latest.visit_date.format("%d/%m/%Y").to_string();
-            let prescriber = latest.prescriber.as_deref().unwrap_or("—");
-            let department = latest.department.as_deref().unwrap_or("—");
-            let truncation_suffix = if truncated {
+            let truncation_suffix = if *truncated {
                 " — มีประวัติเก่ากว่านี้"
             } else {
                 ""
             };
-            Some(
-                view! {
-                    <section class="verdict-band verdict-found">
-                        <IconCheckCircle class="verdict-band__icon" />
-                        <div class="verdict-band__content">
-                            <p class="verdict-band__headline">"พบประวัติการได้รับยานี้"</p>
-                            <p class="verdict-band__detail">
-                                {format!(
-                                    "ครั้งล่าสุด {date} ({visit_type}) โดย {prescriber} @ {department} — ทั้งหมด {} ครั้ง{truncation_suffix}",
-                                    records.len()
-                                )}
-                            </p>
-                        </div>
-                    </section>
-                }
-                .into_any(),
-            )
+            view! {
+                <section class="verdict-band verdict-found">
+                    <IconCheckCircle class="verdict-band__icon" />
+                    <div class="verdict-band__content">
+                        <p class="verdict-band__headline">"พบประวัติการได้รับยานี้"</p>
+                        <p class="verdict-band__detail">
+                            {format!(
+                                "{identity} — ครั้งล่าสุด {date} ({visit_type}) โดย {prescriber} @ {department} — ทั้งหมด {} ครั้ง{truncation_suffix}",
+                                records.len()
+                            )}
+                        </p>
+                    </div>
+                </section>
+            }
+            .into_any()
         }
-        VerdictState::NotFound => Some(
+        DrugVerdictState::NotFound { drug } => {
+            let identity = crate::state::drug_identity(drug);
             view! {
                 <section class="verdict-band verdict-notfound">
                     <IconXCircle class="verdict-band__icon" />
                     <div class="verdict-band__content">
                         <p class="verdict-band__headline">"ไม่พบประวัติการได้รับยานี้"</p>
-                        <p class="verdict-band__detail">"ไม่เคยมีรายการจ่ายยานี้ในประวัติผู้ป่วย"</p>
+                        <p class="verdict-band__detail">
+                            {format!("{identity} — ไม่เคยมีรายการจ่ายยานี้ในประวัติผู้ป่วย")}
+                        </p>
                     </div>
                 </section>
             }
-            .into_any(),
-        ),
-        VerdictState::Unresolved { candidates } => {
+            .into_any()
+        }
+        DrugVerdictState::Unresolved { candidates } => {
             let (headline, detail) = if candidates.is_empty() {
                 (
                     "ไม่พบยานี้ในทะเบียนยา".to_string(),
@@ -89,18 +123,143 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
                         .to_string(),
                 )
             };
-            Some(
-                view! {
-                    <section class="verdict-band verdict-unresolved">
-                        <IconXCircle class="verdict-band__icon" />
-                        <div class="verdict-band__content">
-                            <p class="verdict-band__headline">{headline}</p>
-                            <p class="verdict-band__detail">{detail}</p>
-                        </div>
-                    </section>
-                }
-                .into_any(),
-            )
+            view! {
+                <section class="verdict-band verdict-unresolved">
+                    <IconXCircle class="verdict-band__icon" />
+                    <div class="verdict-band__content">
+                        <p class="verdict-band__headline">{headline}</p>
+                        <p class="verdict-band__detail">{detail}</p>
+                    </div>
+                </section>
+            }
+            .into_any()
         }
+    }
+}
+
+/// The batch verdict — one compact band per checked drug, term-labelled.
+fn render_batch(results: &[crate::state::DrugVerdict], state: &AppState) -> impl IntoView {
+    view! {
+        <section class="verdict-batch">
+            {results
+                .iter()
+                .map(|result| {
+                    let term = result.term.clone();
+                    match &result.state {
+                        DrugVerdictState::Found {
+                            drug,
+                            records,
+                            truncated,
+                        } => {
+                            let identity = crate::state::drug_identity(drug);
+                            let latest = records.first();
+                            let (date, visit_type, count) = match latest {
+                                Some(record) => {
+                                    let visit_type = match record.visit_type {
+                                        allerx_models::VisitType::Opd => "OPD",
+                                        allerx_models::VisitType::Ipd => "IPD",
+                                    };
+                                    (
+                                        record.visit_date.format("%d/%m/%Y").to_string(),
+                                        visit_type,
+                                        format!("ทั้งหมด {} ครั้ง", records.len()),
+                                    )
+                                }
+                                None => ("—".to_string(), "—", "ทั้งหมด 0 ครั้ง".to_string()),
+                            };
+                            let truncation = if *truncated { " — มีประวัติเก่ากว่านี้" } else { "" };
+                            view! {
+                                <div class="verdict-band verdict-band--compact verdict-found">
+                                    <IconCheckCircle class="verdict-band__icon" />
+                                    <div class="verdict-band__content">
+                                        <p class="verdict-band__term">{term}</p>
+                                        <p class="verdict-band__detail">
+                                            {format!("พบประวัติ — {identity} · ครั้งล่าสุด {date} ({visit_type}) · {count}{truncation}")}
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                            .into_any()
+                        }
+                        DrugVerdictState::NotFound { drug } => {
+                            let identity = crate::state::drug_identity(drug);
+                            view! {
+                                <div class="verdict-band verdict-band--compact verdict-notfound">
+                                    <IconXCircle class="verdict-band__icon" />
+                                    <div class="verdict-band__content">
+                                        <p class="verdict-band__term">{term}</p>
+                                        <p class="verdict-band__detail">
+                                            {format!("ไม่พบประวัติ — {identity}")}
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                            .into_any()
+                        }
+                        DrugVerdictState::Unresolved { candidates } => {
+                            let add = state.drug_chips;
+                            view! {
+                                <div class="verdict-band verdict-band--compact verdict-unresolved">
+                                    <IconXCircle class="verdict-band__icon" />
+                                    <div class="verdict-band__content">
+                                        <p class="verdict-band__term">{term.clone()}</p>
+                                        <p class="verdict-band__detail">
+                                            {if candidates.is_empty() {
+                                                "ไม่พบยานี้ในทะเบียนยา — ตรวจสอบการสะกด".to_string()
+                                            } else {
+                                                "ไม่พบชื่อที่ตรงกับยาในทะเบียน — เลือกยาจากรายการ".to_string()
+                                            }}
+                                        </p>
+                                        {if candidates.is_empty() {
+                                            None
+                                        } else {
+                                            Some(
+                                                view! {
+                                                    <ul class="candidate-list">
+                                                        {candidates
+                                                            .iter()
+                                                            .map(|drug| {
+                                                                let label =
+                                                                    crate::state::drug_identity(drug);
+                                                                let icode = drug.icode.clone();
+                                                                view! {
+                                                                    <li>
+                                                                        <button
+                                                                            class="candidate-button"
+                                                                            on:click=move |_| {
+                                                                                let mut chips = add.get_untracked();
+                                                                                let dup = chips.iter().any(|c| {
+                                                                                    c.icode.as_deref() == Some(icode.as_str())
+                                                                                        || c.label == label
+                                                                                });
+                                                                                if !dup {
+                                                                                    chips.push(crate::state::DrugChip {
+                                                                                        label: label.clone(),
+                                                                                        icode: Some(icode.clone()),
+                                                                                    });
+                                                                                    add.set(chips);
+                                                                                }
+                                                                            }
+                                                                        >
+                                                                            {label.clone()}
+                                                                        </button>
+                                                                    </li>
+                                                                }
+                                                            })
+                                                            .collect_view()}
+                                                    </ul>
+                                                }
+                                                    .into_any(),
+                                            )
+                                        }}
+                                    </div>
+                                </div>
+                            }
+                            .into_any()
+                        }
+                    }
+                })
+                .collect_view()}
+        </section>
     }
 }

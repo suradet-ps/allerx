@@ -35,6 +35,10 @@ pub struct DrugHistoryRecord {
     pub drug_code: String,
     /// Generic name.
     pub drug_name: String,
+    /// Dose strength as printed on the item, e.g. "500 mg" — carried so the
+    /// timeline always shows the drug with its strength (display rule:
+    /// every drug name is shown with its strength).
+    pub strength: Option<String>,
     pub trade_name: Option<String>,
     pub prescriber: Option<String>,
     pub department: Option<String>,
@@ -89,11 +93,40 @@ pub struct ResolvedHistory {
 /// patient-safety event).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HistoryVerdict {
-    /// The drug is known; `history.records` holds the dispensing timeline
-    /// (empty = genuinely never dispensed).
-    Resolved { history: ResolvedHistory },
+    /// The drug is known; `drug` is the exact formulary entry the term
+    /// resolved to (name/strength identity — the UI shows what drug a
+    /// verdict refers to), and `history.records` holds the dispensing
+    /// timeline (empty = genuinely never dispensed).
+    Resolved {
+        drug: DrugItem,
+        history: ResolvedHistory,
+    },
     /// The drug term could not be resolved to an icode. `candidates` are the
     /// closest `drugitems` matches for the operator to disambiguate; empty
     /// means the term is not in the formulary at all.
     Unresolved { candidates: Vec<DrugItem> },
+}
+
+/// One checked drug in a batch lookup (ROADMAP Phase 5) — the term the
+/// pharmacist submitted plus that drug's verdict, so a multi-drug check
+/// can label each result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DrugCheckResult {
+    /// The term submitted for this drug — the UI's label for the verdict.
+    pub term: String,
+    /// The verdict: resolved (possibly empty) or unresolved.
+    pub verdict: HistoryVerdict,
+}
+
+/// One drug dispensed to a patient recently (ROADMAP Phase 5) — the
+/// "ยาที่ได้รับล่าสุด" snapshot, deduped per icode with the latest date.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConcurrentMedication {
+    pub drug_code: String,
+    pub drug_name: String,
+    /// Dose strength as printed on the item — the med list always shows
+    /// the name with its strength.
+    pub strength: Option<String>,
+    pub trade_name: Option<String>,
+    pub last_date: NaiveDate,
 }
