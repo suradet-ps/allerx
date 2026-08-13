@@ -219,7 +219,8 @@ fn render_batch(results: &[crate::state::DrugVerdict], state: &AppState) -> impl
                                                         {candidates
                                                             .iter()
                                                             .map(|drug| {
-                                                                let label = drug.name.clone();
+                                                                let label =
+                                                                    crate::state::drug_identity(drug);
                                                                 let icode = drug.icode.clone();
                                                                 view! {
                                                                     <li>

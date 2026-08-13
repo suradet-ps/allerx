@@ -133,13 +133,14 @@ pub fn PrintSheet(state: AppState) -> impl IntoView {
                                                     allerx_models::VisitType::Opd => "OPD",
                                                     allerx_models::VisitType::Ipd => "IPD",
                                                 };
+                                                let drug_label = crate::state::record_label(r);
                                                 let prescriber = r.prescriber.as_deref().unwrap_or("—");
                                                 let department = r.department.as_deref().unwrap_or("—");
                                                 view! {
                                                     <tr>
                                                         <td>{r.visit_date.format("%d/%m/%Y").to_string()}</td>
                                                         <td>{vt}</td>
-                                                        <td>{r.drug_name.clone()}</td>
+                                                        <td>{drug_label}</td>
                                                         <td>{prescriber}</td>
                                                         <td>{department}</td>
                                                     </tr>

@@ -88,6 +88,7 @@ mod tests {
             visit_type: Opd,
             drug_code: "1-001".into(),
             drug_name: drug_name.into(),
+            strength: Some("500 mg".into()),
             trade_name: None,
             prescriber: None,
             department: None,

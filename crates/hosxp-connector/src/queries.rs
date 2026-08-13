@@ -119,7 +119,7 @@ pub const DRUG_RESOLVE_BY_TRADE_NAME: &str =
 /// `depcode`); `kskdepartment.depcode` still unverified.
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
-pub const HISTORY_OPD: &str = "SELECT o.vstdate, o.icode, d.name, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
+pub const HISTORY_OPD: &str = "SELECT o.vstdate, o.icode, d.name, d.strength, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      LEFT JOIN doctor doc ON o.doctor = doc.code \
@@ -131,7 +131,7 @@ pub const HISTORY_OPD: &str = "SELECT o.vstdate, o.icode, d.name, d.trade_name, 
 
 /// OPD history without the trade-name column — same result shape, `NULL`
 /// in its place (used when the instance fails [`HISTORY_OPD`] with 1054).
-pub const HISTORY_OPD_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
+pub const HISTORY_OPD_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL AS strength, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      LEFT JOIN doctor doc ON o.doctor = doc.code \
@@ -148,7 +148,7 @@ pub const HISTORY_OPD_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL 
 /// branch must be confirmed on the live instance.
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
-pub const HISTORY_IPD_TAKEHOME: &str = "SELECT o.vstdate, o.icode, d.name, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
+pub const HISTORY_IPD_TAKEHOME: &str = "SELECT o.vstdate, o.icode, d.name, d.strength, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      LEFT JOIN doctor doc ON o.doctor = doc.code \
@@ -159,7 +159,7 @@ pub const HISTORY_IPD_TAKEHOME: &str = "SELECT o.vstdate, o.icode, d.name, d.tra
      LIMIT 200";
 
 /// IPD take-home history without the trade-name column — same result shape.
-pub const HISTORY_IPD_TAKEHOME_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
+pub const HISTORY_IPD_TAKEHOME_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL AS strength, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      LEFT JOIN doctor doc ON o.doctor = doc.code \
@@ -177,7 +177,7 @@ pub const HISTORY_IPD_TAKEHOME_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.na
 /// // AGENTS.md §6.3 — confirm the table name and date column on the live
 /// // instance. A missing table (named differently) is tolerated at runtime
 /// // and treated as "no in-stay records" (see repository.rs).
-pub const HISTORY_IPD_STAY_TRADE: &str = "SELECT i.idate, i.icode, d.name, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(i.qty AS CHAR) AS quantity \
+pub const HISTORY_IPD_STAY_TRADE: &str = "SELECT i.idate, i.icode, d.name, d.strength, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(i.qty AS CHAR) AS quantity \
      FROM iptitemrece i \
      INNER JOIN ipt ON i.an = ipt.an \
      INNER JOIN drugitems d ON i.icode = d.icode \
@@ -189,7 +189,7 @@ pub const HISTORY_IPD_STAY_TRADE: &str = "SELECT i.idate, i.icode, d.name, d.tra
      LIMIT 200";
 
 /// IPD in-stay history without the trade-name column — same result shape.
-pub const HISTORY_IPD_STAY: &str = "SELECT i.idate, i.icode, d.name, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(i.qty AS CHAR) AS quantity \
+pub const HISTORY_IPD_STAY: &str = "SELECT i.idate, i.icode, d.name, NULL AS strength, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(i.qty AS CHAR) AS quantity \
      FROM iptitemrece i \
      INNER JOIN ipt ON i.an = ipt.an \
      INNER JOIN drugitems d ON i.icode = d.icode \
@@ -207,22 +207,22 @@ pub const HISTORY_IPD_STAY: &str = "SELECT i.idate, i.icode, d.name, NULL AS tra
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` and the `'1%'` drug-category
 /// // assumption per AGENTS.md §6 — confirm against the live instance. The
 /// // trade-name column degrades via [`CONCURRENT_MEDS`] on 1054.
-pub const CONCURRENT_MEDS_TRADE: &str = "SELECT o.icode, MAX(o.vstdate) AS last_date, d.name, d.trade_name \
+pub const CONCURRENT_MEDS_TRADE: &str = "SELECT o.icode, MAX(o.vstdate) AS last_date, d.name, d.strength, d.trade_name \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      WHERE o.hn = ? AND o.qty > 0 AND d.icode LIKE '1%' \
        AND o.vstdate >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) \
-     GROUP BY o.icode, d.name, d.trade_name \
+     GROUP BY o.icode, d.name, d.strength, d.trade_name \
      ORDER BY last_date DESC, o.icode \
      LIMIT 30";
 
 /// Recent concurrent medications without the trade-name column — same shape.
-pub const CONCURRENT_MEDS: &str = "SELECT o.icode, MAX(o.vstdate) AS last_date, d.name, NULL AS trade_name \
+pub const CONCURRENT_MEDS: &str = "SELECT o.icode, MAX(o.vstdate) AS last_date, d.name, NULL AS strength, NULL AS trade_name \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      WHERE o.hn = ? AND o.qty > 0 AND d.icode LIKE '1%' \
        AND o.vstdate >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) \
-     GROUP BY o.icode, d.name \
+     GROUP BY o.icode, d.name, d.strength \
      ORDER BY last_date DESC, o.icode \
      LIMIT 30";
 

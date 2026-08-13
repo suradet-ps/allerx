@@ -149,6 +149,15 @@ pub fn drug_identity(drug: &DrugItem) -> String {
     }
 }
 
+/// A history record's display label: "name (strength)" — the timeline rows
+/// always show the drug with its strength.
+pub fn record_label(record: &DrugHistoryRecord) -> String {
+    match &record.strength {
+        Some(strength) => format!("{} ({strength})", record.drug_name),
+        None => record.drug_name.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,6 +170,7 @@ mod tests {
             visit_type: VisitType::Opd,
             drug_code: "1-001".into(),
             drug_name: drug_name.into(),
+            strength: Some("500 mg".into()),
             trade_name: None,
             prescriber: None,
             department: None,

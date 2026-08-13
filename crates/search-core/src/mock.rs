@@ -143,23 +143,32 @@ impl HosxRepository for MockRepository {
     ) -> Result<Vec<ConcurrentMedication>, RepositoryError> {
         // Dedupe the mock's history per icode, keeping the latest date —
         // mirrors the real repository's GROUP BY semantics.
-        let mut latest: HashMap<&str, (chrono::NaiveDate, &str)> = HashMap::new();
+        let mut latest: HashMap<&str, (chrono::NaiveDate, &str, Option<&str>)> = HashMap::new();
         for record in &self.history {
-            let entry = latest
-                .entry(record.drug_code.as_str())
-                .or_insert((record.visit_date, record.drug_name.as_str()));
+            let entry = latest.entry(record.drug_code.as_str()).or_insert((
+                record.visit_date,
+                record.drug_name.as_str(),
+                record.strength.as_deref(),
+            ));
             if record.visit_date > entry.0 {
-                *entry = (record.visit_date, record.drug_name.as_str());
+                *entry = (
+                    record.visit_date,
+                    record.drug_name.as_str(),
+                    record.strength.as_deref(),
+                );
             }
         }
         let mut meds: Vec<ConcurrentMedication> = latest
             .into_iter()
-            .map(|(drug_code, (last_date, drug_name))| ConcurrentMedication {
-                drug_code: drug_code.to_string(),
-                drug_name: drug_name.to_string(),
-                trade_name: None,
-                last_date,
-            })
+            .map(
+                |(drug_code, (last_date, drug_name, strength))| ConcurrentMedication {
+                    drug_code: drug_code.to_string(),
+                    drug_name: drug_name.to_string(),
+                    strength: strength.map(str::to_string),
+                    trade_name: None,
+                    last_date,
+                },
+            )
             .collect();
         meds.sort_by_key(|m| std::cmp::Reverse(m.last_date));
         meds.truncate(30);
@@ -215,6 +224,7 @@ mod tests {
             visit_type,
             drug_code: "1-001".into(),
             drug_name: "พาราเซตามอล".into(),
+            strength: Some("500 mg".into()),
             trade_name: None,
             prescriber: None,
             department: None,
