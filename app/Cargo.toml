@@ -27,6 +27,7 @@ wasm-bindgen = "0.2"            # __TAURI_INTERNALS__.invoke binding
 wasm-bindgen-futures = "0.4"    # Promise -> Rust Future
 
 [dev-dependencies]
+chrono = "0.4"                  # NaiveDate in test fixtures
 leptos = { version = "0.8", features = ["csr"] }  # view!/mount in wasm tests
 wasm-bindgen-test = "0.3"       # wasm test harness (ROADMAP Phase 4)
 web-sys = { version = "0.3", features = [
