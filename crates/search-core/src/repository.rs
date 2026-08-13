@@ -3,7 +3,7 @@
 //! `hosxp-connector` implements this trait against the real HOSxP MySQL
 //! database; tests and the frontend use [`MockRepository`](crate::mock::MockRepository).
 
-use allerx_models::{DrugHistoryRecord, DrugItem, PatientSummary};
+use allerx_models::{DrugItem, HistoryVerdict, PatientSummary};
 use async_trait::async_trait;
 
 use crate::error::RepositoryError;
@@ -52,10 +52,15 @@ pub trait HosxRepository: Send + Sync {
     /// Full medication history for one patient + drug (AGENTS.md §7.2, M4).
     ///
     /// `drug` is the drug `icode` when the operator picked an autocomplete
-    /// suggestion, otherwise the typed name — implementations resolve it to
-    /// an `icode` first (exact icode, then exact name). OPD and IPD history
-    /// are queried concurrently, merged, and returned most-recent-first.
-    /// An unresolvable drug yields an empty list, never an error.
+    /// suggestion, otherwise the typed name. The implementation resolves it
+    /// to an `icode` first (exact icode, then exact generic name, then exact
+    /// trade name), queries OPD and IPD history concurrently, and merges
+    /// most-recent-first.
+    ///
+    /// The verdict contract (ROADMAP Phase 1): an **unresolvable** term
+    /// returns [`HistoryVerdict::Unresolved`] with the closest formulary
+    /// candidates — never a resolved-but-empty list. Only a resolved drug
+    /// may produce the "ไม่พบประวัติ" verdict.
     ///
     /// # Errors
     ///
@@ -65,5 +70,5 @@ pub trait HosxRepository: Send + Sync {
         &self,
         hn: &str,
         drug: &str,
-    ) -> Result<Vec<DrugHistoryRecord>, RepositoryError>;
+    ) -> Result<HistoryVerdict, RepositoryError>;
 }
