@@ -181,6 +181,32 @@ pub const HISTORY_IPD_STAY: &str = "SELECT i.idate, i.icode, d.name, NULL AS tra
      ORDER BY i.idate DESC, i.itime DESC \
      LIMIT 200";
 
+/// Recent concurrent medications — dispensing rows in the last 30 days,
+/// deduped per icode with the latest date (ROADMAP Phase 5). Filtered to
+/// the drug category per AGENTS.md §6.2.
+///
+/// // SCHEMA-UNVERIFIED: `drugitems.trade_name` and the `'1%'` drug-category
+/// // assumption per AGENTS.md §6 — confirm against the live instance. The
+/// // trade-name column degrades via [`CONCURRENT_MEDS`] on 1054.
+pub const CONCURRENT_MEDS_TRADE: &str = "SELECT o.icode, MAX(o.vstdate) AS last_date, d.name, d.trade_name \
+     FROM opitemrece o \
+     INNER JOIN drugitems d ON o.icode = d.icode \
+     WHERE o.hn = ? AND o.qty > 0 AND d.icode LIKE '1%' \
+       AND o.vstdate >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) \
+     GROUP BY o.icode, d.name, d.trade_name \
+     ORDER BY last_date DESC, o.icode \
+     LIMIT 30";
+
+/// Recent concurrent medications without the trade-name column — same shape.
+pub const CONCURRENT_MEDS: &str = "SELECT o.icode, MAX(o.vstdate) AS last_date, d.name, NULL AS trade_name \
+     FROM opitemrece o \
+     INNER JOIN drugitems d ON o.icode = d.icode \
+     WHERE o.hn = ? AND o.qty > 0 AND d.icode LIKE '1%' \
+       AND o.vstdate >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) \
+     GROUP BY o.icode, d.name \
+     ORDER BY last_date DESC, o.icode \
+     LIMIT 30";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -208,6 +234,8 @@ mod tests {
             HISTORY_IPD_TAKEHOME_FALLBACK,
             HISTORY_IPD_STAY,
             HISTORY_IPD_STAY_TRADE,
+            CONCURRENT_MEDS,
+            CONCURRENT_MEDS_TRADE,
         ] {
             assert!(assert_read_only(sql).is_ok(), "must be SELECT: {sql}");
         }

@@ -1,24 +1,26 @@
 //! Production [`HosxRepository`] implementation over the read-only pool.
 
-use async_trait::async_trait;
-use chrono::NaiveDate;
-use sqlx::MySqlPool;
-
 use crate::error::Error;
 use crate::queries::{
-    DRUG_RESOLVE_BY_ICODE, DRUG_RESOLVE_BY_NAME, DRUG_RESOLVE_BY_TRADE_NAME,
-    DRUG_SEARCH_CONTAINS_PLAIN, DRUG_SEARCH_CONTAINS_TRADE, DRUG_SEARCH_CONTAINS_TYPED,
-    DRUG_SEARCH_PREFIX_PLAIN, DRUG_SEARCH_PREFIX_TRADE, DRUG_SEARCH_PREFIX_TYPED, HISTORY_IPD_STAY,
-    HISTORY_IPD_STAY_TRADE, HISTORY_IPD_TAKEHOME, HISTORY_IPD_TAKEHOME_FALLBACK, HISTORY_OPD,
-    HISTORY_OPD_FALLBACK, PATIENT_SEARCH_BY_CID, PATIENT_SEARCH_BY_HN,
-    PATIENT_SEARCH_NAME_CONTAINS, PATIENT_SEARCH_NAME_PREFIX,
+    CONCURRENT_MEDS, CONCURRENT_MEDS_TRADE, DRUG_RESOLVE_BY_ICODE, DRUG_RESOLVE_BY_NAME,
+    DRUG_RESOLVE_BY_TRADE_NAME, DRUG_SEARCH_CONTAINS_PLAIN, DRUG_SEARCH_CONTAINS_TRADE,
+    DRUG_SEARCH_CONTAINS_TYPED, DRUG_SEARCH_PREFIX_PLAIN, DRUG_SEARCH_PREFIX_TRADE,
+    DRUG_SEARCH_PREFIX_TYPED, HISTORY_IPD_STAY, HISTORY_IPD_STAY_TRADE, HISTORY_IPD_TAKEHOME,
+    HISTORY_IPD_TAKEHOME_FALLBACK, HISTORY_OPD, HISTORY_OPD_FALLBACK, PATIENT_SEARCH_BY_CID,
+    PATIENT_SEARCH_BY_HN, PATIENT_SEARCH_NAME_CONTAINS, PATIENT_SEARCH_NAME_PREFIX,
 };
 use crate::readonly_guard::{PING_SQL, assert_read_only};
-use allerx_models::{DrugHistoryRecord, DrugItem, HistoryVerdict, PatientSummary, VisitType};
+use allerx_models::{
+    ConcurrentMedication, DrugCheckResult, DrugHistoryRecord, DrugItem, HistoryVerdict,
+    PatientSummary, VisitType,
+};
 use allerx_search_core::{
     DrugResolution, HosxRepository as HosxRepositoryTrait, QueryKind, RepositoryError,
     classify_drug_resolution, merge_drug_history, rank_candidates, verdict_from_resolution,
 };
+use async_trait::async_trait;
+use chrono::NaiveDate;
+use sqlx::MySqlPool;
 
 /// Per-source row cap — must stay in sync with the `LIMIT` inside every
 /// `HISTORY_*` statement in `queries.rs` (enforced by a test below). At the
@@ -439,6 +441,62 @@ impl HosxRepositoryTrait for HosxRepository {
             DrugResolution::Candidates { .. } => (Vec::new(), false),
         };
         Ok(verdict_from_resolution(resolution, records, truncated))
+    }
+
+    async fn check_drugs(
+        &self,
+        hn: &str,
+        drugs: &[String],
+    ) -> Result<Vec<DrugCheckResult>, RepositoryError> {
+        // The same single question asked N times in one pass — each drug
+        // runs its own OPD+IPD fan-out concurrently (pool size 5 caps the
+        // load; a pharmacy batch is 2-5 drugs). Completion order differs
+        // from input order — results carry their term label, so the UI
+        // never relies on position.
+        let mut tasks = tokio::task::JoinSet::new();
+        for drug in drugs {
+            let repo = self.clone();
+            let hn = hn.to_string();
+            let drug = drug.clone();
+            tasks.spawn(async move {
+                let verdict = repo.fetch_drug_history(&hn, &drug).await;
+                (drug, verdict)
+            });
+        }
+        let mut results = Vec::with_capacity(drugs.len());
+        while let Some(joined) = tasks.join_next().await {
+            let (term, verdict) = joined
+                .map_err(|err| RepositoryError::Query(format!("batch check task failed: {err}")))?;
+            results.push(DrugCheckResult {
+                term,
+                verdict: verdict?,
+            });
+        }
+        Ok(results)
+    }
+
+    async fn fetch_concurrent_medications(
+        &self,
+        hn: &str,
+    ) -> Result<Vec<ConcurrentMedication>, RepositoryError> {
+        let hn = hn.trim();
+        if hn.is_empty() {
+            return Ok(Vec::new());
+        }
+        let rows: Vec<(String, NaiveDate, String, Option<String>)> = self
+            .fetch_first_working(&[(CONCURRENT_MEDS_TRADE, &[hn]), (CONCURRENT_MEDS, &[hn])])
+            .await?;
+        Ok(rows
+            .into_iter()
+            .map(
+                |(drug_code, last_date, drug_name, trade_name)| ConcurrentMedication {
+                    drug_code,
+                    drug_name,
+                    trade_name,
+                    last_date,
+                },
+            )
+            .collect())
     }
 }
 
