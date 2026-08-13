@@ -1269,19 +1269,27 @@ code, .mono, .code {
     margin: 14mm;
   }
 
+  /* The print sheet is a CHILD of .app — hiding the whole app with
+     `display: none` would swallow its subtree too (a child's own display
+     cannot override an ancestor's none), which is exactly why the printed
+     output was empty. Hide the chrome *siblings* instead. */
+  html,
   body {
+    height: auto !important;
+    overflow: visible !important;
     background: #ffffff;
   }
 
-  .app,
-  .app * {
-    display: none !important;
+  .app {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  .print-sheet,
-  .print-sheet * {
-    display: block !important;
-    box-sizing: border-box;
+  .top-bar,
+  .app__body,
+  .modal-backdrop {
+    display: none !important;
   }
 
   .print-sheet {
@@ -1294,28 +1302,18 @@ code, .mono, .code {
   }
 
   .print-sheet table {
-    display: table !important;
     width: 100%;
     border-collapse: collapse;
     margin: 4px 0 12px;
     font-size: 11px;
   }
 
-  .print-sheet tr {
-    display: table-row !important;
-  }
-
   .print-sheet td,
   .print-sheet th {
-    display: table-cell !important;
     border: 1px solid #999;
     padding: 4px 6px;
     text-align: left;
     vertical-align: top;
-  }
-
-  .print-sheet li {
-    display: list-item !important;
   }
 
   .print-sheet h1 {
