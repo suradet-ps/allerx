@@ -4,12 +4,10 @@
 use leptos::prelude::*;
 
 use crate::components::icons::IconSettings;
-use crate::state::AppState;
+use crate::state::{AppState, ConnectionHealth};
 
 #[component]
 pub fn TopBar(state: AppState) -> impl IntoView {
-    let connected = state.configured;
-
     view! {
         <header class="top-bar">
             <div class="top-bar__left">
@@ -42,20 +40,17 @@ pub fn TopBar(state: AppState) -> impl IntoView {
                 <div class="top-bar__status">
                     <span
                         class=move || {
-                            if connected.get() {
-                                "top-bar__status-dot"
-                            } else {
-                                "top-bar__status-dot top-bar__status-dot--disconnected"
+                            match state.health.get() {
+                                ConnectionHealth::Connected => "top-bar__status-dot",
+                                _ => "top-bar__status-dot top-bar__status-dot--disconnected",
                             }
                         }
                     ></span>
                     <span class="top-bar__status-text">
-                        {move || {
-                            if connected.get() {
-                                "เชื่อมต่อแล้ว"
-                            } else {
-                                "ไม่ได้เชื่อมต่อ"
-                            }
+                        {move || match state.health.get() {
+                            ConnectionHealth::Connected => "เชื่อมต่อแล้ว".to_string(),
+                            ConnectionHealth::Disconnected => "HOSxP ไม่พร้อมใช้งาน".to_string(),
+                            ConnectionHealth::Unconfigured => "ยังไม่ได้ตั้งค่า".to_string(),
                         }}
                     </span>
                 </div>

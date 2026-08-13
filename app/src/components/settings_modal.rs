@@ -99,7 +99,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             leptos::task::spawn_local(async move {
                 match test_connection(&input).await {
                     Ok(_) => message.set(Some("เชื่อมต่อได้".to_string())),
-                    Err(error) => message.set(Some(error)),
+                    Err(error) => message.set(Some(error.message)),
                 }
                 busy.set(false);
             });
@@ -124,7 +124,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                         state.settings_open.set(false);
                     }
                     Err(error) => {
-                        message.set(Some(error));
+                        message.set(Some(error.message));
                         busy.set(false);
                     }
                 }
