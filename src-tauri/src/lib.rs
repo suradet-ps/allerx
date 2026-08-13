@@ -33,7 +33,8 @@ pub fn run() {
             commands::test_connection,
             commands::search_patients,
             commands::search_drugs,
-            commands::fetch_drug_history,
+            commands::check_drugs,
+            commands::fetch_concurrent_medications,
             commands::query_stats,
             commands::clear_query_stats,
         ])
