@@ -137,7 +137,7 @@ fn input(root: &HtmlElement) -> HtmlInputElement {
 }
 
 fn press_enter(target: &Element) {
-    let mut init = KeyboardEventInit::new();
+    let init = KeyboardEventInit::new();
     init.set_key("Enter");
     let event =
         KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("keydown event");
@@ -280,7 +280,6 @@ async fn timeline_renders_rows_most_recent_first_and_complete_footer() {
         truncated: false,
     });
     let root = mount("tl-complete", move || view! { <Timeline state=state /> });
-    let rows = query_optional(&root, ".timeline-row");
     let text = query_one(&root, ".timeline")
         .text_content()
         .expect("text content");
