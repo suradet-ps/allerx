@@ -330,7 +330,7 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                                                 }
                                             >
                                                 <span class="search-result-row__name">
-                                                    {drug.name.clone()}
+                                                    {label.clone()}
                                                 </span>
                                                 <span class="search-result-row__code">
                                                     {format!("{}{}", trade_suffix, drug.icode)}

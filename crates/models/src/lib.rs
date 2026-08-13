@@ -35,6 +35,10 @@ pub struct DrugHistoryRecord {
     pub drug_code: String,
     /// Generic name.
     pub drug_name: String,
+    /// Dose strength as printed on the item, e.g. "500 mg" — carried so the
+    /// timeline always shows the drug with its strength (display rule:
+    /// every drug name is shown with its strength).
+    pub strength: Option<String>,
     pub trade_name: Option<String>,
     pub prescriber: Option<String>,
     pub department: Option<String>,
@@ -120,6 +124,9 @@ pub struct DrugCheckResult {
 pub struct ConcurrentMedication {
     pub drug_code: String,
     pub drug_name: String,
+    /// Dose strength as printed on the item — the med list always shows
+    /// the name with its strength.
+    pub strength: Option<String>,
     pub trade_name: Option<String>,
     pub last_date: NaiveDate,
 }

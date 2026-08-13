@@ -67,6 +67,7 @@ fn record(drug_name: &str, date: NaiveDate, visit_type: VisitType) -> DrugHistor
         visit_type,
         drug_code: "1-001".into(),
         drug_name: drug_name.into(),
+        strength: Some("500 mg".into()),
         trade_name: None,
         prescriber: Some("นพ. ทดสอบ".into()),
         department: Some("อายุรกรรม".into()),
@@ -406,7 +407,8 @@ async fn batch_unresolved_band_offers_candidate_buttons_that_queue_the_drug() {
     click(&root, ".candidate-button");
     let chips = state.drug_chips.get_untracked();
     assert_eq!(chips.len(), 1);
-    assert_eq!(chips[0].label, "พาราเซตามอล");
+    // The queued chip carries the full identity — name with strength.
+    assert_eq!(chips[0].label, "พาราเซตามอล (500 mg)");
     assert_eq!(chips[0].icode.as_deref(), Some("1-001"));
 }
 
@@ -431,7 +433,8 @@ async fn timeline_renders_rows_most_recent_first_and_complete_footer() {
     let text = query_one(&root, ".timeline")
         .text_content()
         .expect("text content");
-    assert!(text.contains("พาราเซตามอล"));
+    // Timeline rows show the drug with its strength.
+    assert!(text.contains("พาราเซตามอล (500 mg)"));
     let footer = query_one(&root, ".timeline-footer")
         .text_content()
         .expect("footer text");
@@ -719,6 +722,7 @@ async fn detail_modal_reveals_full_cid_and_lists_recent_medications() {
         resolve_ok(&vec![ConcurrentMedication {
             drug_code: "1-001".into(),
             drug_name: "พาราเซตามอล".into(),
+            strength: Some("500 mg".into()),
             trade_name: Some("TYLENOL".into()),
             last_date: date(2024, 6, 1),
         }])
@@ -741,7 +745,8 @@ async fn detail_modal_reveals_full_cid_and_lists_recent_medications() {
         "full CID revealed on detail view"
     );
     assert!(text.contains("สมชาย ใจดี"));
-    assert!(text.contains("พาราเซตามอล"));
+    // Med rows show the name with its strength (and trade name).
+    assert!(text.contains("พาราเซตามอล (500 mg) (TYLENOL)"));
     assert!(text.contains("01/06/2024"));
     api::clear_mock_invoke();
 }
@@ -796,7 +801,8 @@ async fn print_sheet_renders_patient_and_history_content() {
     );
     assert!(text.contains("พบประวัติ"));
     assert!(text.contains("ไม่พบประวัติ"));
-    assert!(text.contains("พาราเซตามอล"));
+    // Timeline rows in print carry the strength too.
+    assert!(text.contains("พาราเซตามอล (500 mg)"));
     // The sheet carries the print-sheet class — its on-screen hiding is a
     // CSS concern (@media print in main.css), which the test page does not
     // load; the class pin is the DOM-side contract.

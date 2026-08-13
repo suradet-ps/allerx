@@ -40,6 +40,7 @@ pub fn Timeline(state: AppState) -> impl IntoView {
                                     allerx_models::VisitType::Ipd => "IPD",
                                 };
                                 let date = r.visit_date.format("%d/%m/%Y").to_string();
+                                let drug_label = crate::state::record_label(r);
                                 let prescriber = r.prescriber.as_deref().unwrap_or("—");
                                 let department = r.department.as_deref().unwrap_or("—");
                                 let quantity = r.quantity.as_deref().unwrap_or("");
@@ -59,7 +60,7 @@ pub fn Timeline(state: AppState) -> impl IntoView {
                                             <span class="badge">{visit_type}</span>
                                         </span>
                                         <div class="timeline-row__main">
-                                            <p class="timeline-row__drug">{r.drug_name.clone()}</p>
+                                            <p class="timeline-row__drug">{drug_label}</p>
                                             <p class="timeline-row__meta">{meta_text}</p>
                                         </div>
                                     </li>

@@ -41,13 +41,15 @@ type PatientRow = (
     Option<String>,
 );
 
-/// One history row as `(visit_date, drug_code, drug_name, trade_name,
-/// prescriber, department, route, quantity)` — same shape for OPD and both
-/// IPD sources, including the trade-name fallback (`NULL` in its place).
+/// One history row as `(visit_date, drug_code, drug_name, strength,
+/// trade_name, prescriber, department, route, quantity)` — same shape for
+/// OPD and both IPD sources, including the fallback (`NULL` in the
+/// optional columns' places).
 type HistoryRow = (
     NaiveDate,
     String,
     String,
+    Option<String>,
     Option<String>,
     Option<String>,
     Option<String>,
@@ -345,7 +347,17 @@ fn patient_from_row((hn, cid, full_name_th, birth_date, sex): PatientRow) -> Pat
 }
 
 fn history_record(
-    (visit_date, drug_code, drug_name, trade_name, prescriber, department, route, quantity): HistoryRow,
+    (
+        visit_date,
+        drug_code,
+        drug_name,
+        strength,
+        trade_name,
+        prescriber,
+        department,
+        route,
+        quantity,
+    ): HistoryRow,
     visit_type: VisitType,
 ) -> DrugHistoryRecord {
     DrugHistoryRecord {
@@ -353,6 +365,7 @@ fn history_record(
         visit_type,
         drug_code,
         drug_name,
+        strength,
         trade_name,
         prescriber,
         department,
@@ -517,15 +530,16 @@ impl HosxRepositoryTrait for HosxRepository {
         if hn.is_empty() {
             return Ok(Vec::new());
         }
-        let rows: Vec<(String, NaiveDate, String, Option<String>)> = self
+        let rows: Vec<(String, NaiveDate, String, Option<String>, Option<String>)> = self
             .fetch_first_working(&[(CONCURRENT_MEDS_TRADE, &[hn]), (CONCURRENT_MEDS, &[hn])])
             .await?;
         Ok(rows
             .into_iter()
             .map(
-                |(drug_code, last_date, drug_name, trade_name)| ConcurrentMedication {
+                |(drug_code, last_date, drug_name, strength, trade_name)| ConcurrentMedication {
                     drug_code,
                     drug_name,
+                    strength,
                     trade_name,
                     last_date,
                 },

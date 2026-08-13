@@ -136,6 +136,11 @@ pub fn PatientDetailModal(state: AppState) -> impl IntoView {
                             {meds
                                 .into_iter()
                                 .map(|m| {
+                                    let strength = m
+                                        .strength
+                                        .as_deref()
+                                        .map(|s| format!(" ({s})"))
+                                        .unwrap_or_default();
                                     let trade = m
                                         .trade_name
                                         .as_deref()
@@ -144,7 +149,7 @@ pub fn PatientDetailModal(state: AppState) -> impl IntoView {
                                     view! {
                                         <li class="med-row">
                                             <span class="med-row__name">
-                                                {m.drug_name}{trade}
+                                                {format!("{}{}{}", m.drug_name, strength, trade)}
                                             </span>
                                             <span class="med-row__meta">
                                                 {m.last_date.format("%d/%m/%Y").to_string()}

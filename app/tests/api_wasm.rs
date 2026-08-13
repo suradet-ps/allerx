@@ -55,6 +55,7 @@ fn sample_record() -> DrugHistoryRecord {
         visit_type: VisitType::Opd,
         drug_code: "1-001".into(),
         drug_name: "พาราเซตามอล".into(),
+        strength: Some("500 mg".into()),
         trade_name: None,
         prescriber: None,
         department: None,
@@ -180,6 +181,7 @@ async fn fetch_concurrent_medications_deserializes() {
         resolve_ok(&vec![ConcurrentMedication {
             drug_code: "1-001".into(),
             drug_name: "พาราเซตามอล".into(),
+            strength: Some("500 mg".into()),
             trade_name: None,
             last_date: NaiveDate::from_ymd_opt(2024, 6, 1).expect("valid date in test"),
         }])
