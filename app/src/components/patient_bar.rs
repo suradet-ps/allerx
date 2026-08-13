@@ -49,8 +49,17 @@ pub fn PatientBar(state: AppState) -> impl IntoView {
                         <div class="patient-bar__change">
                             <button
                                 class="button-ghost"
+                                on:click=move |_| state.detail_open.set(true)
+                                data-tooltip="ดูข้อมูลผู้ป่วย"
+                                aria-label="ดูข้อมูลผู้ป่วย"
+                            >
+                                <IconUser class="icon" />
+                            </button>
+                            <button
+                                class="button-ghost"
                                 on:click=clear_patient
                                 data-tooltip="เปลี่ยนผู้ป่วย"
+                                aria-label="เปลี่ยนผู้ป่วย"
                             >
                                 <IconX class="icon" />
                             </button>

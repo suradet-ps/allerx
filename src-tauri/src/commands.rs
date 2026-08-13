@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 
 use allerx_hosxp_connector::config::{HosxConfig, load, load_vault, save_encrypted};
 use allerx_hosxp_connector::{HosxRepository, MySqlPool, pool};
-use allerx_models::{DrugItem, HistoryVerdict, PatientSummary};
+use allerx_models::{ConcurrentMedication, DrugCheckResult, DrugItem, PatientSummary};
 use allerx_search_core::{HosxRepository as _, RepositoryError, detect_query_kind};
 
 use crate::state::{AppState, ConnectionHealth};
@@ -484,27 +484,54 @@ pub async fn search_drugs(
     .await
 }
 
-/// Medication history for one patient + drug (AGENTS.md §7.2, milestone M4).
+/// Medication history for one patient + several drugs (ROADMAP Phase 5).
 ///
-/// OPD + IPD are queried concurrently on the backend and merged
-/// most-recent-first. The verdict contract (ROADMAP Phase 1): an exact drug
-/// hit yields [`HistoryVerdict::Resolved`] (possibly empty — a legitimate
+/// Each drug is checked concurrently on the backend (OPD + IPD merged
+/// most-recent-first) and the results carry their term labels. The verdict
+/// contract (ROADMAP Phase 1) applies per drug: an exact hit yields
+/// [`HistoryVerdict::Resolved`] (possibly empty — a legitimate
 /// "ไม่พบประวัติ"); an unresolvable term yields
 /// [`HistoryVerdict::Unresolved`] with disambiguation candidates. The
-/// frontend decides the visual verdict. Errors are generic.
+/// frontend decides the visual verdicts. Errors are generic.
 #[tauri::command]
-pub async fn fetch_drug_history(
+pub async fn check_drugs(
     state: State<'_, AppState>,
     hn: String,
-    drug: String,
-) -> Result<HistoryVerdict, CommandError> {
+    drugs: Vec<String>,
+) -> Result<Vec<DrugCheckResult>, CommandError> {
+    let hn = hn.trim().to_string();
+    if hn.is_empty() || drugs.is_empty() {
+        return Ok(Vec::new());
+    }
     let stats = state.stats.clone();
-    timed(&stats, "fetch_drug_history", async move {
+    timed(&stats, "check_drugs", async move {
         let pool = acquire_pool(&state).await?;
         let repo = HosxRepository::new(pool);
-        let result = repo.fetch_drug_history(&hn, &drug).await;
+        let result = repo.check_drugs(&hn, &drugs).await;
         update_health_from_repo_result(&state, &result).await;
         result.map_err(|err| map_repo_error(err, "ตรวจสอบประวัติ"))
+    })
+    .await
+}
+
+/// Recent concurrent medications for a patient (ROADMAP Phase 5) — the
+/// "ยาที่ได้รับล่าสุด" snapshot for the detail view, deduped per icode.
+#[tauri::command]
+pub async fn fetch_concurrent_medications(
+    state: State<'_, AppState>,
+    hn: String,
+) -> Result<Vec<ConcurrentMedication>, CommandError> {
+    let hn = hn.trim().to_string();
+    if hn.is_empty() {
+        return Ok(Vec::new());
+    }
+    let stats = state.stats.clone();
+    timed(&stats, "fetch_concurrent_medications", async move {
+        let pool = acquire_pool(&state).await?;
+        let repo = HosxRepository::new(pool);
+        let result = repo.fetch_concurrent_medications(&hn).await;
+        update_health_from_repo_result(&state, &result).await;
+        result.map_err(|err| map_repo_error(err, "ดึงรายการยา"))
     })
     .await
 }

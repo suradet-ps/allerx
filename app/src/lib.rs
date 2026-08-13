@@ -19,14 +19,16 @@ use std::time::Duration;
 use leptos::prelude::*;
 
 use components::drug_search::DrugSearch;
-use components::icons::IconX;
+use components::icons::{IconPrinter, IconX};
 use components::patient_bar::PatientBar;
+use components::patient_detail_modal::PatientDetailModal;
 use components::patient_search::PatientSearch;
+use components::print_sheet::PrintSheet;
 use components::settings_modal::SettingsModal;
 use components::timeline::Timeline;
 use components::top_bar::TopBar;
 use components::verdict_band::VerdictBand;
-use state::AppState;
+use state::{AppState, VerdictState};
 
 /// How often the frontend polls the backend's live health state.
 const HEALTH_POLL_INTERVAL: Duration = Duration::from_secs(30);
@@ -109,11 +111,35 @@ fn App() -> impl IntoView {
                             }
                         })
                     }}
+                    {move || {
+                        let has_results = matches!(state.verdict.get(), VerdictState::Results { .. });
+                        let has_patient = state.patient.get().is_some();
+                        (has_results && has_patient).then(|| {
+                            view! {
+                                <div class="print-toolbar">
+                                    <button
+                                        class="button-secondary button-secondary--inline"
+                                        on:click=move |_| {
+                                            if let Some(window) = web_sys::window() {
+                                                let _ = window.print();
+                                            }
+                                        }
+                                    >
+                                        <IconPrinter class="icon" />
+                                        "พิมพ์ประวัติ"
+                                    </button>
+                                </div>
+                            }
+                                .into_any()
+                        })
+                    }}
                     <VerdictBand state=state.clone() />
                     <Timeline state=state.clone() />
                 </main>
             </div>
             <SettingsModal state=state.clone() />
+            <PatientDetailModal state=state.clone() />
+            <PrintSheet state=state.clone() />
         </div>
     }
 }

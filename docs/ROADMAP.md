@@ -449,30 +449,52 @@ it violate read-only, privacy, or quiet-UI?" Items that fail the test go to
 "Out of Scope" instead. Doc-first per AGENTS.md §11 — DESIGN.md and this
 roadmap are updated in the same commit as the code.
 
-- [ ] **Multi-drug batch check (proposal — requires scope decision).**
+**Status: COMPLETE** — all four items implemented, tested (29 wasm tests +
+search-core/connector unit tests), and documented. The concurrent-meds
+snapshot ships behind the detail view; whether the pilot clinic finds it
+useful is a Phase 6/7 evaluation, not an engineering gate.
+
+- [x] **Multi-drug batch check (proposal — requires scope decision).**
   Check 2–5 drugs in one search round trip; verdict band per drug, with the
   `status-dot` token DESIGN.md anticipated. The single-question core stays:
   it is the same question asked N times in one pass. If scoped in, the
   repository trait gains `fetch_drug_history_batch` (concurrent fan-out in
   the connector, pure aggregation in `search-core`) and the UI keeps the
   two-panel layout with a multi-verdict list on the canvas.
-- [ ] **Verdict-anchored patient detail view.** The DESIGN.md-mandated
+  **Shipped as:** `check_drugs` (trait default sequential; connector
+  overrides with a `JoinSet` fan-out — one task per drug, each with its own
+  OPD+IPD concurrency); chip queue in the sidebar (Enter/suggestion adds,
+  dedupe by icode/label, removable, ล้างทั้งหมด); `VerdictState::Results`
+  renders one full-size band for a single drug and stacked term-labelled
+  compact bands for a batch; unresolved bands embed candidate buttons that
+  re-queue the drug; timelines merge across drugs newest-first.
+- [x] **Verdict-anchored patient detail view.** The DESIGN.md-mandated
   "detail view" that shows the full CID, and is the future home of Phase 7's
   allergy cross-check. Opened from the patient bar ("ดูข้อมูลผู้ป่วย"),
   keeps the sidebar for the search flow. Scope-limited: demographics from
   the already-fetched `PatientSummary` + full CID reveal + link back. No
   new HOSxP tables yet.
-- [ ] **Print/export drug history (proposal — requires scope decision).**
+  **Shipped as:** `PatientDetailModal` — full CID (the only place it is
+  unmasked), demographics grid, and the recent-meds snapshot loaded on open.
+- [x] **Print/export drug history (proposal — requires scope decision).**
   DESIGN.md explicitly lists "print/export styling" as an undesignated gap.
   A printable patient+history sheet (Thai) is the natural artifact a
   pharmacist attaches to a consultation note. Requires DESIGN.md print
   tokens first. Stays read-only and ephemeral (no persisted files).
-- [ ] **Concurrent-medications snapshot (proposal — requires clinical
-  sign-off).** A read-only "ยาที่ผู้ป่วยได้รับล่าสุด" list (recent
+  **Shipped as:** `PrintSheet` (hidden on screen, sole content in
+  `@media print`; print tokens documented in DESIGN.md) + พิมพ์ประวัติ
+  button calling `window.print()`. No files are written.
+- [x] **Concurrent-medications snapshot (proposal — requires clinical
+  sign-off).** A read-only "ยาที่ได้รับล่าสุด" list (recent
   `opitemrece` rows for the HN, filtered to drugs, most recent visit
   window) to give context for cross-reactivity thinking. This is the item
   most at risk of scope creep — the decision belongs to the pilot clinic,
   not to engineering (Phase 6 gates it).
+  **Shipped as:** `fetch_concurrent_medications` — last-30-days dispensing
+  deduped per icode (GROUP BY), drug category only (`icode LIKE '1%'` per
+  AGENTS.md §6.2, SCHEMA-UNVERIFIED pending live confirmation), trade-name
+  tier with fallback; shown inside the detail modal. Pilot feedback decides
+  whether it stays.
 
 **Acceptance:** each accepted item has a scoped DESIGN.md + roadmap update,
 implements in the correct layer (pure logic in `search-core`, SQL in

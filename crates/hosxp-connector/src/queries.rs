@@ -36,9 +36,11 @@ pub const PATIENT_SEARCH_NAME_CONTAINS: &str = "SELECT hn, cid, CONCAT_WS(' ', p
      WHERE fname LIKE ? OR lname LIKE ? OR CONCAT_WS(' ', pname, fname, lname) LIKE ? \
      LIMIT 20";
 
-/// Drug autocomplete — typed tier: trade-name matching plus the drug-type
-/// filter (AGENTS.md §6.2), used first so autocomplete never offers
-/// non-drug items.
+/// Drug autocomplete — typed tier: icode/name/trade-name matching plus the
+/// drug-type filter (AGENTS.md §6.2), used first so autocomplete never
+/// offers non-drug items and an icode search surfaces the drug with its
+/// name and strength (pilot feedback: "1000152 → ไม่พบประวัติ" without
+/// any drug identity).
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` and the `istype = '1'`
 /// // type filter per AGENTS.md §6 — confirm both against the live instance
@@ -46,7 +48,7 @@ pub const PATIENT_SEARCH_NAME_CONTAINS: &str = "SELECT hn, cid, CONCAT_WS(' ', p
 /// // column is absent the instance fails with 1054 and repository.rs falls
 /// // back to [`DRUG_SEARCH_PREFIX_TRADE`] / [`DRUG_SEARCH_PREFIX_PLAIN`].
 pub const DRUG_SEARCH_PREFIX_TYPED: &str = "SELECT icode, name, strength, trade_name \
-     FROM drugitems WHERE (name LIKE ? OR trade_name LIKE ?) AND istype = '1' \
+     FROM drugitems WHERE (name LIKE ? OR trade_name LIKE ? OR icode LIKE ?) AND istype = '1' \
      ORDER BY name LIMIT 20";
 
 /// Drug autocomplete — trade-name tier: same as typed but without the type
@@ -54,43 +56,60 @@ pub const DRUG_SEARCH_PREFIX_TYPED: &str = "SELECT icode, name, strength, trade_
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
 pub const DRUG_SEARCH_PREFIX_TRADE: &str = "SELECT icode, name, strength, trade_name \
-     FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+     FROM drugitems WHERE (name LIKE ? OR icode LIKE ?) ORDER BY name LIMIT 20";
 
 /// Drug autocomplete — plain tier: no trade-name column, no type filter
 /// (the safe baseline every instance supports).
 pub const DRUG_SEARCH_PREFIX_PLAIN: &str = "SELECT icode, name, strength, NULL AS trade_name \
-     FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+     FROM drugitems WHERE (name LIKE ? OR icode LIKE ?) ORDER BY name LIMIT 20";
 
 /// Drug autocomplete fallback (contains-match) — typed tier.
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` and `istype` per AGENTS.md §6.
 pub const DRUG_SEARCH_CONTAINS_TYPED: &str = "SELECT icode, name, strength, trade_name \
-     FROM drugitems WHERE (name LIKE ? OR trade_name LIKE ?) AND istype = '1' \
+     FROM drugitems WHERE (name LIKE ? OR trade_name LIKE ? OR icode LIKE ?) AND istype = '1' \
      ORDER BY name LIMIT 20";
 
 /// Drug autocomplete fallback (contains-match) — trade-name tier.
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
 pub const DRUG_SEARCH_CONTAINS_TRADE: &str = "SELECT icode, name, strength, trade_name \
-     FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+     FROM drugitems WHERE (name LIKE ? OR icode LIKE ?) ORDER BY name LIMIT 20";
 
 /// Drug autocomplete fallback (contains-match) — plain tier.
 pub const DRUG_SEARCH_CONTAINS_PLAIN: &str = "SELECT icode, name, strength, NULL AS trade_name \
-     FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+     FROM drugitems WHERE (name LIKE ? OR icode LIKE ?) ORDER BY name LIMIT 20";
 
-/// Resolves a drug term to its `icode` — exact icode hit first.
-pub const DRUG_RESOLVE_BY_ICODE: &str = "SELECT icode FROM drugitems WHERE icode = ? LIMIT 1";
+/// Resolves a drug term to its `drugitems` row — exact icode hit first.
+/// Returns name/strength so the verdict can label which drug it refers to.
+///
+/// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6 — the
+/// // fallback (`NULL AS trade_name`) covers instances without the column.
+pub const DRUG_RESOLVE_BY_ICODE_TRADE: &str =
+    "SELECT icode, name, strength, trade_name FROM drugitems WHERE icode = ? LIMIT 1";
 
-/// Resolves a drug term to its `icode` — exact display-name hit second.
-pub const DRUG_RESOLVE_BY_NAME: &str = "SELECT icode FROM drugitems WHERE name = ? LIMIT 1";
+/// Exact icode hit without the trade-name column — same shape.
+pub const DRUG_RESOLVE_BY_ICODE: &str =
+    "SELECT icode, name, strength, NULL AS trade_name FROM drugitems WHERE icode = ? LIMIT 1";
 
-/// Resolves a drug term to its `icode` — exact trade-name hit third
+/// Resolves a drug term to its `drugitems` row — exact display-name hit
+/// second.
+///
+/// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
+pub const DRUG_RESOLVE_BY_NAME_TRADE: &str =
+    "SELECT icode, name, strength, trade_name FROM drugitems WHERE name = ? LIMIT 1";
+
+/// Exact display-name hit without the trade-name column — same shape.
+pub const DRUG_RESOLVE_BY_NAME: &str =
+    "SELECT icode, name, strength, NULL AS trade_name FROM drugitems WHERE name = ? LIMIT 1";
+
+/// Resolves a drug term to its `drugitems` row — exact trade-name hit third
 /// (ROADMAP Phase 1, trade-name search).
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6 — a missing
 /// // column is tolerated at runtime (treated as "no trade-name match").
 pub const DRUG_RESOLVE_BY_TRADE_NAME: &str =
-    "SELECT icode FROM drugitems WHERE trade_name = ? LIMIT 1";
+    "SELECT icode, name, strength, trade_name FROM drugitems WHERE trade_name = ? LIMIT 1";
 
 /// OPD dispensing history — `opitemrece` rows without an admission number
 /// (AGENTS.md §6.2; reference join from §6.6). Selects the trade name when
@@ -100,7 +119,7 @@ pub const DRUG_RESOLVE_BY_TRADE_NAME: &str =
 /// `depcode`); `kskdepartment.depcode` still unverified.
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
-pub const HISTORY_OPD: &str = "SELECT o.vstdate, o.icode, d.name, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
+pub const HISTORY_OPD: &str = "SELECT o.vstdate, o.icode, d.name, d.strength, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      LEFT JOIN doctor doc ON o.doctor = doc.code \
@@ -112,7 +131,7 @@ pub const HISTORY_OPD: &str = "SELECT o.vstdate, o.icode, d.name, d.trade_name, 
 
 /// OPD history without the trade-name column — same result shape, `NULL`
 /// in its place (used when the instance fails [`HISTORY_OPD`] with 1054).
-pub const HISTORY_OPD_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
+pub const HISTORY_OPD_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL AS strength, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      LEFT JOIN doctor doc ON o.doctor = doc.code \
@@ -129,7 +148,7 @@ pub const HISTORY_OPD_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL 
 /// branch must be confirmed on the live instance.
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
-pub const HISTORY_IPD_TAKEHOME: &str = "SELECT o.vstdate, o.icode, d.name, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
+pub const HISTORY_IPD_TAKEHOME: &str = "SELECT o.vstdate, o.icode, d.name, d.strength, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      LEFT JOIN doctor doc ON o.doctor = doc.code \
@@ -140,7 +159,7 @@ pub const HISTORY_IPD_TAKEHOME: &str = "SELECT o.vstdate, o.icode, d.name, d.tra
      LIMIT 200";
 
 /// IPD take-home history without the trade-name column — same result shape.
-pub const HISTORY_IPD_TAKEHOME_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
+pub const HISTORY_IPD_TAKEHOME_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.name, NULL AS strength, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(o.qty AS CHAR) AS quantity \
      FROM opitemrece o \
      INNER JOIN drugitems d ON o.icode = d.icode \
      LEFT JOIN doctor doc ON o.doctor = doc.code \
@@ -158,7 +177,7 @@ pub const HISTORY_IPD_TAKEHOME_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.na
 /// // AGENTS.md §6.3 — confirm the table name and date column on the live
 /// // instance. A missing table (named differently) is tolerated at runtime
 /// // and treated as "no in-stay records" (see repository.rs).
-pub const HISTORY_IPD_STAY_TRADE: &str = "SELECT i.idate, i.icode, d.name, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(i.qty AS CHAR) AS quantity \
+pub const HISTORY_IPD_STAY_TRADE: &str = "SELECT i.idate, i.icode, d.name, d.strength, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(i.qty AS CHAR) AS quantity \
      FROM iptitemrece i \
      INNER JOIN ipt ON i.an = ipt.an \
      INNER JOIN drugitems d ON i.icode = d.icode \
@@ -170,7 +189,7 @@ pub const HISTORY_IPD_STAY_TRADE: &str = "SELECT i.idate, i.icode, d.name, d.tra
      LIMIT 200";
 
 /// IPD in-stay history without the trade-name column — same result shape.
-pub const HISTORY_IPD_STAY: &str = "SELECT i.idate, i.icode, d.name, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(i.qty AS CHAR) AS quantity \
+pub const HISTORY_IPD_STAY: &str = "SELECT i.idate, i.icode, d.name, NULL AS strength, NULL AS trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(i.qty AS CHAR) AS quantity \
      FROM iptitemrece i \
      INNER JOIN ipt ON i.an = ipt.an \
      INNER JOIN drugitems d ON i.icode = d.icode \
@@ -180,6 +199,32 @@ pub const HISTORY_IPD_STAY: &str = "SELECT i.idate, i.icode, d.name, NULL AS tra
      WHERE ipt.hn = ? AND i.icode = ? AND i.qty > 0 \
      ORDER BY i.idate DESC, i.itime DESC \
      LIMIT 200";
+
+/// Recent concurrent medications — dispensing rows in the last 30 days,
+/// deduped per icode with the latest date (ROADMAP Phase 5). Filtered to
+/// the drug category per AGENTS.md §6.2.
+///
+/// // SCHEMA-UNVERIFIED: `drugitems.trade_name` and the `'1%'` drug-category
+/// // assumption per AGENTS.md §6 — confirm against the live instance. The
+/// // trade-name column degrades via [`CONCURRENT_MEDS`] on 1054.
+pub const CONCURRENT_MEDS_TRADE: &str = "SELECT o.icode, MAX(o.vstdate) AS last_date, d.name, d.strength, d.trade_name \
+     FROM opitemrece o \
+     INNER JOIN drugitems d ON o.icode = d.icode \
+     WHERE o.hn = ? AND o.qty > 0 AND d.icode LIKE '1%' \
+       AND o.vstdate >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) \
+     GROUP BY o.icode, d.name, d.strength, d.trade_name \
+     ORDER BY last_date DESC, o.icode \
+     LIMIT 30";
+
+/// Recent concurrent medications without the trade-name column — same shape.
+pub const CONCURRENT_MEDS: &str = "SELECT o.icode, MAX(o.vstdate) AS last_date, d.name, NULL AS strength, NULL AS trade_name \
+     FROM opitemrece o \
+     INNER JOIN drugitems d ON o.icode = d.icode \
+     WHERE o.hn = ? AND o.qty > 0 AND d.icode LIKE '1%' \
+       AND o.vstdate >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) \
+     GROUP BY o.icode, d.name, d.strength \
+     ORDER BY last_date DESC, o.icode \
+     LIMIT 30";
 
 #[cfg(test)]
 mod tests {
@@ -200,7 +245,9 @@ mod tests {
             DRUG_SEARCH_CONTAINS_TRADE,
             DRUG_SEARCH_CONTAINS_PLAIN,
             DRUG_RESOLVE_BY_ICODE,
+            DRUG_RESOLVE_BY_ICODE_TRADE,
             DRUG_RESOLVE_BY_NAME,
+            DRUG_RESOLVE_BY_NAME_TRADE,
             DRUG_RESOLVE_BY_TRADE_NAME,
             HISTORY_OPD,
             HISTORY_OPD_FALLBACK,
@@ -208,6 +255,8 @@ mod tests {
             HISTORY_IPD_TAKEHOME_FALLBACK,
             HISTORY_IPD_STAY,
             HISTORY_IPD_STAY_TRADE,
+            CONCURRENT_MEDS,
+            CONCURRENT_MEDS_TRADE,
         ] {
             assert!(assert_read_only(sql).is_ok(), "must be SELECT: {sql}");
         }

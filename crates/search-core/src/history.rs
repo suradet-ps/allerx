@@ -41,6 +41,7 @@ mod tests {
             visit_type,
             drug_code: "1-001".into(),
             drug_name: drug_name.into(),
+            strength: None,
             trade_name: None,
             prescriber: None,
             department: None,

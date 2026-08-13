@@ -165,9 +165,11 @@ matches the searched drug`, and adds the IPD-side equivalent (§6.3) run concurr
 
 ### 7.2 Drug search + history
 - After a patient is selected, type a drug name (generic or trade) with autocomplete from `drugitems`.
+- **Batch check (Phase 5):** drugs queue as chips; "ตรวจประวัติ" checks the whole queue at once — the backend fans each drug out concurrently (`check_drugs`), returns one verdict per term, and the frontend renders one verdict band per drug (compact in a batch). A single drug is a batch of one.
 - Query OPD + IPD history concurrently (`tokio::join!`), merge, sort by date descending.
 - Result must be unambiguous: "received, most recently on [date] at [OPD/IPD] by [doctor]" (check-circle verdict band) or "no history found" (x-circle verdict band).
-- Show the full timeline, not just the latest hit — important for delayed-reaction allergy assessment.
+- Show the full timeline, not just the latest hit — important for delayed-reaction allergy assessment. In a batch, all found drugs merge into one chronological timeline (each row shows its drug name).
+- The patient detail view (from the patient bar) reveals the full CID and lists the patient's concurrent medications from the last 30 days (read-only).
 
 ## 8. Performance
 

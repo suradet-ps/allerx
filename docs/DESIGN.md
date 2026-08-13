@@ -248,8 +248,8 @@ app chasing friendliness. Pill-shaped (`{rounded.full}`) elements are limited to
 **`drug-search`** — Same input style as patient search, but disabled until patient selected.
 - Placeholder: "ชื่อยา (สามัญ / การค้า)".
 - **Disabled state:** `opacity: 0.5`, `cursor: default`, no pointer events.
-- Submit button: Primary style, full-width, disabled until patient selected.
 - Autocomplete dropdown appears below input.
+- **Chip queue (Phase 5):** pressing Enter (or clicking a suggestion) queues the drug as a `chip` — pill-shaped (≤20px tall, `{rounded.full}`), removable via `chip__remove`, deduped by icode/label. "ตรวจประวัติ" checks the whole queue (a single drug is a batch of one); "ล้างทั้งหมด" clears the queue and verdict.
 
 ### Main Canvas
 
@@ -265,19 +265,36 @@ app chasing friendliness. Pill-shaped (`{rounded.full}`) elements are limited to
 - **Found:** bg `{colors.verdict-found}`, text `{colors.verdict-found-text}`, border `{colors.verdict-found-border}`. Check-circle icon (32px) + headline (24px/700) + detail line.
 - **Not-Found:** bg `{colors.verdict-notfound}`, text `{colors.verdict-notfound-text}`, border `{colors.verdict-notfound-border}`. X-circle icon + headline + detail.
 - **Pending:** bg `{colors.verdict-pending}`, text `{colors.verdict-pending-text}`. Clock icon + headline + contextual hint.
-- Only one verdict on screen at a time. Never fade between states.
+- **Unverifiable:** bg `{colors.verdict-unresolved}`, text `{colors.verdict-unresolved-text}`, border `{colors.verdict-unresolved-border}`. X-circle icon + headline + detail — never the "ไม่พบประวัติ" text (Phase 1).
+- Only one verdict on screen at a time — a single-drug check is one band; a batch check is **`verdict-batch`**, a grid of **`verdict-band--compact`** bands (one per checked drug), each term-labelled (`verdict-band__term`, 14px/600) above a condensed detail line. The grid is **2 columns at ≥960px**, stacked 1 column below (the canvas scrolls for many drugs). Compact bands keep the same three semantic palettes; the unresolved compact band may embed `candidate-button` chips that queue the drug for re-check. Never fade between states.
+
+### Print Sheet (Phase 5)
+
+**`print-sheet`** — a printable Thai patient+history sheet, invisible on screen (`display: none`), the only content rendered in `@media print`:
+- Header: app name + print timestamp; patient block (name/HN/CID/birth date); verdict table (drug term | status | detail); history table (date | OPD/IPD | drug | prescriber | department); footer disclaimer ("HOSxP ยังคงเป็นแหล่งข้อมูลหลัก").
+- Print tokens: `@page` margin 14mm, black-on-white, 12px body / 11px table text, 1px `#999` table borders — designed to survive greyscale and hospital printers. The app chrome is hidden by `display: none !important` on its **siblings** (`.top-bar`, `.app__body`, `.modal-backdrop`) — never on `.app` itself, because an ancestor `display: none` would swallow the sheet's whole subtree (the empty-print bug). `html/body/.app` drop their screen `height`/`overflow` constraints so long sheets paginate correctly.
 
 ### Timeline (main canvas, below verdict)
 
 **`timeline`** — Dense scrollable list of medication history records.
 - List-style: no bullets, no outer padding.
+- **`timeline-filter`** — shown for multi-drug checks: "ทั้งหมด" + one chip per checked drug (neutral `timeline-filter__chip`, `--active` state in brand-soft/brand). Clicking a chip isolates that drug's rows; clicking again (or ทั้งหมด) restores the merged view. Filters reset automatically on the next check.
 - **`timeline-row`** — One record per row. Two-line layout:
-  - Line 1: `{typography.code}` date (80px min-width) | OPD/IPD badge | drug name (`{typography.body-medium}`)
-  - Line 2: prescriber @ department · quantity · route (`{typography.caption}`, `{colors.slate}`)
+  - Line 1: `{typography.code}` date (80px min-width) | OPD/IPD badge | drug name + strength (`{typography.body-medium}`)
+  - Line 2: prescriber @ department (`{typography.caption}`, `{colors.slate}`)
 - Row padding `8px {spacing.md}`, border-bottom `1px solid {hairline}`.
 - Hover: background `{colors.surface-muted}`.
 - Most recent first — order carries clinical meaning.
 - **`timeline-footer`** — "แสดงทั้งหมด N รายการ" in `{typography.caption}`, centered.
+
+### Patient Detail Modal (Phase 5)
+
+**`patient-detail-modal`** — elevation-3 modal opened from the patient bar
+("ดูข้อมูลผู้ป่วย"). The DESIGN.md-mandated detail view where the **full
+CID is revealed** (the only place in the app). Contents: demographics grid
+(name / HN / CID / birth date / sex) plus the "ยาที่ได้รับล่าสุด (30 วัน)"
+snapshot (`med-row` list, monospace dates, trade names in parentheses).
+Empty state: "ไม่มีรายการจ่ายยาใน 30 วันที่ผ่านมา".
 
 ## Do's and Don'ts
 
@@ -339,8 +356,7 @@ Minimum supported window size: 480×600px.
 ## Known Gaps
 
 - Dark mode is out of scope for M0–M6 (see `AGENTS.md` milestones); token names above should support a future dark variant without renaming, but dark values are not yet defined.
-- Print/export styling (e.g. printing a patient's drug history) not yet designed.
-- Multi-drug batch search (checking several drugs at once) is not yet in scope; `status-dot` exists partly in anticipation of this but has no live use case yet.
+- The `status-dot` token (anticipated for multi-drug checking) is now used by the batch verdict bands — no live gap remains there.
 
 ## Future: Dark Mode Tokens
 
