@@ -6,7 +6,10 @@ permissions:
   contents: read
 
 jobs:
-  clippy-pedantic:
+  # Honest naming (ROADMAP Phase 4, Gap G13): this runs the standard
+  # `-D warnings` lint set, not clippy::pedantic — the name said "Pedantic"
+  # while the command did not.
+  clippy-workspace:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
