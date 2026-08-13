@@ -1,9 +1,9 @@
-//! API-layer wasm tests (ROADMAP Phase 4): the webview→backend contract
+//! API-layer wasm tests (ROADMAP Phase 4/5): the webview→backend contract
 //! against a fake `invoke`, in headless Chrome (run via `wasm-pack test`).
 //!
 //! These tests never touch Tauri or the database — they pin the contract
-//! shapes: command names, arg passing, verdict deserialization, and the
-//! typed error taxonomy (Phase 3).
+//! shapes: command names, arg passing, batch verdict deserialization, and
+//! the typed error taxonomy (Phase 3).
 
 #![cfg(target_arch = "wasm32")]
 
@@ -16,7 +16,8 @@ use std::cell::RefCell;
 
 use allerx_app::api::{self, ApiError, ApiErrorKind};
 use allerx_models::{
-    DrugHistoryRecord, DrugItem, HistoryVerdict, PatientSummary, ResolvedHistory, VisitType,
+    ConcurrentMedication, DrugCheckResult, DrugHistoryRecord, DrugItem, HistoryVerdict,
+    PatientSummary, ResolvedHistory, VisitType,
 };
 use chrono::NaiveDate;
 use js_sys::Promise;
@@ -108,77 +109,87 @@ async fn search_patients_passes_term_and_deserializes_results() {
 }
 
 #[wasm_bindgen_test]
-async fn fetch_history_resolved_empty_is_a_definitive_not_found() {
+async fn check_history_batch_deserializes_each_verdict() {
     mock(|cmd| {
-        assert_eq!(cmd, "fetch_drug_history");
-        resolve_ok(&HistoryVerdict::Resolved {
-            history: ResolvedHistory {
-                records: Vec::new(),
-                truncated: false,
+        assert_eq!(cmd, "check_drugs");
+        resolve_ok(&vec![
+            DrugCheckResult {
+                term: "พาราเซตามอล".into(),
+                verdict: HistoryVerdict::Resolved {
+                    history: ResolvedHistory {
+                        records: vec![sample_record()],
+                        truncated: true,
+                    },
+                },
             },
-        })
+            DrugCheckResult {
+                term: "ไม่มีในระบบ".into(),
+                verdict: HistoryVerdict::Unresolved {
+                    candidates: Vec::new(),
+                },
+            },
+            DrugCheckResult {
+                term: "แอมม็อกซิซิลลิน".into(),
+                verdict: HistoryVerdict::Resolved {
+                    history: ResolvedHistory {
+                        records: Vec::new(),
+                        truncated: false,
+                    },
+                },
+            },
+        ])
     });
-    let verdict = api::fetch_history("00012345", "1-001")
+    let drugs = vec!["พาราเซตามอล".to_string(), "ไม่มีในระบบ".to_string()];
+    let results = api::check_history("00012345", &drugs)
         .await
         .expect("mock succeeds");
-    match verdict {
+    assert_eq!(results.len(), 3);
+    assert_eq!(results[0].term, "พาราเซตามอล");
+    match &results[0].verdict {
+        HistoryVerdict::Resolved { history } => {
+            assert_eq!(history.records.len(), 1);
+            assert!(history.truncated);
+        }
+        other => panic!("expected Resolved, got {other:?}"),
+    }
+    assert!(matches!(
+        results[1].verdict,
+        HistoryVerdict::Unresolved { .. }
+    ));
+    match &results[2].verdict {
         HistoryVerdict::Resolved { history } => {
             assert!(history.records.is_empty());
             assert!(!history.truncated);
         }
         other => panic!("expected Resolved, got {other:?}"),
     }
+    assert_eq!(recorded_calls(), vec!["check_drugs".to_string()]);
     api::clear_mock_invoke();
 }
 
 #[wasm_bindgen_test]
-async fn fetch_history_resolved_carries_records_and_truncation() {
-    mock(|_cmd| {
-        resolve_ok(&HistoryVerdict::Resolved {
-            history: ResolvedHistory {
-                records: vec![sample_record()],
-                truncated: true,
-            },
-        })
+async fn fetch_concurrent_medications_deserializes() {
+    mock(|cmd| {
+        assert_eq!(cmd, "fetch_concurrent_medications");
+        resolve_ok(&vec![ConcurrentMedication {
+            drug_code: "1-001".into(),
+            drug_name: "พาราเซตามอล".into(),
+            trade_name: None,
+            last_date: NaiveDate::from_ymd_opt(2024, 6, 1).expect("valid date in test"),
+        }])
     });
-    let verdict = api::fetch_history("00012345", "1-001")
+    let meds = api::fetch_concurrent_medications("00012345")
         .await
         .expect("mock succeeds");
-    match verdict {
-        HistoryVerdict::Resolved { history } => {
-            assert_eq!(history.records.len(), 1);
-            assert_eq!(history.records[0].drug_name, "พาราเซตามอล");
-            assert!(history.truncated);
-        }
-        other => panic!("expected Resolved, got {other:?}"),
-    }
-    api::clear_mock_invoke();
-}
-
-#[wasm_bindgen_test]
-async fn fetch_history_unresolved_carries_candidates() {
-    mock(|_cmd| {
-        resolve_ok(&HistoryVerdict::Unresolved {
-            candidates: vec![sample_drug()],
-        })
-    });
-    let verdict = api::fetch_history("00012345", "พารา")
-        .await
-        .expect("mock succeeds");
-    match verdict {
-        HistoryVerdict::Unresolved { candidates } => {
-            assert_eq!(candidates.len(), 1);
-            assert_eq!(candidates[0].icode, "1-001");
-        }
-        other => panic!("expected Unresolved, got {other:?}"),
-    }
+    assert_eq!(meds.len(), 1);
+    assert_eq!(meds[0].drug_name, "พาราเซตามอล");
     api::clear_mock_invoke();
 }
 
 #[wasm_bindgen_test]
 async fn rejection_carries_typed_kind_and_message() {
     mock(|_cmd| reject_err(&sample_error()));
-    let err = api::fetch_history("00012345", "1-001")
+    let err = api::check_history("00012345", &["1-001".to_string()])
         .await
         .expect_err("mock rejects");
     assert_eq!(err.kind, ApiErrorKind::Connection);
