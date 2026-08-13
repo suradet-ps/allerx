@@ -9,6 +9,7 @@
 //! ROADMAP Phase 3): components switch on `kind` (e.g. to raise the
 //! connection banner) and display `message` verbatim.
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use allerx_models::{DrugItem, HistoryVerdict, PatientSummary};
@@ -21,15 +22,52 @@ use crate::state::ConnectionHealth;
 
 /// Bridge to the Tauri IPC: `invoke(cmd, args)` resolves to the command's
 /// return value, or rejects with its serialized error.
+///
+/// Tests replace this with [`install_mock_invoke`] — in a headless-browser
+/// test page `__TAURI_INTERNALS__` does not exist, so a mock is always
+/// installed before any API call in tests.
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = ["__TAURI_INTERNALS__"])]
     fn invoke(cmd: &str, args: JsValue) -> js_sys::Promise;
 }
 
+/// A fake `invoke` implementation: command name + args in, promise out.
+type MockInvoke = Box<dyn Fn(&str, JsValue) -> js_sys::Promise>;
+
+// Per-thread invoke override (ROADMAP Phase 4). wasm tests are
+// single-threaded, so `thread_local!` is the right scope; the mock is
+// consulted before the real Tauri bridge.
+thread_local! {
+    static MOCK_INVOKE: RefCell<Option<MockInvoke>> = RefCell::new(None);
+}
+
+/// Installs a fake `invoke` implementation for tests: `mock(cmd, args)` is
+/// called instead of the Tauri bridge and must return a promise resolving
+/// with the serialized command result (or rejecting with a serialized
+/// [`ApiError`]).
+pub fn install_mock_invoke(mock: impl Fn(&str, JsValue) -> js_sys::Promise + 'static) {
+    MOCK_INVOKE.with(|m| *m.borrow_mut() = Some(Box::new(mock)));
+}
+
+/// Removes any installed mock — restores the real bridge.
+pub fn clear_mock_invoke() {
+    MOCK_INVOKE.with(|m| *m.borrow_mut() = None);
+}
+
+fn call_invoke(cmd: &str, args: JsValue) -> js_sys::Promise {
+    MOCK_INVOKE.with(|m| {
+        if let Some(mock) = m.borrow().as_ref() {
+            mock(cmd, args)
+        } else {
+            invoke(cmd, args)
+        }
+    })
+}
+
 /// Failure class of a backend command — mirrors the Rust
 /// `CommandErrorKind` (camelCase over the wire).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ApiErrorKind {
     NotConfigured,
@@ -40,7 +78,7 @@ pub enum ApiErrorKind {
 
 /// A backend command failure: machine-readable kind + the Thai message to
 /// show verbatim. Never decide presentation by matching message text.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiError {
     pub kind: ApiErrorKind,
@@ -131,7 +169,7 @@ async fn call_raw<T>(cmd: &str, args: JsValue) -> Result<T, ApiError>
 where
     T: serde::de::DeserializeOwned,
 {
-    let promise = invoke(cmd, args);
+    let promise = call_invoke(cmd, args);
     let value = JsFuture::from(promise).await.map_err(|err| {
         from_value::<ApiError>(err).unwrap_or(ApiError {
             kind: ApiErrorKind::Query,

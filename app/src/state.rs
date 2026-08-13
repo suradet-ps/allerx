@@ -7,7 +7,7 @@ use leptos::prelude::*;
 /// command (ROADMAP Phase 3) — drives the top-bar status dot. The backend
 /// keeps it fresh with a 30 s ping loop and every query outcome; this
 /// frontend value is a polled copy, never computed from a file check.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ConnectionHealth {
     /// No stored settings — the settings dialog is the flow.
     Unconfigured,
@@ -75,5 +75,11 @@ impl AppState {
             health: RwSignal::new(ConnectionHealth::Unconfigured),
             db_banner: RwSignal::new(None),
         }
+    }
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
     }
 }
