@@ -5,6 +5,7 @@
 
 mod commands;
 mod state;
+mod stats;
 
 use state::AppState;
 use tauri::Manager;
@@ -24,6 +25,8 @@ pub fn run() {
             commands::search_patients,
             commands::search_drugs,
             commands::fetch_drug_history,
+            commands::query_stats,
+            commands::clear_query_stats,
         ])
         .run(tauri::generate_context!())
         .expect("invariant: tauri::run() fails only when the platform cannot launch the app window — there is no fallback path for a GUI app")
