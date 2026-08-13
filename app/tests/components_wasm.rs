@@ -95,8 +95,33 @@ fn drug_verdict(term: &str, state: DrugVerdictState) -> DrugVerdict {
     }
 }
 
+fn sample_drug_item() -> DrugItem {
+    DrugItem {
+        icode: "1-001".into(),
+        name: "พาราเซตามอล".into(),
+        strength: Some("500 mg".into()),
+        trade_name: None,
+    }
+}
+
 fn found_verdict(term: &str, records: Vec<DrugHistoryRecord>, truncated: bool) -> DrugVerdict {
-    drug_verdict(term, DrugVerdictState::Found { records, truncated })
+    drug_verdict(
+        term,
+        DrugVerdictState::Found {
+            drug: sample_drug_item(),
+            records,
+            truncated,
+        },
+    )
+}
+
+fn not_found_verdict(term: &str) -> DrugVerdict {
+    drug_verdict(
+        term,
+        DrugVerdictState::NotFound {
+            drug: sample_drug_item(),
+        },
+    )
 }
 
 fn resolve_ok<T: serde::Serialize>(value: &T) -> Promise {
@@ -267,13 +292,16 @@ async fn verdict_found_admits_truncation() {
 async fn verdict_notfound_is_only_reachable_for_resolved_drugs() {
     let state = AppState::new();
     state.verdict.set(VerdictState::Results {
-        results: vec![drug_verdict("พาราเซตามอล", DrugVerdictState::NotFound)],
+        results: vec![not_found_verdict("พาราเซตามอล")],
     });
     let root = mount("vb-notfound", move || view! { <VerdictBand state=state /> });
     let band = query_one(&root, ".verdict-band");
     assert!(band.class_list().contains("verdict-notfound"));
     let text = band.text_content().expect("text content");
     assert!(text.contains("ไม่พบประวัติการได้รับยานี้"));
+    // The resolved drug's identity labels the verdict — an icode search
+    // (e.g. "1000152") must reveal which drug it referred to.
+    assert!(text.contains("พาราเซตามอล (500 mg)"));
 }
 
 #[wasm_bindgen_test]
@@ -334,7 +362,7 @@ async fn batch_renders_one_compact_band_per_drug_with_term_labels() {
                 vec![record("พาราเซตามอล", date(2024, 5, 5), VisitType::Opd)],
                 false,
             ),
-            drug_verdict("แอมม็อกซิซิลลิน", DrugVerdictState::NotFound),
+            not_found_verdict("แอมม็อกซิซิลลิน"),
         ],
     });
     let root = mount("vb-batch", move || view! { <VerdictBand state=state /> });
@@ -347,8 +375,9 @@ async fn batch_renders_one_compact_band_per_drug_with_term_labels() {
         .expect("batch text");
     assert!(text.contains("พาราเซตามอล"));
     assert!(text.contains("แอมม็อกซิซิลลิน"));
-    assert!(text.contains("พบประวัติ — ครั้งล่าสุด"));
-    assert!(text.contains("ไม่พบประวัติการได้รับยานี้"));
+    // Compact bands label each verdict with the resolved drug identity.
+    assert!(text.contains("พบประวัติ — พาราเซตามอล (500 mg) · ครั้งล่าสุด"));
+    assert!(text.contains("ไม่พบประวัติ — พาราเซตามอล (500 mg)"));
 }
 
 #[wasm_bindgen_test]
@@ -536,6 +565,7 @@ async fn drug_search_resolved_empty_routes_to_notfound() {
         resolve_ok(&vec![DrugCheckResult {
             term: "พาราเซตามอล".into(),
             verdict: HistoryVerdict::Resolved {
+                drug: sample_drug_item(),
                 history: ResolvedHistory {
                     records: Vec::new(),
                     truncated: false,
@@ -549,7 +579,10 @@ async fn drug_search_resolved_empty_routes_to_notfound() {
 
     match state.verdict.get_untracked() {
         VerdictState::Results { results } => {
-            assert_eq!(results[0].state, DrugVerdictState::NotFound);
+            assert!(matches!(
+                &results[0].state,
+                DrugVerdictState::NotFound { .. }
+            ));
         }
         other => panic!("expected Results, got {other:?}"),
     }
@@ -564,6 +597,7 @@ async fn drug_search_batch_checks_two_chips_and_renders_two_bands() {
             DrugCheckResult {
                 term: "พาราเซตามอล".into(),
                 verdict: HistoryVerdict::Resolved {
+                    drug: sample_drug_item(),
                     history: ResolvedHistory {
                         records: vec![record("พาราเซตามอล", date(2024, 5, 5), VisitType::Opd)],
                         truncated: false,
@@ -573,6 +607,7 @@ async fn drug_search_batch_checks_two_chips_and_renders_two_bands() {
             DrugCheckResult {
                 term: "แอมม็อกซิซิลลิน".into(),
                 verdict: HistoryVerdict::Resolved {
+                    drug: sample_drug_item(),
                     history: ResolvedHistory {
                         records: Vec::new(),
                         truncated: false,
@@ -591,7 +626,10 @@ async fn drug_search_batch_checks_two_chips_and_renders_two_bands() {
         VerdictState::Results { results } => {
             assert_eq!(results.len(), 2);
             assert!(matches!(&results[0].state, DrugVerdictState::Found { .. }));
-            assert_eq!(results[1].state, DrugVerdictState::NotFound);
+            assert!(matches!(
+                &results[1].state,
+                DrugVerdictState::NotFound { .. }
+            ));
         }
         other => panic!("expected Results, got {other:?}"),
     }
@@ -743,7 +781,7 @@ async fn print_sheet_renders_patient_and_history_content() {
                 vec![record("พาราเซตามอล", date(2024, 5, 5), VisitType::Opd)],
                 false,
             ),
-            drug_verdict("แอมม็อกซิซิลลิน", DrugVerdictState::NotFound),
+            not_found_verdict("แอมม็อกซิซิลลิน"),
         ],
     });
     let root = mount("print", move || view! { <PrintSheet state=state /> });

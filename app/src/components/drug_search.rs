@@ -70,11 +70,12 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                         .map(|r| DrugVerdict {
                             term: r.term,
                             state: match r.verdict {
-                                allerx_models::HistoryVerdict::Resolved { history } => {
+                                allerx_models::HistoryVerdict::Resolved { drug, history } => {
                                     if history.records.is_empty() {
-                                        DrugVerdictState::NotFound
+                                        DrugVerdictState::NotFound { drug }
                                     } else {
                                         DrugVerdictState::Found {
+                                            drug,
                                             records: history.records,
                                             truncated: history.truncated,
                                         }

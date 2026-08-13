@@ -10,6 +10,7 @@ instance, what is still pending, and the query patterns the connector uses.
 | Item | Finding | Notes |
 |---|---|---|
 | `patient.birthday` | Column is `birthday` (not the `birthdate` variant found on some instances) | Verified via error 1054 on the wrong name; keep `birthday`. |
+| `drugitems.name`, `drugitems.strength` | Present and populated (strength e.g. "500 mg") | Confirmed by live-instance testing feedback; the verdict bands now show the resolved drug's name + strength, and icode searches surface them from the autocomplete on. |
 | `opitemrece.dep_code` | Column is `dep_code` (not `depcode`) | Verified via error 1054; join target `kskdepartment.depcode` still unverified (below). |
 
 ## Pending live-instance confirmation (drives `SCHEMA-UNVERIFIED` markers)

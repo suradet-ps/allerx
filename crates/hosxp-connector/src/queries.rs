@@ -36,9 +36,11 @@ pub const PATIENT_SEARCH_NAME_CONTAINS: &str = "SELECT hn, cid, CONCAT_WS(' ', p
      WHERE fname LIKE ? OR lname LIKE ? OR CONCAT_WS(' ', pname, fname, lname) LIKE ? \
      LIMIT 20";
 
-/// Drug autocomplete — typed tier: trade-name matching plus the drug-type
-/// filter (AGENTS.md §6.2), used first so autocomplete never offers
-/// non-drug items.
+/// Drug autocomplete — typed tier: icode/name/trade-name matching plus the
+/// drug-type filter (AGENTS.md §6.2), used first so autocomplete never
+/// offers non-drug items and an icode search surfaces the drug with its
+/// name and strength (pilot feedback: "1000152 → ไม่พบประวัติ" without
+/// any drug identity).
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` and the `istype = '1'`
 /// // type filter per AGENTS.md §6 — confirm both against the live instance
@@ -46,7 +48,7 @@ pub const PATIENT_SEARCH_NAME_CONTAINS: &str = "SELECT hn, cid, CONCAT_WS(' ', p
 /// // column is absent the instance fails with 1054 and repository.rs falls
 /// // back to [`DRUG_SEARCH_PREFIX_TRADE`] / [`DRUG_SEARCH_PREFIX_PLAIN`].
 pub const DRUG_SEARCH_PREFIX_TYPED: &str = "SELECT icode, name, strength, trade_name \
-     FROM drugitems WHERE (name LIKE ? OR trade_name LIKE ?) AND istype = '1' \
+     FROM drugitems WHERE (name LIKE ? OR trade_name LIKE ? OR icode LIKE ?) AND istype = '1' \
      ORDER BY name LIMIT 20";
 
 /// Drug autocomplete — trade-name tier: same as typed but without the type
@@ -54,43 +56,60 @@ pub const DRUG_SEARCH_PREFIX_TYPED: &str = "SELECT icode, name, strength, trade_
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
 pub const DRUG_SEARCH_PREFIX_TRADE: &str = "SELECT icode, name, strength, trade_name \
-     FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+     FROM drugitems WHERE (name LIKE ? OR icode LIKE ?) ORDER BY name LIMIT 20";
 
 /// Drug autocomplete — plain tier: no trade-name column, no type filter
 /// (the safe baseline every instance supports).
 pub const DRUG_SEARCH_PREFIX_PLAIN: &str = "SELECT icode, name, strength, NULL AS trade_name \
-     FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+     FROM drugitems WHERE (name LIKE ? OR icode LIKE ?) ORDER BY name LIMIT 20";
 
 /// Drug autocomplete fallback (contains-match) — typed tier.
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` and `istype` per AGENTS.md §6.
 pub const DRUG_SEARCH_CONTAINS_TYPED: &str = "SELECT icode, name, strength, trade_name \
-     FROM drugitems WHERE (name LIKE ? OR trade_name LIKE ?) AND istype = '1' \
+     FROM drugitems WHERE (name LIKE ? OR trade_name LIKE ? OR icode LIKE ?) AND istype = '1' \
      ORDER BY name LIMIT 20";
 
 /// Drug autocomplete fallback (contains-match) — trade-name tier.
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
 pub const DRUG_SEARCH_CONTAINS_TRADE: &str = "SELECT icode, name, strength, trade_name \
-     FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+     FROM drugitems WHERE (name LIKE ? OR icode LIKE ?) ORDER BY name LIMIT 20";
 
 /// Drug autocomplete fallback (contains-match) — plain tier.
 pub const DRUG_SEARCH_CONTAINS_PLAIN: &str = "SELECT icode, name, strength, NULL AS trade_name \
-     FROM drugitems WHERE name LIKE ? ORDER BY name LIMIT 20";
+     FROM drugitems WHERE (name LIKE ? OR icode LIKE ?) ORDER BY name LIMIT 20";
 
-/// Resolves a drug term to its `icode` — exact icode hit first.
-pub const DRUG_RESOLVE_BY_ICODE: &str = "SELECT icode FROM drugitems WHERE icode = ? LIMIT 1";
+/// Resolves a drug term to its `drugitems` row — exact icode hit first.
+/// Returns name/strength so the verdict can label which drug it refers to.
+///
+/// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6 — the
+/// // fallback (`NULL AS trade_name`) covers instances without the column.
+pub const DRUG_RESOLVE_BY_ICODE_TRADE: &str =
+    "SELECT icode, name, strength, trade_name FROM drugitems WHERE icode = ? LIMIT 1";
 
-/// Resolves a drug term to its `icode` — exact display-name hit second.
-pub const DRUG_RESOLVE_BY_NAME: &str = "SELECT icode FROM drugitems WHERE name = ? LIMIT 1";
+/// Exact icode hit without the trade-name column — same shape.
+pub const DRUG_RESOLVE_BY_ICODE: &str =
+    "SELECT icode, name, strength, NULL AS trade_name FROM drugitems WHERE icode = ? LIMIT 1";
 
-/// Resolves a drug term to its `icode` — exact trade-name hit third
+/// Resolves a drug term to its `drugitems` row — exact display-name hit
+/// second.
+///
+/// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
+pub const DRUG_RESOLVE_BY_NAME_TRADE: &str =
+    "SELECT icode, name, strength, trade_name FROM drugitems WHERE name = ? LIMIT 1";
+
+/// Exact display-name hit without the trade-name column — same shape.
+pub const DRUG_RESOLVE_BY_NAME: &str =
+    "SELECT icode, name, strength, NULL AS trade_name FROM drugitems WHERE name = ? LIMIT 1";
+
+/// Resolves a drug term to its `drugitems` row — exact trade-name hit third
 /// (ROADMAP Phase 1, trade-name search).
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6 — a missing
 /// // column is tolerated at runtime (treated as "no trade-name match").
 pub const DRUG_RESOLVE_BY_TRADE_NAME: &str =
-    "SELECT icode FROM drugitems WHERE trade_name = ? LIMIT 1";
+    "SELECT icode, name, strength, trade_name FROM drugitems WHERE trade_name = ? LIMIT 1";
 
 /// OPD dispensing history — `opitemrece` rows without an admission number
 /// (AGENTS.md §6.2; reference join from §6.6). Selects the trade name when
@@ -226,7 +245,9 @@ mod tests {
             DRUG_SEARCH_CONTAINS_TRADE,
             DRUG_SEARCH_CONTAINS_PLAIN,
             DRUG_RESOLVE_BY_ICODE,
+            DRUG_RESOLVE_BY_ICODE_TRADE,
             DRUG_RESOLVE_BY_NAME,
+            DRUG_RESOLVE_BY_NAME_TRADE,
             DRUG_RESOLVE_BY_TRADE_NAME,
             HISTORY_OPD,
             HISTORY_OPD_FALLBACK,

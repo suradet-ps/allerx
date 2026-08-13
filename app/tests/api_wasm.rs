@@ -16,8 +16,8 @@ use std::cell::RefCell;
 
 use allerx_app::api::{self, ApiError, ApiErrorKind};
 use allerx_models::{
-    ConcurrentMedication, DrugCheckResult, DrugHistoryRecord, HistoryVerdict, PatientSummary,
-    ResolvedHistory, VisitType,
+    ConcurrentMedication, DrugCheckResult, DrugHistoryRecord, DrugItem, HistoryVerdict,
+    PatientSummary, ResolvedHistory, VisitType,
 };
 use chrono::NaiveDate;
 use js_sys::Promise;
@@ -107,6 +107,12 @@ async fn check_history_batch_deserializes_each_verdict() {
             DrugCheckResult {
                 term: "พาราเซตามอล".into(),
                 verdict: HistoryVerdict::Resolved {
+                    drug: DrugItem {
+                        icode: "1-001".into(),
+                        name: "พาราเซตามอล".into(),
+                        strength: Some("500 mg".into()),
+                        trade_name: None,
+                    },
                     history: ResolvedHistory {
                         records: vec![sample_record()],
                         truncated: true,
@@ -122,6 +128,12 @@ async fn check_history_batch_deserializes_each_verdict() {
             DrugCheckResult {
                 term: "แอมม็อกซิซิลลิน".into(),
                 verdict: HistoryVerdict::Resolved {
+                    drug: DrugItem {
+                        icode: "1-002".into(),
+                        name: "แอมม็อกซิซิลลิน".into(),
+                        strength: None,
+                        trade_name: None,
+                    },
                     history: ResolvedHistory {
                         records: Vec::new(),
                         truncated: false,
@@ -137,7 +149,9 @@ async fn check_history_batch_deserializes_each_verdict() {
     assert_eq!(results.len(), 3);
     assert_eq!(results[0].term, "พาราเซตามอล");
     match &results[0].verdict {
-        HistoryVerdict::Resolved { history } => {
+        HistoryVerdict::Resolved { drug, history } => {
+            assert_eq!(drug.name, "พาราเซตามอล");
+            assert_eq!(drug.strength.as_deref(), Some("500 mg"));
             assert_eq!(history.records.len(), 1);
             assert!(history.truncated);
         }
@@ -148,7 +162,8 @@ async fn check_history_batch_deserializes_each_verdict() {
         HistoryVerdict::Unresolved { .. }
     ));
     match &results[2].verdict {
-        HistoryVerdict::Resolved { history } => {
+        HistoryVerdict::Resolved { drug, history } => {
+            assert_eq!(drug.icode, "1-002");
             assert!(history.records.is_empty());
             assert!(!history.truncated);
         }

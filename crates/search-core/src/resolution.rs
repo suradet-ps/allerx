@@ -11,15 +11,16 @@ use allerx_models::{DrugItem, HistoryVerdict, ResolvedHistory};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DrugResolution {
     /// The term matched exactly (by icode, generic name, or trade name) —
-    /// history lookup proceeds against this icode.
-    Exact { icode: String },
+    /// history lookup proceeds against this drug, whose name/strength
+    /// identity labels the verdict.
+    Exact { drug: DrugItem },
     /// No exact match; `items` are the closest formulary entries (possibly
     /// empty — the term is not in the formulary at all). The operator must
     /// disambiguate before any history lookup.
     Candidates { items: Vec<DrugItem> },
 }
 
-/// Classifies an exact-icode hit (from exact icode/name/trade-name lookups)
+/// Classifies an exact hit (from exact icode/name/trade-name lookups)
 /// against the candidate shortlist.
 ///
 /// The invariant this function encodes: an exact hit is the only path to a
@@ -27,11 +28,11 @@ pub enum DrugResolution {
 /// [`DrugResolution::Candidates`], so no caller can accidentally produce a
 /// "ไม่พบประวัติ" verdict for an unresolvable drug term.
 pub fn classify_drug_resolution(
-    exact_icode: Option<String>,
+    exact: Option<DrugItem>,
     candidates: Vec<DrugItem>,
 ) -> DrugResolution {
-    match exact_icode {
-        Some(icode) => DrugResolution::Exact { icode },
+    match exact {
+        Some(drug) => DrugResolution::Exact { drug },
         None => DrugResolution::Candidates { items: candidates },
     }
 }
@@ -57,7 +58,8 @@ pub fn verdict_from_resolution(
     truncated: bool,
 ) -> HistoryVerdict {
     match resolution {
-        DrugResolution::Exact { .. } => HistoryVerdict::Resolved {
+        DrugResolution::Exact { drug } => HistoryVerdict::Resolved {
+            drug,
             history: ResolvedHistory { records, truncated },
         },
         DrugResolution::Candidates { items } => HistoryVerdict::Unresolved { candidates: items },
@@ -96,11 +98,11 @@ mod tests {
 
     #[test]
     fn exact_hit_is_never_ambiguous_even_with_empty_candidates() {
-        let resolution = classify_drug_resolution(Some("1-001".into()), Vec::new());
+        let resolution = classify_drug_resolution(Some(item("พาราเซตามอล", "1-001")), Vec::new());
         assert_eq!(
             resolution,
             DrugResolution::Exact {
-                icode: "1-001".into()
+                drug: item("พาราเซตามอล", "1-001")
             }
         );
     }
@@ -138,13 +140,14 @@ mod tests {
     fn exact_with_empty_records_is_a_definitive_not_found() {
         let verdict = verdict_from_resolution(
             DrugResolution::Exact {
-                icode: "1-001".into(),
+                drug: item("พาราเซตามอล", "1-001"),
             },
             Vec::new(),
             false,
         );
         match verdict {
-            HistoryVerdict::Resolved { history } => {
+            HistoryVerdict::Resolved { drug, history } => {
+                assert_eq!(drug.icode, "1-001");
                 assert!(history.records.is_empty());
                 assert!(!history.truncated);
             }
@@ -156,13 +159,14 @@ mod tests {
     fn exact_with_records_passes_through_and_keeps_truncation_flag() {
         let verdict = verdict_from_resolution(
             DrugResolution::Exact {
-                icode: "1-001".into(),
+                drug: item("พาราเซตามอล", "1-001"),
             },
             vec![record("พาราเซตามอล")],
             true,
         );
         match verdict {
-            HistoryVerdict::Resolved { history } => {
+            HistoryVerdict::Resolved { drug, history } => {
+                assert_eq!(drug.name, "พาราเซตามอล");
                 assert_eq!(history.records.len(), 1);
                 assert!(history.truncated);
             }

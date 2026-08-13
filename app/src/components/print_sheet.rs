@@ -55,31 +55,40 @@ pub fn PrintSheet(state: AppState) -> impl IntoView {
                                 .iter()
                                 .map(|r| {
                                     let (status, detail) = match &r.state {
-                        DrugVerdictState::Found { records, truncated } => {
-                            let latest = records.first();
-                            let when = latest
-                                .map(|rec| {
-                                    let vt = match rec.visit_type {
-                                        allerx_models::VisitType::Opd => "OPD",
-                                        allerx_models::VisitType::Ipd => "IPD",
-                                    };
-                                    format!(
-                                        "ครั้งล่าสุด {} ({}) — ทั้งหมด {} ครั้ง",
-                                        rec.visit_date.format("%d/%m/%Y"),
-                                        vt,
-                                        records.len()
-                                    )
-                                })
-                                .unwrap_or_else(|| "—".to_string());
-                            let extra = if *truncated {
-                                " — มีประวัติเก่ากว่านี้"
-                            } else {
-                                ""
-                            };
-                            ("พบประวัติ", format!("{when}{extra}"))
-                        }
-                                        DrugVerdictState::NotFound => {
-                                            ("ไม่พบประวัติ", "ไม่เคยมีรายการจ่ายยานี้".to_string())
+                                        DrugVerdictState::Found {
+                                            drug,
+                                            records,
+                                            truncated,
+                                        } => {
+                                            let identity = crate::state::drug_identity(drug);
+                                            let latest = records.first();
+                                            let when = latest
+                                                .map(|rec| {
+                                                    let vt = match rec.visit_type {
+                                                        allerx_models::VisitType::Opd => "OPD",
+                                                        allerx_models::VisitType::Ipd => "IPD",
+                                                    };
+                                                    format!(
+                                                        "ครั้งล่าสุด {} ({}) — ทั้งหมด {} ครั้ง",
+                                                        rec.visit_date.format("%d/%m/%Y"),
+                                                        vt,
+                                                        records.len()
+                                                    )
+                                                })
+                                                .unwrap_or_else(|| "—".to_string());
+                                            let extra = if *truncated {
+                                                " — มีประวัติเก่ากว่านี้"
+                                            } else {
+                                                ""
+                                            };
+                                            ("พบประวัติ", format!("{identity} — {when}{extra}"))
+                                        }
+                                        DrugVerdictState::NotFound { drug } => {
+                                            let identity = crate::state::drug_identity(drug);
+                                            (
+                                                "ไม่พบประวัติ",
+                                                format!("{identity} — ไม่เคยมีรายการจ่ายยา"),
+                                            )
                                         }
                                         DrugVerdictState::Unresolved { .. } => {
                                             (

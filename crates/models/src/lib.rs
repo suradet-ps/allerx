@@ -89,9 +89,14 @@ pub struct ResolvedHistory {
 /// patient-safety event).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HistoryVerdict {
-    /// The drug is known; `history.records` holds the dispensing timeline
-    /// (empty = genuinely never dispensed).
-    Resolved { history: ResolvedHistory },
+    /// The drug is known; `drug` is the exact formulary entry the term
+    /// resolved to (name/strength identity — the UI shows what drug a
+    /// verdict refers to), and `history.records` holds the dispensing
+    /// timeline (empty = genuinely never dispensed).
+    Resolved {
+        drug: DrugItem,
+        history: ResolvedHistory,
+    },
     /// The drug term could not be resolved to an icode. `candidates` are the
     /// closest `drugitems` matches for the operator to disambiguate; empty
     /// means the term is not in the formulary at all.

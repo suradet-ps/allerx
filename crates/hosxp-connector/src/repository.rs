@@ -2,12 +2,13 @@
 
 use crate::error::Error;
 use crate::queries::{
-    CONCURRENT_MEDS, CONCURRENT_MEDS_TRADE, DRUG_RESOLVE_BY_ICODE, DRUG_RESOLVE_BY_NAME,
-    DRUG_RESOLVE_BY_TRADE_NAME, DRUG_SEARCH_CONTAINS_PLAIN, DRUG_SEARCH_CONTAINS_TRADE,
-    DRUG_SEARCH_CONTAINS_TYPED, DRUG_SEARCH_PREFIX_PLAIN, DRUG_SEARCH_PREFIX_TRADE,
-    DRUG_SEARCH_PREFIX_TYPED, HISTORY_IPD_STAY, HISTORY_IPD_STAY_TRADE, HISTORY_IPD_TAKEHOME,
-    HISTORY_IPD_TAKEHOME_FALLBACK, HISTORY_OPD, HISTORY_OPD_FALLBACK, PATIENT_SEARCH_BY_CID,
-    PATIENT_SEARCH_BY_HN, PATIENT_SEARCH_NAME_CONTAINS, PATIENT_SEARCH_NAME_PREFIX,
+    CONCURRENT_MEDS, CONCURRENT_MEDS_TRADE, DRUG_RESOLVE_BY_ICODE, DRUG_RESOLVE_BY_ICODE_TRADE,
+    DRUG_RESOLVE_BY_NAME, DRUG_RESOLVE_BY_NAME_TRADE, DRUG_RESOLVE_BY_TRADE_NAME,
+    DRUG_SEARCH_CONTAINS_PLAIN, DRUG_SEARCH_CONTAINS_TRADE, DRUG_SEARCH_CONTAINS_TYPED,
+    DRUG_SEARCH_PREFIX_PLAIN, DRUG_SEARCH_PREFIX_TRADE, DRUG_SEARCH_PREFIX_TYPED, HISTORY_IPD_STAY,
+    HISTORY_IPD_STAY_TRADE, HISTORY_IPD_TAKEHOME, HISTORY_IPD_TAKEHOME_FALLBACK, HISTORY_OPD,
+    HISTORY_OPD_FALLBACK, PATIENT_SEARCH_BY_CID, PATIENT_SEARCH_BY_HN,
+    PATIENT_SEARCH_NAME_CONTAINS, PATIENT_SEARCH_NAME_PREFIX,
 };
 use crate::readonly_guard::{PING_SQL, assert_read_only};
 use allerx_models::{
@@ -138,50 +139,78 @@ impl HosxRepository {
         )))
     }
 
-    /// Resolves a drug term to its `icode`: exact icode, then exact display
-    /// name, then exact trade name. `None` means the term is not in
-    /// `drugitems` under any of the three — the caller then falls back to
-    /// candidate suggestions (never a "not found" verdict, ROADMAP Phase 1).
-    async fn resolve_drug_icode(&self, drug: &str) -> Result<Option<String>, Error> {
-        if let Some(icode) = self.fetch_single_icode(DRUG_RESOLVE_BY_ICODE, drug).await? {
-            return Ok(Some(icode));
+    /// Resolves a drug term to its full `drugitems` row (icode, name,
+    /// strength, trade name): exact icode, then exact display name, then
+    /// exact trade name. `None` means the term is not in `drugitems` under
+    /// any of the three — the caller then falls back to candidate
+    /// suggestions (never a "not found" verdict, ROADMAP Phase 1).
+    ///
+    /// The returned identity labels the verdict — a pharmacist searching by
+    /// icode sees the drug's name and strength, not a bare code.
+    async fn resolve_drug_item(&self, drug: &str) -> Result<Option<DrugItem>, Error> {
+        if let Some(item) = self
+            .fetch_single_drug_item_tiered(DRUG_RESOLVE_BY_ICODE_TRADE, DRUG_RESOLVE_BY_ICODE, drug)
+            .await?
+        {
+            return Ok(Some(item));
         }
-        if let Some(icode) = self.fetch_single_icode(DRUG_RESOLVE_BY_NAME, drug).await? {
-            return Ok(Some(icode));
+        if let Some(item) = self
+            .fetch_single_drug_item_tiered(DRUG_RESOLVE_BY_NAME_TRADE, DRUG_RESOLVE_BY_NAME, drug)
+            .await?
+        {
+            return Ok(Some(item));
         }
         // A missing trade-name column is a documented schema variation —
         // "no trade-name match", not an error.
-        self.fetch_single_icode_tolerant(DRUG_RESOLVE_BY_TRADE_NAME, drug)
+        self.fetch_single_drug_item_tolerant(DRUG_RESOLVE_BY_TRADE_NAME, drug)
             .await
     }
 
-    async fn fetch_single_icode(&self, sql: &str, param: &str) -> Result<Option<String>, Error> {
+    /// Fetches one drug row, degrading the trade-name column to the
+    /// fallback statement when the instance lacks it (MySQL 1054).
+    async fn fetch_single_drug_item_tiered(
+        &self,
+        sql: &str,
+        fallback_sql: &str,
+        param: &str,
+    ) -> Result<Option<DrugItem>, Error> {
         assert_read_only(sql).map_err(|_| Error::Guard)?;
-        sqlx::query_as::<_, (String,)>(sql)
-            .bind(param)
-            .fetch_optional(&self.pool)
-            .await
-            .map(|row| row.map(|(icode,)| icode))
-            .map_err(Error::from)
+        assert_read_only(fallback_sql).map_err(|_| Error::Guard)?;
+        match self.fetch_single_drug_row(sql, param).await {
+            Ok(row) => Ok(row),
+            Err(Error::Database(ref err)) if is_schema_variation(err) => {
+                self.fetch_single_drug_row(fallback_sql, param).await
+            }
+            Err(err) => Err(err),
+        }
     }
 
-    /// Like [`fetch_single_icode`], but a missing column/table (MySQL
-    /// 1146/1054) yields `Ok(None)` instead of an error.
-    async fn fetch_single_icode_tolerant(
+    /// Like [`fetch_single_drug_item_tiered`], but a missing column/table
+    /// (MySQL 1146/1054) yields `Ok(None)` instead of an error.
+    async fn fetch_single_drug_item_tolerant(
         &self,
         sql: &str,
         param: &str,
-    ) -> Result<Option<String>, Error> {
+    ) -> Result<Option<DrugItem>, Error> {
         assert_read_only(sql).map_err(|_| Error::Guard)?;
-        match sqlx::query_as::<_, (String,)>(sql)
+        match self.fetch_single_drug_row(sql, param).await {
+            Ok(row) => Ok(row),
+            Err(Error::Database(ref err)) if is_schema_variation(err) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+
+    async fn fetch_single_drug_row(
+        &self,
+        sql: &str,
+        param: &str,
+    ) -> Result<Option<DrugItem>, Error> {
+        sqlx::query_as::<_, DrugRow>(sql)
             .bind(param)
             .fetch_optional(&self.pool)
             .await
-        {
-            Ok(row) => Ok(row.map(|(icode,)| icode)),
-            Err(err) if is_schema_variation(&err) => Ok(None),
-            Err(err) => Err(Error::Database(err)),
-        }
+            .map(|row| row.map(drug_from_row))
+            .map_err(Error::from)
     }
 
     /// OPD history — `opitemrece` rows without an admission number. Returns
@@ -383,12 +412,12 @@ impl HosxRepositoryTrait for HosxRepository {
         let prefix = format!("{term}%");
         let mut hits: Vec<DrugItem> = self
             .fetch_first_working(&[
-                // Typed tier: trade-name matching + drug-type filter.
-                (DRUG_SEARCH_PREFIX_TYPED, &[&prefix, &prefix]),
-                // Trade tier: trade-name matching, no type filter.
-                (DRUG_SEARCH_PREFIX_TRADE, &[&prefix]),
+                // Typed tier: name/trade-name/icode matching + drug-type filter.
+                (DRUG_SEARCH_PREFIX_TYPED, &[&prefix, &prefix, &prefix]),
+                // Trade tier: name/icode matching, no type filter.
+                (DRUG_SEARCH_PREFIX_TRADE, &[&prefix, &prefix]),
                 // Plain tier: every instance supports this.
-                (DRUG_SEARCH_PREFIX_PLAIN, &[&prefix]),
+                (DRUG_SEARCH_PREFIX_PLAIN, &[&prefix, &prefix]),
             ])
             .await?
             .into_iter()
@@ -398,9 +427,12 @@ impl HosxRepositoryTrait for HosxRepository {
             let contains = format!("%{term}%");
             hits = self
                 .fetch_first_working(&[
-                    (DRUG_SEARCH_CONTAINS_TYPED, &[&contains, &contains]),
-                    (DRUG_SEARCH_CONTAINS_TRADE, &[&contains]),
-                    (DRUG_SEARCH_CONTAINS_PLAIN, &[&contains]),
+                    (
+                        DRUG_SEARCH_CONTAINS_TYPED,
+                        &[&contains, &contains, &contains],
+                    ),
+                    (DRUG_SEARCH_CONTAINS_TRADE, &[&contains, &contains]),
+                    (DRUG_SEARCH_CONTAINS_PLAIN, &[&contains, &contains]),
                 ])
                 .await?
                 .into_iter()
@@ -428,16 +460,18 @@ impl HosxRepositoryTrait for HosxRepository {
         // (AGENTS.md §7.2). The resolution flow (ROADMAP Phase 1): an exact
         // hit (icode, generic name, trade name) is the only path to a
         // Resolved verdict; anything else surfaces the closest formulary
-        // candidates for the operator to disambiguate.
-        let exact_icode = self.resolve_drug_icode(drug).await?;
-        let candidates = if exact_icode.is_none() {
+        // candidates for the operator to disambiguate. The resolved
+        // `DrugItem` (name/strength) labels the verdict — an icode search
+        // shows which drug it referred to.
+        let exact = self.resolve_drug_item(drug).await?;
+        let candidates = if exact.is_none() {
             rank_candidates(self.search_drugs(drug).await?, RESOLUTION_CANDIDATE_LIMIT)
         } else {
             Vec::new()
         };
-        let resolution = classify_drug_resolution(exact_icode, candidates);
+        let resolution = classify_drug_resolution(exact, candidates);
         let (records, truncated) = match &resolution {
-            DrugResolution::Exact { icode } => self.fetch_all_history(hn, icode).await?,
+            DrugResolution::Exact { drug } => self.fetch_all_history(hn, &drug.icode).await?,
             DrugResolution::Candidates { .. } => (Vec::new(), false),
         };
         Ok(verdict_from_resolution(resolution, records, truncated))
