@@ -43,16 +43,10 @@ pub fn Timeline(state: AppState) -> impl IntoView {
                                 let drug_label = crate::state::record_label(r);
                                 let prescriber = r.prescriber.as_deref().unwrap_or("—");
                                 let department = r.department.as_deref().unwrap_or("—");
-                                let quantity = r.quantity.as_deref().unwrap_or("");
-                                let route = r.route.as_deref().unwrap_or("");
-                                let mut meta = vec![format!("{prescriber} @ {department}")];
-                                if !quantity.is_empty() {
-                                    meta.push(format!("x{quantity}"));
-                                }
-                                if !route.is_empty() {
-                                    meta.push(route.to_string());
-                                }
-                                let meta_text = meta.join(" · ");
+                                // The meta line carries the prescriber and
+                                // department only — quantity and usage are
+                                // not shown (pilot feedback).
+                                let meta_text = format!("{prescriber} @ {department}");
                                 view! {
                                     <li class="timeline-row">
                                         <span class="timeline-row__date">{date}</span>
