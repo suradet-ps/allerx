@@ -3,6 +3,20 @@
 use allerx_models::{DrugHistoryRecord, DrugItem, PatientSummary};
 use leptos::prelude::*;
 
+/// Live HOSxP reachability, mirrored from the backend's `connection_health`
+/// command (ROADMAP Phase 3) — drives the top-bar status dot. The backend
+/// keeps it fresh with a 30 s ping loop and every query outcome; this
+/// frontend value is a polled copy, never computed from a file check.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+pub enum ConnectionHealth {
+    /// No stored settings — the settings dialog is the flow.
+    Unconfigured,
+    /// A ping succeeded recently.
+    Connected,
+    /// HOSxP could not be reached.
+    Disconnected,
+}
+
 /// Shared state for the single-page flow.
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -14,6 +28,11 @@ pub struct AppState {
     pub configured: RwSignal<bool>,
     /// Whether the connection settings dialog is open.
     pub settings_open: RwSignal<bool>,
+    /// Polled live reachability (ROADMAP Phase 3) — top-bar dot source.
+    pub health: RwSignal<ConnectionHealth>,
+    /// Degraded-mode banner message (ROADMAP Phase 3): set when a query
+    /// cannot reach HOSxP, cleared on the next success or by the operator.
+    pub db_banner: RwSignal<Option<String>>,
 }
 
 /// The one loud thing on screen — only one state at a time, and the new
@@ -53,6 +72,8 @@ impl AppState {
             verdict: RwSignal::new(VerdictState::Pending),
             configured: RwSignal::new(false),
             settings_open: RwSignal::new(false),
+            health: RwSignal::new(ConnectionHealth::Unconfigured),
+            db_banner: RwSignal::new(None),
         }
     }
 }

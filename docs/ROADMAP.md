@@ -362,28 +362,33 @@ in-memory).
 G2 is a trust bug: a green dot that means "a file exists." Phase 3 makes the
 app honest about its own health and graceful in failure.
 
-- [ ] **Live health state.** Replace the config-file-exists status with a
+**Status: COMPLETE** (implementation) — live health, banner, and failure
+taxonomy shipped; the kill-DB procedure is documented in
+`docs/reliability-notes.md` and will be executed on the pilot machine
+(Phase 6) before sign-off.
+
+- [x] **Live health state.** Replace the config-file-exists status with a
   real health signal: on startup (and after Phase 2's warm ping), and on a
   slow timer (e.g. every 30 s while idle), run `ping()`; the status dot and
   text reflect actual reachability ("เชื่อมต่อ HOSxP แล้ว" / "HOSxP ไม่พร้อมใช้งาน").
   The health check reuses the existing pool and never interrupts a query in
   flight.
-- [ ] **Degraded-mode banner.** When a query fails with
+- [x] **Degraded-mode banner.** When a query fails with
   `RepositoryError::Connection`, show the long-reserved `.banner-warning`
   ("ไม่สามารถเชื่อมต่อ HOSxP ได้ — ตรวจสอบเครือข่าย") above the search
   sections (or on the main canvas), keep the UI fully interactive, and
   auto-retry the next query as usual. No raw error text ever reaches the
   UI (already true — keep it true).
-- [ ] **Preflight on launch.** Attempt a warm connection at startup with
+- [x] **Preflight on launch.** Attempt a warm connection at startup with
   bounded retries/backoff; if the stored config is missing or corrupt, the
   existing settings-modal first-run flow already handles it — extend it to
   also handle *keyring-unavailable* (headless/CI/locked-down workstation)
   with a clear Thai message instead of a generic failure.
-- [ ] **Failure taxonomy in the UI.** Three user-visible failure classes,
+- [x] **Failure taxonomy in the UI.** Three user-visible failure classes,
   mapped in `commands.rs`: not configured (settings modal), unreachable
   (banner + retry), query failed (generic per-action error, as today).
   Add tests for each translation in `commands.rs`.
-- [ ] **Manual kill-DB scenario.** Document a test procedure (stop MySQL,
+- [x] **Manual kill-DB scenario.** Document a test procedure (stop MySQL,
   launch app, search, restart MySQL, search again) in `docs/reliability-notes.md`
   and run it on the pilot machine during Phase 6.
 
@@ -659,7 +664,7 @@ checked; once confirmed, the marker is removed and the finding lands in
 | `docs/ROADMAP.md` | This document | ✅ now |
 | `docs/database.md` | Schema verification log, query patterns, DBA findings | ✅ exists |
 | `docs/perf-baseline.md` | Latency measurements, budgets, regression thresholds | ✅ exists (protocol + budgets; numbers filled at staging/pilot) |
-| `docs/reliability-notes.md` | Kill-DB scenario, recovery procedure, health-check notes | Phase 3 |
+| `docs/reliability-notes.md` | Kill-DB scenario, recovery procedure, health-check notes | ✅ exists |
 | `docs/a11y-notes.md` | Accessibility audit results, NVDA log | Phase 4 |
 | `docs/deployment.md` | DBA checklist, installer, keyring/DPI notes | Phase 6 |
 | `docs/pilot-notes.md` | Pilot protocol, feedback form, field reports | Phase 6 |
