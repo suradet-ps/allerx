@@ -266,7 +266,7 @@ app chasing friendliness. Pill-shaped (`{rounded.full}`) elements are limited to
 - **Not-Found:** bg `{colors.verdict-notfound}`, text `{colors.verdict-notfound-text}`, border `{colors.verdict-notfound-border}`. X-circle icon + headline + detail.
 - **Pending:** bg `{colors.verdict-pending}`, text `{colors.verdict-pending-text}`. Clock icon + headline + contextual hint.
 - **Unverifiable:** bg `{colors.verdict-unresolved}`, text `{colors.verdict-unresolved-text}`, border `{colors.verdict-unresolved-border}`. X-circle icon + headline + detail — never the "ไม่พบประวัติ" text (Phase 1).
-- Only one verdict on screen at a time — a single-drug check is one band; a batch check is **`verdict-batch`**, a stacked list of **`verdict-band--compact`** bands (one per checked drug), each term-labelled (`verdict-band__term`, 14px/600) above a condensed detail line. Compact bands keep the same three semantic palettes; the unresolved compact band may embed `candidate-button` chips that queue the drug for re-check. Never fade between states.
+- Only one verdict on screen at a time — a single-drug check is one band; a batch check is **`verdict-batch`**, a grid of **`verdict-band--compact`** bands (one per checked drug), each term-labelled (`verdict-band__term`, 14px/600) above a condensed detail line. The grid is **2 columns at ≥960px**, stacked 1 column below (the canvas scrolls for many drugs). Compact bands keep the same three semantic palettes; the unresolved compact band may embed `candidate-button` chips that queue the drug for re-check. Never fade between states.
 
 ### Print Sheet (Phase 5)
 
@@ -278,9 +278,10 @@ app chasing friendliness. Pill-shaped (`{rounded.full}`) elements are limited to
 
 **`timeline`** — Dense scrollable list of medication history records.
 - List-style: no bullets, no outer padding.
+- **`timeline-filter`** — shown for multi-drug checks: "ทั้งหมด" + one chip per checked drug (neutral `timeline-filter__chip`, `--active` state in brand-soft/brand). Clicking a chip isolates that drug's rows; clicking again (or ทั้งหมด) restores the merged view. Filters reset automatically on the next check.
 - **`timeline-row`** — One record per row. Two-line layout:
-  - Line 1: `{typography.code}` date (80px min-width) | OPD/IPD badge | drug name (`{typography.body-medium}`)
-  - Line 2: prescriber @ department · quantity · route (`{typography.caption}`, `{colors.slate}`)
+  - Line 1: `{typography.code}` date (80px min-width) | OPD/IPD badge | drug name + strength (`{typography.body-medium}`)
+  - Line 2: prescriber @ department (`{typography.caption}`, `{colors.slate}`)
 - Row padding `8px {spacing.md}`, border-bottom `1px solid {hairline}`.
 - Hover: background `{colors.surface-muted}`.
 - Most recent first — order carries clinical meaning.

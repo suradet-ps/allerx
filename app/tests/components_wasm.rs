@@ -491,6 +491,88 @@ async fn timeline_merges_records_across_drugs_newest_first() {
     assert!(text.contains("ยากลุ่มแรก") && text.contains("ยากลุ่มสอง"));
 }
 
+#[wasm_bindgen_test]
+async fn timeline_filter_isolates_one_drugs_rows() {
+    let state = AppState::new();
+    state.verdict.set(VerdictState::Results {
+        results: vec![
+            found_verdict(
+                "ยากลุ่มแรก",
+                vec![
+                    record("ยากลุ่มแรก", date(2024, 1, 1), VisitType::Opd),
+                    record("ยากลุ่มแรก", date(2024, 3, 3), VisitType::Ipd),
+                ],
+                false,
+            ),
+            found_verdict(
+                "ยากลุ่มสอง",
+                vec![record("ยากลุ่มสอง", date(2024, 6, 6), VisitType::Opd)],
+                false,
+            ),
+        ],
+    });
+    let root = mount("tl-filter", move || view! { <Timeline state=state /> });
+
+    // Filter bar appears for multi-drug checks, with ทั้งหมด + one chip per drug.
+    let chips = root
+        .query_selector_all(".timeline-filter__chip")
+        .expect("filter chips");
+    assert_eq!(chips.length(), 3);
+    let bar_text = query_one(&root, ".timeline-filter")
+        .text_content()
+        .expect("bar text");
+    assert!(bar_text.contains("ทั้งหมด"));
+    assert!(bar_text.contains("ยากลุ่มแรก"));
+    assert!(bar_text.contains("ยากลุ่มสอง"));
+
+    // All rows shown by default.
+    let rows = root.query_selector_all(".timeline-row").expect("rows");
+    assert_eq!(rows.length(), 3);
+
+    // Click the ยากลุ่มแรก chip → only that drug's rows remain.
+    let chip = root
+        .query_selector_all(".timeline-filter__chip")
+        .expect("chips")
+        .item(1)
+        .expect("second chip")
+        .dyn_into::<web_sys::HtmlElement>()
+        .expect("html element");
+    chip.click();
+    settle().await;
+
+    // The clicked chip became active.
+    let active = root
+        .query_selector_all(".timeline-filter__chip--active")
+        .expect("active chips")
+        .item(0)
+        .expect("one active chip")
+        .text_content()
+        .expect("active chip text");
+    assert_eq!(active, "ยากลุ่มแรก", "the clicked chip became active");
+
+    let rows = root.query_selector_all(".timeline-row").expect("rows");
+    assert_eq!(rows.length(), 2);
+    let text = query_one(&root, ".timeline")
+        .text_content()
+        .expect("timeline text");
+    assert!(text.contains("ยากลุ่มแรก"));
+    assert!(!text.contains("ยากลุ่มสอง"));
+
+    // Click ทั้งหมด → back to all.
+    let all_chip = root
+        .query_selector_all(".timeline-filter__chip")
+        .expect("chips")
+        .item(0)
+        .expect("first chip")
+        .dyn_into::<web_sys::HtmlElement>()
+        .expect("html element");
+    all_chip.click();
+    settle().await;
+
+    let rows = root.query_selector_all(".timeline-row").expect("rows");
+    assert_eq!(rows.length(), 3);
+}
+
 // ---------------------------------------------------------------------------
 // Patient bar — masking and demographics (DESIGN.md)
 // ---------------------------------------------------------------------------
