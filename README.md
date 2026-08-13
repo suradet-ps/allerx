@@ -90,12 +90,15 @@ Notes:
 | [`AGENTS.md`](AGENTS.md) | Product scope, hard rules, HOSxP schema notes, search flow, milestones |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Visual/UI design system (tokens, layout, components) |
 | [`docs/AGENTS-RUST.md`](docs/AGENTS-RUST.md) | Rust-specific style and workflow rules |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Verified current state, gaps, and the detailed phase plan |
 
 ## Roadmap
 
 Milestones M0–M4 (workspace, read-only connector, patient search, drug search,
-medication history) are in progress; M5–M7 cover performance tuning, UI polish,
-and packaging for an internal pharmacy pilot.
+medication history) are implemented; M5–M7 are partially complete. The
+forward-looking plan — verdict integrity, performance measurement, connection
+honesty, frontend testing, deployment & pilot, and clinical validation — is
+detailed in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## License
 
