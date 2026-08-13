@@ -35,11 +35,23 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
         let drug = icode.unwrap_or(query.trim().to_string());
         leptos::task::spawn_local(async move {
             match api::fetch_history(&patient.hn, &drug).await {
-                Ok(records) if records.is_empty() => {
+                Ok(allerx_models::HistoryVerdict::Resolved { history })
+                    if history.records.is_empty() =>
+                {
                     state.verdict.set(VerdictState::NotFound);
                 }
-                Ok(records) => {
-                    state.verdict.set(VerdictState::Found { records });
+                Ok(allerx_models::HistoryVerdict::Resolved { history }) => {
+                    state.verdict.set(VerdictState::Found {
+                        records: history.records,
+                        truncated: history.truncated,
+                    });
+                }
+                Ok(allerx_models::HistoryVerdict::Unresolved { candidates }) => {
+                    // The drug term did not resolve — surface the backend's
+                    // candidates as the disambiguation list so the verdict
+                    // never reads "ไม่พบประวัติ" for an unknown drug.
+                    suggestions.set(candidates.clone());
+                    state.verdict.set(VerdictState::Unresolved { candidates });
                 }
                 Err(message) => {
                     state.verdict.set(VerdictState::Pending);
@@ -148,7 +160,7 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                                     suggestions
                                         .get()
                                         .into_iter()
-                                        .map(|drug| {
+                                    .map(|drug| {
                                             let strength_suffix = drug
                                                 .strength
                                                 .as_deref()
@@ -157,6 +169,11 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                                             let term_value = format!(
                                                 "{}{}", drug.name, strength_suffix
                                             );
+                                            let trade_suffix = drug
+                                                .trade_name
+                                                .as_deref()
+                                                .map(|t| format!(" · {t}"))
+                                                .unwrap_or_default();
                                             view! {
                                                 <li
                                                     class="search-result-row"
@@ -171,11 +188,11 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                                                         {drug.name.clone()}
                                                     </span>
                                                     <span class="search-result-row__code">
-                                                        {drug.icode.clone()}
+                                                        {format!("{}{}", trade_suffix, drug.icode)}
                                                     </span>
                                                 </li>
                                             }
-                                        })
+                                    })
                                         .collect_view()
                                 }}
                             </ul>

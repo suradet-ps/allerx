@@ -10,9 +10,13 @@ pub mod history;
 pub mod mock;
 pub mod query_kind;
 pub mod repository;
+pub mod resolution;
 
 pub use error::RepositoryError;
 pub use history::merge_drug_history;
 pub use mock::MockRepository;
 pub use query_kind::{QueryKind, detect_query_kind};
 pub use repository::HosxRepository;
+pub use resolution::{
+    DrugResolution, classify_drug_resolution, rank_candidates, verdict_from_resolution,
+};

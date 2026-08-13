@@ -91,6 +91,7 @@ Notes:
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Visual/UI design system (tokens, layout, components) |
 | [`docs/AGENTS-RUST.md`](docs/AGENTS-RUST.md) | Rust-specific style and workflow rules |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Verified current state, gaps, and the detailed phase plan |
+| [`docs/database.md`](docs/database.md) | HOSxP schema verification log and query patterns |
 
 ## Roadmap
 

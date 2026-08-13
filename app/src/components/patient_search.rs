@@ -124,7 +124,13 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
                                                     {p.full_name_th.clone()}
                                                 </span>
                                                 <span class="search-result-row__code">
-                                                    {p.hn.clone()}
+                                                    {format!(
+                                                        "HN {} · {}",
+                                                        p.hn,
+                                                        p.birth_date
+                                                            .map(|d| d.format("%d/%m/%Y").to_string())
+                                                            .unwrap_or_else(|| "—".to_string())
+                                                    )}
                                                 </span>
                                             </li>
                                         }

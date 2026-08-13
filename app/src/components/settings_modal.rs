@@ -28,32 +28,32 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
     /// for a memory scan. NUL is valid UTF-8, so the fill keeps the String
     /// well-formed while it is still alive inside this function.
     fn wipe_field(signal: &RwSignal<String>) {
-    let mut value = signal.get_untracked();
-    if !value.is_empty() {
-        // SAFETY: the buffer is owned exclusively by `value`; filling it with
-        // NUL bytes (valid UTF-8) keeps every invariant intact, and the
-        // buffer is dropped unaliased at the end of this function.
-        unsafe { value.as_mut_vec().fill(0) };
+        let mut value = signal.get_untracked();
+        if !value.is_empty() {
+            // SAFETY: the buffer is owned exclusively by `value`; filling it with
+            // NUL bytes (valid UTF-8) keeps every invariant intact, and the
+            // buffer is dropped unaliased at the end of this function.
+            unsafe { value.as_mut_vec().fill(0) };
+        }
+        signal.set(String::new());
     }
-    signal.set(String::new());
-}
 
-// Clears every field the operator typed — the modal stays mounted (hidden
-// by CSS), so without this the plaintext would linger in WASM memory for
-// the whole app session (AGENTS.md §9).
-let wipe_fields = move || {
-    wipe_field(&host);
-    wipe_field(&port);
-    wipe_field(&database);
-    wipe_field(&user);
-    wipe_field(&password);
-};
+    // Clears every field the operator typed — the modal stays mounted (hidden
+    // by CSS), so without this the plaintext would linger in WASM memory for
+    // the whole app session (AGENTS.md §9).
+    let wipe_fields = move || {
+        wipe_field(&host);
+        wipe_field(&port);
+        wipe_field(&database);
+        wipe_field(&user);
+        wipe_field(&password);
+    };
 
-let close = move || {
-    wipe_fields();
-    message.set(None);
-    state.settings_open.set(false);
-};
+    let close = move || {
+        wipe_fields();
+        message.set(None);
+        state.settings_open.set(false);
+    };
 
     // Builds a ConnectionInput from the form fields, validating the port
     // and required fields — shared by test and save so both behave
