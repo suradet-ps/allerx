@@ -42,6 +42,7 @@ version = "0.1.0"
 dependencies = [
  "allerx-models",
  "async-trait",
+ "chrono",
  "thiserror 2.0.19",
 ]
 

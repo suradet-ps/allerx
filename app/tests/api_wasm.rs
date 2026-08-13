@@ -16,8 +16,8 @@ use std::cell::RefCell;
 
 use allerx_app::api::{self, ApiError, ApiErrorKind};
 use allerx_models::{
-    ConcurrentMedication, DrugCheckResult, DrugHistoryRecord, DrugItem, HistoryVerdict,
-    PatientSummary, ResolvedHistory, VisitType,
+    ConcurrentMedication, DrugCheckResult, DrugHistoryRecord, HistoryVerdict, PatientSummary,
+    ResolvedHistory, VisitType,
 };
 use chrono::NaiveDate;
 use js_sys::Promise;
@@ -60,15 +60,6 @@ fn sample_record() -> DrugHistoryRecord {
         department: None,
         quantity: None,
         route: None,
-    }
-}
-
-fn sample_drug() -> DrugItem {
-    DrugItem {
-        icode: "1-001".into(),
-        name: "พาราเซตามอล".into(),
-        strength: Some("500 mg".into()),
-        trade_name: None,
     }
 }
 

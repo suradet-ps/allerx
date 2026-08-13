@@ -85,7 +85,19 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                                 }
                             },
                         })
-                        .collect();
+                        .collect::<Vec<_>>();
+                    // Single-drug unresolved: the band points at the
+                    // suggestions list — make the backend's candidates
+                    // visible there so disambiguation is one click away.
+                    if let [
+                        DrugVerdict {
+                            state: DrugVerdictState::Unresolved { candidates },
+                            ..
+                        },
+                    ] = &verdicts[..]
+                    {
+                        suggestions.set(candidates.clone());
+                    }
                     state
                         .verdict
                         .set(VerdictState::Results { results: verdicts });
