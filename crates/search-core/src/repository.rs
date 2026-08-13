@@ -3,7 +3,9 @@
 //! `hosxp-connector` implements this trait against the real HOSxP MySQL
 //! database; tests and the frontend use [`MockRepository`](crate::mock::MockRepository).
 
-use allerx_models::{DrugItem, HistoryVerdict, PatientSummary};
+use allerx_models::{
+    ConcurrentMedication, DrugCheckResult, DrugItem, HistoryVerdict, PatientSummary,
+};
 use async_trait::async_trait;
 
 use crate::error::RepositoryError;
@@ -71,4 +73,44 @@ pub trait HosxRepository: Send + Sync {
         hn: &str,
         drug: &str,
     ) -> Result<HistoryVerdict, RepositoryError>;
+
+    /// Batch history lookup for several drugs in one call (ROADMAP Phase 5):
+    /// the same single question asked N times in one pass, one result per
+    /// submitted term.
+    ///
+    /// The default implementation checks each term sequentially via
+    /// [`fetch_drug_history`]; the real repository overrides it with a
+    /// concurrent fan-out. Results carry their own `term` label, so order
+    /// is informational, not contractual.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RepositoryError::Query`] when any drug's lookup fails.
+    async fn check_drugs(
+        &self,
+        hn: &str,
+        drugs: &[String],
+    ) -> Result<Vec<DrugCheckResult>, RepositoryError> {
+        let mut results = Vec::with_capacity(drugs.len());
+        for drug in drugs {
+            let verdict = self.fetch_drug_history(hn, drug).await?;
+            results.push(DrugCheckResult {
+                term: drug.clone(),
+                verdict,
+            });
+        }
+        Ok(results)
+    }
+
+    /// Recent concurrent medications for a patient (ROADMAP Phase 5) —
+    /// deduped per icode, most recent first, drug category only. Powers the
+    /// "ยาที่ได้รับล่าสุด" snapshot in the patient detail view.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RepositoryError::Query`] when the statement fails.
+    async fn fetch_concurrent_medications(
+        &self,
+        hn: &str,
+    ) -> Result<Vec<ConcurrentMedication>, RepositoryError>;
 }
