@@ -108,6 +108,44 @@ jobs:
         working-directory: app
         run: cargo clippy --target wasm32-unknown-unknown --all-targets -- -D warnings
 
+  wasm-tests:
+    name: WASM Tests (headless Chrome)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Install Rust stable (wasm target)
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: "app -> app/target"
+
+      - name: Install wasm-bindgen-cli (matches Cargo.lock)
+        # The test runner comes from crates.io (more reliable than the
+        # GitHub release downloads trunk/wasm-pack use — those flake, see
+        # the retry loops above). Version must match Cargo.lock exactly.
+        run: cargo install wasm-bindgen-cli --version 0.2.127 --locked
+
+      - name: Install chromedriver matching the runner's Chrome
+        run: |
+          CHROME_VERSION=$(google-chrome --version | sed -E 's/.*Chrome ([0-9.]+).*/\1/')
+          curl -LsSf "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" -o /tmp/chromedriver.zip
+          unzip -o -q /tmp/chromedriver.zip -d /tmp
+          sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
+          chromedriver --version
+
+      - name: Run wasm tests
+        working-directory: app
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: "wasm-bindgen-test-runner --chrome"
+        run: cargo test --target wasm32-unknown-unknown
+
   cargo-deny:
     name: Cargo Deny
     runs-on: ubuntu-24.04
