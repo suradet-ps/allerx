@@ -55,10 +55,18 @@ jobs:
       - name: Install Trunk
         shell: bash
         run: |
+          # GitHub release downloads occasionally drop the connection;
+          # retry before giving up.
           if [ "$RUNNER_OS" = "Windows" ]; then CURL=curl.exe; else CURL=curl; fi
-          $CURL -LsSf https://github.com/trunk-rs/trunk/releases/download/v0.21.14/${{ matrix.trunk-artifact }} -o trunk.tar.gz
-          mkdir -p "$HOME/.cargo/bin"
-          tar -xzf trunk.tar.gz -C "$HOME/.cargo/bin"
+          for attempt in 1 2 3 4; do
+            $CURL -LsSf https://github.com/trunk-rs/trunk/releases/download/v0.21.14/${{ matrix.trunk-artifact }} -o trunk.tar.gz \
+              && mkdir -p "$HOME/.cargo/bin" \
+              && tar -xzf trunk.tar.gz -C "$HOME/.cargo/bin" \
+              && break
+            echo "trunk download failed (attempt $attempt/4) — retrying in 10s"
+            sleep 10
+          done
+          test -x "$HOME/.cargo/bin/trunk"
 
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2

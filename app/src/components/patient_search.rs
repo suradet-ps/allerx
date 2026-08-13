@@ -32,12 +32,24 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
             searched.set(true);
             match api::search_patients(&query).await {
                 Ok(list) => {
+                    state.db_banner.set(None);
                     error.set(None);
                     results.set(list);
                 }
-                Err(message) => {
-                    error.set(Some(message));
+                Err(err) => {
+                    error.set(None);
                     results.set(Vec::new());
+                    // Reachability failures raise the degraded-mode banner
+                    // (ROADMAP Phase 3); everything else stays inline.
+                    if matches!(
+                        err.kind,
+                        crate::api::ApiErrorKind::Connection
+                            | crate::api::ApiErrorKind::NotConfigured
+                    ) {
+                        state.db_banner.set(Some(err.message));
+                    } else {
+                        error.set(Some(err.message));
+                    }
                 }
             }
         });

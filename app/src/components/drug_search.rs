@@ -38,9 +38,11 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                 Ok(allerx_models::HistoryVerdict::Resolved { history })
                     if history.records.is_empty() =>
                 {
+                    state.db_banner.set(None);
                     state.verdict.set(VerdictState::NotFound);
                 }
                 Ok(allerx_models::HistoryVerdict::Resolved { history }) => {
+                    state.db_banner.set(None);
                     state.verdict.set(VerdictState::Found {
                         records: history.records,
                         truncated: history.truncated,
@@ -50,12 +52,23 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                     // The drug term did not resolve — surface the backend's
                     // candidates as the disambiguation list so the verdict
                     // never reads "ไม่พบประวัติ" for an unknown drug.
+                    state.db_banner.set(None);
                     suggestions.set(candidates.clone());
                     state.verdict.set(VerdictState::Unresolved { candidates });
                 }
-                Err(message) => {
+                Err(err) => {
                     state.verdict.set(VerdictState::Pending);
-                    note.set(Some(message));
+                    // Reachability failures raise the degraded-mode banner
+                    // (ROADMAP Phase 3); everything else stays inline.
+                    if matches!(
+                        err.kind,
+                        crate::api::ApiErrorKind::Connection
+                            | crate::api::ApiErrorKind::NotConfigured
+                    ) {
+                        state.db_banner.set(Some(err.message));
+                    } else {
+                        note.set(Some(err.message));
+                    }
                 }
             }
         });
@@ -102,10 +115,21 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                             let prefix = value.clone();
                             leptos::task::spawn_local(async move {
                                 match api::search_drugs(&prefix).await {
-                                    Ok(list) => suggestions.set(list),
-                                    Err(message) => {
+                                    Ok(list) => {
+                                        state.db_banner.set(None);
+                                        suggestions.set(list);
+                                    }
+                                    Err(err) => {
                                         suggestions.set(Vec::new());
-                                        note.set(Some(message));
+                                        if matches!(
+                                            err.kind,
+                                            crate::api::ApiErrorKind::Connection
+                                                | crate::api::ApiErrorKind::NotConfigured
+                                        ) {
+                                            state.db_banner.set(Some(err.message));
+                                        } else {
+                                            note.set(Some(err.message));
+                                        }
                                     }
                                 }
                             });

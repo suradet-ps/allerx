@@ -975,6 +975,38 @@ code, .mono, .code {
   padding: var(--sp-sm) var(--sp-md);
   font-size: 12px;
   line-height: 1.4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  flex-shrink: 0;
+}
+
+.banner-warning__close {
+  background: none;
+  border: none;
+  border-radius: var(--rounded-sm);
+  padding: 4px;
+  color: var(--warning-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.banner-warning__close .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.banner-warning__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.banner-warning__close:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
 }
 
 /* ==========================================================================

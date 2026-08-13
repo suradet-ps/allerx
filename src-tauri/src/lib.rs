@@ -16,20 +16,19 @@ pub fn run() {
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
             let state = AppState::new(config_dir);
-            // Warm the pool in the background when stored settings exist,
-            // so the first operator query never pays connect latency
-            // (ROADMAP Phase 2; feeds Phase 3's connection honesty).
-            if state.config_path().exists() {
-                let warm_state = state.clone();
-                tauri::async_runtime::spawn(async move {
-                    commands::warm_up_pool(&warm_state).await;
-                });
-            }
+            // Live health (ROADMAP Phase 3): warms the pool now, then pings
+            // every 30 s for the app's lifetime. Feeds connection_health
+            // (the status dot) and the degraded-mode banner.
+            let monitor_state = state.clone();
+            tauri::async_runtime::spawn(async move {
+                commands::run_health_monitor(monitor_state).await;
+            });
             app.manage(state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::connection_status,
+            commands::connection_health,
             commands::configure_connection,
             commands::test_connection,
             commands::search_patients,

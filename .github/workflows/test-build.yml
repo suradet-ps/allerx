@@ -48,12 +48,29 @@ jobs:
 
       - name: Install Trunk
         run: |
-          curl -LsSf https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz -o trunk.tar.gz
-          tar -xzf trunk.tar.gz
-          sudo mv trunk /usr/local/bin/
+          # GitHub release downloads occasionally drop the connection;
+          # retry before giving up.
+          for attempt in 1 2 3 4; do
+            curl -LsSf https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz -o trunk.tar.gz \
+              && tar -xzf trunk.tar.gz \
+              && sudo mv trunk /usr/local/bin/ \
+              && break
+            echo "trunk download failed (attempt $attempt/4) — retrying in 10s"
+            sleep 10
+          done
+          test -x /usr/local/bin/trunk
 
       - name: Install tauri-cli
         run: cargo install tauri-cli --version 2.11.4 --locked
 
       - name: Build Tauri App (Test Only)
-        run: cargo tauri build --no-bundle
+        run: |
+          # The beforeBuildCommand runs trunk build, which downloads the
+          # wasm-bindgen CLI from GitHub releases and occasionally flakes
+          # mid-connection — retry the whole build (caches make this cheap).
+          for attempt in 1 2 3 4; do
+            cargo tauri build --no-bundle && exit 0
+            echo "tauri build failed (attempt $attempt/4) — retrying in 10s"
+            sleep 10
+          done
+          exit 1
