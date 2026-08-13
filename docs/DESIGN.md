@@ -272,7 +272,7 @@ app chasing friendliness. Pill-shaped (`{rounded.full}`) elements are limited to
 
 **`print-sheet`** — a printable Thai patient+history sheet, invisible on screen (`display: none`), the only content rendered in `@media print`:
 - Header: app name + print timestamp; patient block (name/HN/CID/birth date); verdict table (drug term | status | detail); history table (date | OPD/IPD | drug | prescriber | department); footer disclaimer ("HOSxP ยังคงเป็นแหล่งข้อมูลหลัก").
-- Print tokens: `@page` margin 14mm, black-on-white, 12px body / 11px table text, 1px `#999` table borders — designed to survive greyscale and hospital printers. The on-screen app is fully hidden (`display: none !important`).
+- Print tokens: `@page` margin 14mm, black-on-white, 12px body / 11px table text, 1px `#999` table borders — designed to survive greyscale and hospital printers. The app chrome is hidden by `display: none !important` on its **siblings** (`.top-bar`, `.app__body`, `.modal-backdrop`) — never on `.app` itself, because an ancestor `display: none` would swallow the sheet's whole subtree (the empty-print bug). `html/body/.app` drop their screen `height`/`overflow` constraints so long sheets paginate correctly.
 
 ### Timeline (main canvas, below verdict)
 
