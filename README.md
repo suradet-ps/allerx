@@ -79,9 +79,13 @@ Notes:
 - `hosxp-connector`: integration tests behind a feature flag, run only against a
   test/staging instance. Every query in the crate has a test asserting it is a
   `SELECT`/`WITH` statement.
+- `app`: host-run unit tests plus a WASM suite (23 tests) mounted into headless
+  Chrome — verdict states, timeline truncation, CID masking, and the search
+  flows against a fake `invoke` (no Tauri, no database).
 - CI runs: `fmt` + `clippy -D warnings` + tests (root workspace and WASM
-  frontend), `cargo deny` dependency checks, pedantic clippy + **Miri** on
-  `search-core`, and a full Tauri build on tag pushes.
+  frontend), `cargo deny` dependency checks, clippy + **Miri** on
+  `search-core`, WASM tests in headless Chrome, and a full Tauri build on tag
+  pushes.
 
 ## Documentation
 
@@ -94,6 +98,7 @@ Notes:
 | [`docs/database.md`](docs/database.md) | HOSxP schema verification log and query patterns |
 | [`docs/perf-baseline.md`](docs/perf-baseline.md) | Performance budgets, measurement protocol, DBA index checklist |
 | [`docs/reliability-notes.md`](docs/reliability-notes.md) | Connection health model, failure taxonomy, kill-DB scenario |
+| [`docs/a11y-notes.md`](docs/a11y-notes.md) | Accessibility audit, contrast table, keyboard/NVDA walkthrough |
 
 ## Roadmap
 

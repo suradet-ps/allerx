@@ -402,11 +402,16 @@ scenario is documented and passed manually.
 The Rust core is well tested; the verdict state machine — the product — is
 not.
 
-- [ ] **WASM test runner.** Add `wasm-bindgen-test` to `app/` with a CI job
+**Status: COMPLETE** (implementation) — wasm test runner + 23 tests in
+headless Chrome, honest CI job names, cargo audit on the release path, and
+the a11y audit log. The NVDA pass and the on-machine keyboard walkthrough
+run during Phase 6 (documented procedures in `docs/a11y-notes.md`).
+
+- [x] **WASM test runner.** Add `wasm-bindgen-test` to `app/` with a CI job
   (Chromium headless via `wasm-pack test --headless` or the equivalent
   pinned runner). Host-run `cargo test -p allerx-app` stays as-is for pure
   logic.
-- [ ] **Component tests for the clinical surface:**
+- [x] **Component tests for the clinical surface:**
   - `verdict_band.rs` — renders all four verdict states (Pending, Found,
     NotFound, Unresolved from Phase 1) with correct class + text; latest
     record detail line correct; never two verdicts.
@@ -416,16 +421,16 @@ not.
     states, debounce wiring via injected timer.
   - `patient_search.rs` — debounce, kind detection end-to-end via a fake
     `invoke`.
-- [ ] **API-layer tests.** `api.rs` with an injectable fake `invoke`
+- [x] **API-layer tests.** `api.rs` with an injectable fake `invoke`
   (the extern `__TAURI_INTERNALS__` binding becomes an injected function):
   arg-shape correctness, error-string passthrough, deserialization.
-- [ ] **CI: honest naming + new jobs.** Rename the `rust-safety.yml` job
+- [x] **CI: honest naming + new jobs.** Rename the `rust-safety.yml` job
   (`clippy-pedantic` → `clippy-workspace`) or actually enable
   `-W clippy::pedantic` (prefer honesty: keep the standard lints, rename the
   job); add the WASM test job to `ci.yml`; add `cargo audit` to the release
   workflow (deny covers advisories, but a dedicated audit on tag pushes is
   cheap and loud).
-- [ ] **Accessibility audit.** Per DESIGN.md's keyboard-first principle,
+- [x] **Accessibility audit.** Per DESIGN.md's keyboard-first principle,
   document in `docs/a11y-notes.md`: keyboard-only walkthrough of the full
   flow (search → select → drug search → verdict), `aria-label`s on all
   interactive elements, visible `:focus-visible` rings (already styled),
@@ -665,7 +670,7 @@ checked; once confirmed, the marker is removed and the finding lands in
 | `docs/database.md` | Schema verification log, query patterns, DBA findings | ✅ exists |
 | `docs/perf-baseline.md` | Latency measurements, budgets, regression thresholds | ✅ exists (protocol + budgets; numbers filled at staging/pilot) |
 | `docs/reliability-notes.md` | Kill-DB scenario, recovery procedure, health-check notes | ✅ exists |
-| `docs/a11y-notes.md` | Accessibility audit results, NVDA log | Phase 4 |
+| `docs/a11y-notes.md` | Accessibility audit results, NVDA log | ✅ exists (audit + contrast done; NVDA pass scheduled for Phase 6) |
 | `docs/deployment.md` | DBA checklist, installer, keyring/DPI notes | Phase 6 |
 | `docs/pilot-notes.md` | Pilot protocol, feedback form, field reports | Phase 6 |
 | `docs/validation-report.md` | False-verdict rates, root causes, go/no-go | Phase 7 |

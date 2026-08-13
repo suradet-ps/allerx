@@ -7,7 +7,7 @@ use leptos::prelude::*;
 /// command (ROADMAP Phase 3) — drives the top-bar status dot. The backend
 /// keeps it fresh with a 30 s ping loop and every query outcome; this
 /// frontend value is a polled copy, never computed from a file check.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ConnectionHealth {
     /// No stored settings — the settings dialog is the flow.
     Unconfigured,
@@ -42,7 +42,7 @@ pub struct AppState {
 /// "ไม่พบประวัติ" verdict is only ever produced when the drug is known;
 /// an unresolvable drug term renders as [`VerdictState::Unresolved`]
 /// instead.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum VerdictState {
     /// Query in flight / nothing searched yet — neutral gray, never implies
     /// an answer.
@@ -75,5 +75,11 @@ impl AppState {
             health: RwSignal::new(ConnectionHealth::Unconfigured),
             db_banner: RwSignal::new(None),
         }
+    }
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
     }
 }
