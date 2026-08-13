@@ -32,7 +32,10 @@ pub enum VerdictState {
     /// History found; `records` are sorted most-recent-first. `truncated`
     /// is true when older history exists beyond the per-source cap — the
     /// timeline must not present itself as complete (ROADMAP Phase 1).
-    Found { records: Vec<DrugHistoryRecord>, truncated: bool },
+    Found {
+        records: Vec<DrugHistoryRecord>,
+        truncated: bool,
+    },
     /// History searched and definitively not found (drug resolved, no
     /// dispensing rows).
     NotFound,

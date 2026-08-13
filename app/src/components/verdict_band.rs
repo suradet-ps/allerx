@@ -80,8 +80,7 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
             let (headline, detail) = if candidates.is_empty() {
                 (
                     "ไม่พบยานี้ในทะเบียนยา".to_string(),
-                    "ไม่สามารถตรวจประวัติได้ — ตรวจสอบการสะกดชื่อยา หรือสอบถามผู้สั่งยา"
-                        .to_string(),
+                    "ไม่สามารถตรวจประวัติได้ — ตรวจสอบการสะกดชื่อยา หรือสอบถามผู้สั่งยา".to_string(),
                 )
             } else {
                 (
