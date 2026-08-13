@@ -63,6 +63,7 @@ heavy marketing-block look.
 - **Found** ({colors.verdict-found}): bg `#E8F5E9`, text `#2E7D32`, border `#A5D6A7` — history found.
 - **Not-Found** ({colors.verdict-notfound}): bg `#FFEBEE`, text `#C62828`, border `#FFCDD2` — no history.
 - **Neutral Pending** ({colors.verdict-pending}): bg `#F5F5F5`, text `#616161`, border `#E0E0E0` — query in flight; neutral gray, never implies an answer.
+- **Unverifiable** ({colors.verdict-unresolved}): bg `#FFF8E1`, text `#8a6420`, border `#FFE082` — the drug term could not be matched to the formulary (`drugitems`). Amber warns "this needs checking", and is deliberately distinct from both the green/red verdicts (never implies found/not-found) and from system-state amber (this is a *clinical* answer: "cannot confirm, choose a drug from the suggestions"). Rendered by the `verdict-unresolved` state (ROADMAP Phase 1, Gap G1).
 
 ### Surface — neutral warm paper
 - **Canvas** ({colors.canvas}): `#FAFAFA` — app background, warm neutral off-white.
