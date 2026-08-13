@@ -42,7 +42,7 @@ pub struct AppState {
 /// "ไม่พบประวัติ" verdict is only ever produced when the drug is known;
 /// an unresolvable drug term renders as [`VerdictState::Unresolved`]
 /// instead.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum VerdictState {
     /// Query in flight / nothing searched yet — neutral gray, never implies
     /// an answer.
