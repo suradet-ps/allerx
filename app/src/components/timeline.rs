@@ -9,13 +9,18 @@ use crate::state::{AppState, VerdictState};
 #[component]
 pub fn Timeline(state: AppState) -> impl IntoView {
     move || {
-        let VerdictState::Found { records } = state.verdict.get() else {
+        let VerdictState::Found { records, truncated } = state.verdict.get() else {
             return None;
         };
         if records.is_empty() {
             return None;
         }
         let total = records.len();
+        let footer = if truncated {
+            format!("แสดง {total} รายการล่าสุด — มีประวัติเก่ากว่านี้")
+        } else {
+            format!("ทั้งหมด {total} รายการ")
+        };
         Some(
             view! {
                 <>
@@ -59,7 +64,7 @@ pub fn Timeline(state: AppState) -> impl IntoView {
                             })
                             .collect_view()}
                     </ul>
-                    <p class="timeline-footer">{format!("ทั้งหมด {total} รายการ")}</p>
+                    <p class="timeline-footer">{footer}</p>
                 </>
             }
             .into_any(),

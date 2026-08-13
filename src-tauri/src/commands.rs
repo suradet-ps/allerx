@@ -11,7 +11,7 @@ use tauri::State;
 
 use allerx_hosxp_connector::config::{HosxConfig, load, load_vault, save_encrypted};
 use allerx_hosxp_connector::{HosxRepository, MySqlPool, pool};
-use allerx_models::{DrugHistoryRecord, DrugItem, PatientSummary};
+use allerx_models::{DrugItem, HistoryVerdict, PatientSummary};
 use allerx_search_core::{HosxRepository as _, RepositoryError, detect_query_kind};
 
 use crate::state::AppState;
@@ -207,14 +207,17 @@ pub async fn search_drugs(
 /// Medication history for one patient + drug (AGENTS.md §7.2, milestone M4).
 ///
 /// OPD + IPD are queried concurrently on the backend and merged
-/// most-recent-first. An empty list is a legitimate "no history found" —
-/// the frontend decides the verdict. Errors are generic.
+/// most-recent-first. The verdict contract (ROADMAP Phase 1): an exact drug
+/// hit yields [`HistoryVerdict::Resolved`] (possibly empty — a legitimate
+/// "ไม่พบประวัติ"); an unresolvable term yields
+/// [`HistoryVerdict::Unresolved`] with disambiguation candidates. The
+/// frontend decides the visual verdict. Errors are generic.
 #[tauri::command]
 pub async fn fetch_drug_history(
     state: State<'_, AppState>,
     hn: String,
     drug: String,
-) -> Result<Vec<DrugHistoryRecord>, String> {
+) -> Result<HistoryVerdict, String> {
     let pool = acquire_pool(&state).await?;
     let repo = HosxRepository::new(pool);
     repo.fetch_drug_history(&hn, &drug)

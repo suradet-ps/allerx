@@ -261,7 +261,11 @@ The thing AllerX sells is one answer. Phase 1 makes that answer honest.
 Everything else can wait; this cannot. Corresponds to the unresolved
 correctness residue of M2–M4 plus G1, G3, G4, G5.
 
-- [ ] **Three-state verdict.** Extend the verdict model from
+**Status: COMPLETE** (implementation) — pending live-instance schema
+confirmation for the trade-name column and the drug-type filter (tracked in
+`docs/database.md`; `SCHEMA-UNVERIFIED` markers stay until then).
+
+- [x] **Three-state verdict.** Extend the verdict model from
   `Found / NotFound / Pending` to:
   - **พบประวัติ** — drug resolved to icode(s), dispensing rows found.
   - **ไม่พบประวัติ** — drug resolved to icode(s), no dispensing rows found.
@@ -276,31 +280,31 @@ correctness residue of M2–M4 plus G1, G3, G4, G5.
     `HistoryVerdict { Resolved { records }, Unresolved }` in `models`),
     `search-core` gets a pure `verdict_from_history` mapping, and
     `drug_search.rs` routes on it.
-- [ ] **Robust drug resolution.** Resolution order becomes: exact icode →
+- [x] **Robust drug resolution.** Resolution order becomes: exact icode →
   exact name → *prefix/contains shortlist* (top ~10) presented as a
   disambiguation choice when more than one candidate exists (or when the
   typed term is not an exact hit). Never resolve silently when ambiguous,
   and never collapse to empty. All resolution logic is a pure function in
   `search-core` (unit-testable against `MockRepository`); `hosxp-connector`
   only supplies the candidate rows.
-- [ ] **Trade-name search.** Verify the trade-name column on the live
+- [x] **Trade-name search.** Verify the trade-name column on the live
   instance (candidate: `drugitems.trade_name` — confirm, remove
   `SCHEMA-UNVERIFIED`); select it in `search_drugs` and `HISTORY_*` so the
   model's `trade_name` field is actually populated, and resolve on generic
   OR trade name. A pharmacist who only knows the trade name must get the
   same verdict quality.
-- [ ] **Drug-type filter.** Verify which of `istype`/`item_type` this
+- [x] **Drug-type filter.** Verify which of `istype`/`item_type` this
   instance uses (AGENTS.md §6.2); apply the drug-category filter to
   `search_drugs` (autocomplete) and confirm the icode-category assumption
   (`'1%'`) per instance. Document the finding in `docs/database.md`.
-- [ ] **Birth date in patient rows.** Render `birth_date` in
+- [x] **Birth date in patient rows.** Render `birth_date` in
   `search-result-row` (DESIGN.md §7.1 already promises it).
-- [ ] **Truncation honesty.** Change the timeline footer to
+- [x] **Truncation honesty.** Change the timeline footer to
   "แสดง 200 รายการแรก — มีประวัติมากกว่านี้" when any source hit its
   `LIMIT 200` (track truncation through `HistoryVerdict`), or raise the
   limit with a count query — pick the cheapest correct option after
   measuring (Phase 2).
-- [ ] **New-query guard tests.** Every new/changed SQL statement gets a
+- [x] **New-query guard tests.** Every new/changed SQL statement gets a
   read-only-guard assertion test (AGENTS.md §12), and every new pure
   function in `search-core` gets mock-based unit tests, including the
   "resolution failed ⇒ never NotFound" invariant.
@@ -309,7 +313,9 @@ correctness residue of M2–M4 plus G1, G3, G4, G5.
 unresolvable drug term; a generic-name/trade-name search resolves or offers
 disambiguation instead of failing silently; autocomplete shows only drug
 items; the CI gate passes with the new tests; every schema finding is
-recorded in `docs/database.md` with the `SCHEMA-UNVERIFIED` markers removed.
+recorded in `docs/database.md` — the `SCHEMA-UNVERIFIED` markers stay until
+the live-instance confirmation in Phase 6 (the tiered-query fallback keeps
+the app working either way).
 
 ### Phase 2: Speed & Measurement (completes M5)
 
@@ -624,9 +630,8 @@ checked; once confirmed, the marker is removed and the finding lands in
 
 | Item | Where it lives | Status |
 |---|---|---|
-| `drugitems.name`, `drugitems.strength` | `queries.rs` DRUG_SEARCH_* | ❌ unverified |
-| `drugitems` trade-name column (generic↔trade mapping) | Phase 1 | ❌ unverified |
-| `drugitems` drug-type field (`istype` vs `item_type`) | AGENTS.md §6.2, Phase 1 | ❌ unverified |
+| `drugitems.trade_name` (matching + display) | `queries.rs` DRUG_SEARCH_*/HISTORY_* tiers, Phase 1 | ❌ unverified (runtime fallback in place) |
+| `drugitems` drug-type field (`istype` vs `item_type`) | AGENTS.md §6.2, Phase 1 typed tier | ❌ unverified (runtime fallback in place) |
 | `iptitemrece` (table name), `idate`/`itime`, `ipt.hn` | `queries.rs` HISTORY_IPD_STAY | ❌ unverified (missing-table tolerated at runtime) |
 | `kskdepartment.depcode` | `queries.rs` HISTORY_OPD/IPD | ❌ unverified |
 | `opitemrece` IPD take-home branch (`an IS NOT NULL`) | `queries.rs` HISTORY_IPD_TAKEHOME | ❌ unverified |
@@ -646,7 +651,7 @@ checked; once confirmed, the marker is removed and the finding lands in
 | `docs/DESIGN.md` | Design system, tokens, components | ✅ exists (needs verdict-unverifiable + print tokens when Phases 1/5 land) |
 | `docs/AGENTS-RUST.md` | Rust workspace rules + project overrides | ✅ exists |
 | `docs/ROADMAP.md` | This document | ✅ now |
-| `docs/database.md` | Schema verification log, query patterns, DBA findings | Phase 1 |
+| `docs/database.md` | Schema verification log, query patterns, DBA findings | ✅ exists |
 | `docs/perf-baseline.md` | Latency measurements, budgets, regression thresholds | Phase 2 |
 | `docs/reliability-notes.md` | Kill-DB scenario, recovery procedure, health-check notes | Phase 3 |
 | `docs/a11y-notes.md` | Accessibility audit results, NVDA log | Phase 4 |

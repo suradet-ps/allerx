@@ -1,11 +1,12 @@
 //! In-memory repository for tests and placeholder frontend use.
 
-use allerx_models::{DrugHistoryRecord, DrugItem, PatientSummary};
+use allerx_models::{DrugHistoryRecord, DrugItem, HistoryVerdict, PatientSummary};
 use async_trait::async_trait;
 
 use crate::error::RepositoryError;
 use crate::query_kind::QueryKind;
 use crate::repository::HosxRepository;
+use crate::resolution::{classify_drug_resolution, rank_candidates, verdict_from_resolution};
 
 /// A [`HosxRepository`] that never touches a database.
 #[derive(Debug, Clone)]
@@ -98,24 +99,38 @@ impl HosxRepository for MockRepository {
         &self,
         _hn: &str,
         drug: &str,
-    ) -> Result<Vec<DrugHistoryRecord>, RepositoryError> {
+    ) -> Result<HistoryVerdict, RepositoryError> {
         let needle = drug.trim().to_lowercase();
         if needle.is_empty() {
-            return Ok(Vec::new());
+            // Blank input is an unresolvable term, never a "not found".
+            return Ok(HistoryVerdict::Unresolved {
+                candidates: Vec::new(),
+            });
         }
-        let mut hits: Vec<DrugHistoryRecord> = self
-            .history
+        // Exact hit against the known drug list (icode or name) resolves.
+        let exact = self
+            .drugs
             .iter()
-            .filter(|r| {
-                r.drug_code.to_lowercase() == needle || r.drug_name.to_lowercase().contains(&needle)
-            })
-            .cloned()
-            .collect();
-        // The mock has no patient table to filter HN against — it filters on
-        // the drug only. Ordering is preserved most-recent-first so the
-        // contract matches the real repository.
-        hits.sort_by_key(|r| std::cmp::Reverse(r.visit_date));
-        Ok(hits)
+            .find(|d| d.icode.to_lowercase() == needle || d.name.to_lowercase() == needle);
+        let records = if let Some(hit) = exact {
+            let mut hits: Vec<DrugHistoryRecord> = self
+                .history
+                .iter()
+                .filter(|r| r.drug_code.to_lowercase() == hit.icode.to_lowercase())
+                .cloned()
+                .collect();
+            // Ordering is preserved most-recent-first so the contract
+            // matches the real repository.
+            hits.sort_by_key(|r| std::cmp::Reverse(r.visit_date));
+            hits
+        } else {
+            Vec::new()
+        };
+        let resolution = classify_drug_resolution(
+            exact.map(|d| d.icode.clone()),
+            rank_candidates(self.search_drugs(drug).await?, 10),
+        );
+        Ok(verdict_from_resolution(resolution, records, false))
     }
 }
 
@@ -150,11 +165,13 @@ mod tests {
                 icode: "1-001".into(),
                 name: "พาราเซตามอล".into(),
                 strength: Some("500 mg".into()),
+                trade_name: None,
             },
             DrugItem {
                 icode: "1-002".into(),
                 name: "แอมม็อกซิซิลลิน".into(),
                 strength: Some("250 mg".into()),
+                trade_name: None,
             },
         ]
     }
@@ -281,29 +298,85 @@ mod tests {
     #[tokio::test]
     async fn history_matches_by_icode_and_sorts_most_recent_first() {
         let history = vec![record(date(2024, 1, 1), Opd), record(date(2024, 5, 5), Ipd)];
-        let repo = MockRepository::new(true).with_history(history);
-        let hits = repo
+        let repo = MockRepository::new(true)
+            .with_drugs(sample_drugs())
+            .with_history(history);
+        let verdict = repo
             .fetch_drug_history("00012345", "1-001")
             .await
             .expect("mock history succeeds");
-        let dates: Vec<_> = hits.iter().map(|r| r.visit_date).collect();
-        assert_eq!(dates, vec![date(2024, 5, 5), date(2024, 1, 1)]);
+        match verdict {
+            HistoryVerdict::Resolved { history } => {
+                let dates: Vec<_> = history.records.iter().map(|r| r.visit_date).collect();
+                assert_eq!(dates, vec![date(2024, 5, 5), date(2024, 1, 1)]);
+                assert!(!history.truncated);
+            }
+            other => panic!("expected Resolved, got {other:?}"),
+        }
     }
 
     #[tokio::test]
-    async fn history_no_match_or_blank_drug_returns_empty() {
-        let repo = MockRepository::new(true).with_history(vec![record(date(2024, 1, 1), Opd)]);
-        assert!(
-            repo.fetch_drug_history("00012345", "9-999")
-                .await
-                .expect("mock history succeeds")
-                .is_empty()
-        );
-        assert!(
-            repo.fetch_drug_history("00012345", " ")
-                .await
-                .expect("mock history succeeds")
-                .is_empty()
-        );
+    async fn history_resolves_by_exact_name() {
+        let history = vec![record(date(2024, 3, 3), Opd)];
+        let repo = MockRepository::new(true)
+            .with_drugs(sample_drugs())
+            .with_history(history);
+        let verdict = repo
+            .fetch_drug_history("00012345", "พาราเซตามอล")
+            .await
+            .expect("mock history succeeds");
+        assert!(matches!(verdict, HistoryVerdict::Resolved { .. }));
+    }
+
+    #[tokio::test]
+    async fn known_drug_with_no_history_is_a_definitive_not_found() {
+        let repo = MockRepository::new(true).with_drugs(sample_drugs());
+        let verdict = repo
+            .fetch_drug_history("00012345", "1-001")
+            .await
+            .expect("mock history succeeds");
+        match verdict {
+            HistoryVerdict::Resolved { history } => assert!(history.records.is_empty()),
+            other => panic!("expected Resolved, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn unknown_drug_returns_candidates_never_not_found() {
+        let repo = MockRepository::new(true).with_drugs(sample_drugs());
+        let verdict = repo
+            .fetch_drug_history("00012345", "พารา")
+            .await
+            .expect("mock history succeeds");
+        match verdict {
+            HistoryVerdict::Unresolved { candidates } => {
+                assert_eq!(candidates.len(), 1);
+                assert_eq!(candidates[0].icode, "1-001");
+            }
+            other => panic!("expected Unresolved, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn unknown_drug_with_no_candidates_is_unresolved_empty() {
+        let repo = MockRepository::new(true).with_drugs(sample_drugs());
+        let verdict = repo
+            .fetch_drug_history("00012345", "ไม่มีในระบบเลย")
+            .await
+            .expect("mock history succeeds");
+        match verdict {
+            HistoryVerdict::Unresolved { candidates } => assert!(candidates.is_empty()),
+            other => panic!("expected Unresolved, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn blank_drug_is_unresolved_never_not_found() {
+        let repo = MockRepository::new(true).with_drugs(sample_drugs());
+        let verdict = repo
+            .fetch_drug_history("00012345", " ")
+            .await
+            .expect("mock history succeeds");
+        assert!(matches!(verdict, HistoryVerdict::Unresolved { .. }));
     }
 }

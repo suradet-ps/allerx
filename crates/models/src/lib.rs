@@ -51,6 +51,10 @@ pub struct DrugItem {
     /// Dose strength as printed on the item, e.g. "500 mg" — helps the
     /// pharmacist pick the right presentation.
     pub strength: Option<String>,
+    /// Trade/brand name — helps disambiguate candidates and match a search
+    /// term the pharmacist knows by its brand (ROADMAP Phase 1).
+    /// `None` when the live instance lacks the column.
+    pub trade_name: Option<String>,
 }
 
 /// Complete answer to "has this patient had this drug before?" (AGENTS.md §4).
@@ -60,4 +64,36 @@ pub struct DrugSearchHit {
     pub found: bool,
     /// Most recent first.
     pub records: Vec<DrugHistoryRecord>,
+}
+
+/// A resolved history lookup: the drug was matched to a `drugitems` icode
+/// and the dispensing rows were fetched (possibly zero).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResolvedHistory {
+    /// Most recent first. Empty means "patient has no dispensing history for
+    /// this drug" — a legitimate, definitive "ไม่พบประวัติ".
+    pub records: Vec<DrugHistoryRecord>,
+    /// True when any source hit its per-source `LIMIT`, i.e. older history
+    /// exists but is not returned. The UI must not present the list as
+    /// complete when this is set.
+    pub truncated: bool,
+}
+
+/// The answer to "has this patient had this drug, and when?" — the backend
+/// contract for the verdict band (ROADMAP Phase 1).
+///
+/// The two variants are deliberately distinct: a verdict of "not found" is
+/// only ever produced for a **resolved** drug. When the drug term cannot be
+/// mapped to a `drugitems` entry, the lookup is [`HistoryVerdict::Unresolved`]
+/// and the UI must never render "ไม่พบประวัติ" (a false negative is a
+/// patient-safety event).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HistoryVerdict {
+    /// The drug is known; `history.records` holds the dispensing timeline
+    /// (empty = genuinely never dispensed).
+    Resolved { history: ResolvedHistory },
+    /// The drug term could not be resolved to an icode. `candidates` are the
+    /// closest `drugitems` matches for the operator to disambiguate; empty
+    /// means the term is not in the formulary at all.
+    Unresolved { candidates: Vec<DrugItem> },
 }
