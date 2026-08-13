@@ -51,6 +51,10 @@ pub struct DrugItem {
     /// Dose strength as printed on the item, e.g. "500 mg" — helps the
     /// pharmacist pick the right presentation.
     pub strength: Option<String>,
+    /// Trade/brand name — helps disambiguate candidates and match a search
+    /// term the pharmacist knows by its brand (ROADMAP Phase 1).
+    /// `None` when the live instance lacks the column.
+    pub trade_name: Option<String>,
 }
 
 /// Complete answer to "has this patient had this drug before?" (AGENTS.md §4).

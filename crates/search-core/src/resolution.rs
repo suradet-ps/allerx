@@ -76,6 +76,7 @@ mod tests {
             icode: icode.into(),
             name: name.into(),
             strength: None,
+            trade_name: None,
         }
     }
 
