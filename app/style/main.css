@@ -787,13 +787,59 @@ code, .mono, .code {
   border-color: var(--verdict-unresolved-border);
 }
 
-/* Batch verdicts (ROADMAP Phase 5) — stacked compact bands, one per drug */
+/* Batch verdicts (ROADMAP Phase 5) — one compact band per drug.
+   Stacked on small windows (scroll handles the overflow); a 2-column
+   grid on large windows so many-drug batches stay glanceable. */
 
 .verdict-batch {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: var(--sp-sm);
   flex-shrink: 0;
+}
+
+@media (min-width: 960px) {
+  .verdict-batch {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Timeline filter (many-drug batches): one chip per checked drug */
+
+.timeline-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--sp-sm);
+  flex-shrink: 0;
+}
+
+.timeline-filter__chip {
+  background: var(--canvas-raised);
+  color: var(--slate);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-full);
+  padding: 2px 10px;
+  font-family: var(--font-thai);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.timeline-filter__chip:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.timeline-filter__chip--active {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand-dark);
+}
+
+.timeline-filter__chip:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
 }
 
 .verdict-band--compact {
