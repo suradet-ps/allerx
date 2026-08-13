@@ -47,10 +47,17 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
     }
 }
 
-/// The single-drug verdict — the full-size band (DESIGN.md).
+/// The single-drug verdict — the full-size band (DESIGN.md). The resolved
+/// drug's name/strength always labels the verdict, so an icode search
+/// shows which drug it refers to (pilot feedback).
 fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl IntoView {
     match &result.state {
-        DrugVerdictState::Found { records, truncated } => {
+        DrugVerdictState::Found {
+            drug,
+            records,
+            truncated,
+        } => {
+            let identity = crate::state::drug_identity(drug);
             let latest = records.first();
             let (date, visit_type, prescriber, department) = match latest {
                 Some(record) => {
@@ -79,7 +86,7 @@ fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl 
                         <p class="verdict-band__headline">"พบประวัติการได้รับยานี้"</p>
                         <p class="verdict-band__detail">
                             {format!(
-                                "ครั้งล่าสุด {date} ({visit_type}) โดย {prescriber} @ {department} — ทั้งหมด {} ครั้ง{truncation_suffix}",
+                                "{identity} — ครั้งล่าสุด {date} ({visit_type}) โดย {prescriber} @ {department} — ทั้งหมด {} ครั้ง{truncation_suffix}",
                                 records.len()
                             )}
                         </p>
@@ -88,16 +95,21 @@ fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl 
             }
             .into_any()
         }
-        DrugVerdictState::NotFound => view! {
-            <section class="verdict-band verdict-notfound">
-                <IconXCircle class="verdict-band__icon" />
-                <div class="verdict-band__content">
-                    <p class="verdict-band__headline">"ไม่พบประวัติการได้รับยานี้"</p>
-                    <p class="verdict-band__detail">"ไม่เคยมีรายการจ่ายยานี้ในประวัติผู้ป่วย"</p>
-                </div>
-            </section>
+        DrugVerdictState::NotFound { drug } => {
+            let identity = crate::state::drug_identity(drug);
+            view! {
+                <section class="verdict-band verdict-notfound">
+                    <IconXCircle class="verdict-band__icon" />
+                    <div class="verdict-band__content">
+                        <p class="verdict-band__headline">"ไม่พบประวัติการได้รับยานี้"</p>
+                        <p class="verdict-band__detail">
+                            {format!("{identity} — ไม่เคยมีรายการจ่ายยานี้ในประวัติผู้ป่วย")}
+                        </p>
+                    </div>
+                </section>
+            }
+            .into_any()
         }
-        .into_any(),
         DrugVerdictState::Unresolved { candidates } => {
             let (headline, detail) = if candidates.is_empty() {
                 (
@@ -134,7 +146,12 @@ fn render_batch(results: &[crate::state::DrugVerdict], state: &AppState) -> impl
                 .map(|result| {
                     let term = result.term.clone();
                     match &result.state {
-                        DrugVerdictState::Found { records, truncated } => {
+                        DrugVerdictState::Found {
+                            drug,
+                            records,
+                            truncated,
+                        } => {
+                            let identity = crate::state::drug_identity(drug);
                             let latest = records.first();
                             let (date, visit_type, count) = match latest {
                                 Some(record) => {
@@ -157,23 +174,28 @@ fn render_batch(results: &[crate::state::DrugVerdict], state: &AppState) -> impl
                                     <div class="verdict-band__content">
                                         <p class="verdict-band__term">{term}</p>
                                         <p class="verdict-band__detail">
-                                            {format!("พบประวัติ — ครั้งล่าสุด {date} ({visit_type}) · {count}{truncation}")}
+                                            {format!("พบประวัติ — {identity} · ครั้งล่าสุด {date} ({visit_type}) · {count}{truncation}")}
                                         </p>
                                     </div>
                                 </div>
                             }
                             .into_any()
                         }
-                        DrugVerdictState::NotFound => view! {
-                            <div class="verdict-band verdict-band--compact verdict-notfound">
-                                <IconXCircle class="verdict-band__icon" />
-                                <div class="verdict-band__content">
-                                    <p class="verdict-band__term">{term}</p>
-                                    <p class="verdict-band__detail">"ไม่พบประวัติการได้รับยานี้"</p>
+                        DrugVerdictState::NotFound { drug } => {
+                            let identity = crate::state::drug_identity(drug);
+                            view! {
+                                <div class="verdict-band verdict-band--compact verdict-notfound">
+                                    <IconXCircle class="verdict-band__icon" />
+                                    <div class="verdict-band__content">
+                                        <p class="verdict-band__term">{term}</p>
+                                        <p class="verdict-band__detail">
+                                            {format!("ไม่พบประวัติ — {identity}")}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
+                            }
+                            .into_any()
                         }
-                        .into_any(),
                         DrugVerdictState::Unresolved { candidates } => {
                             let add = state.drug_chips;
                             view! {

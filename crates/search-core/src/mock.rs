@@ -131,7 +131,7 @@ impl HosxRepository for MockRepository {
             Vec::new()
         };
         let resolution = classify_drug_resolution(
-            exact.map(|d| d.icode.clone()),
+            exact.cloned(),
             rank_candidates(self.search_drugs(drug).await?, 10),
         );
         Ok(verdict_from_resolution(resolution, records, false))
@@ -339,7 +339,7 @@ mod tests {
             .await
             .expect("mock history succeeds");
         match verdict {
-            HistoryVerdict::Resolved { history } => {
+            HistoryVerdict::Resolved { history, .. } => {
                 let dates: Vec<_> = history.records.iter().map(|r| r.visit_date).collect();
                 assert_eq!(dates, vec![date(2024, 5, 5), date(2024, 1, 1)]);
                 assert!(!history.truncated);
@@ -369,7 +369,7 @@ mod tests {
             .await
             .expect("mock history succeeds");
         match verdict {
-            HistoryVerdict::Resolved { history } => assert!(history.records.is_empty()),
+            HistoryVerdict::Resolved { history, .. } => assert!(history.records.is_empty()),
             other => panic!("expected Resolved, got {other:?}"),
         }
     }

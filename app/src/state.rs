@@ -37,15 +37,18 @@ pub struct DrugVerdict {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DrugVerdictState {
-    /// History found; records are most-recent-first. `truncated` means
-    /// older history exists beyond the per-source cap.
+    /// History found; `drug` is the resolved formulary entry (its
+    /// name/strength labels the verdict), records are most-recent-first,
+    /// and `truncated` means older history exists beyond the per-source cap.
     Found {
+        drug: DrugItem,
         records: Vec<DrugHistoryRecord>,
         truncated: bool,
     },
-    /// History searched and definitively not found (drug resolved, no
-    /// dispensing rows).
-    NotFound,
+    /// History searched and definitively not found — the drug resolved (its
+    /// identity is shown so the verdict never refers to an unknown item),
+    /// but no dispensing rows exist.
+    NotFound { drug: DrugItem },
     /// The drug term could not be matched to the formulary. `candidates`
     /// are the closest matches (empty = not in `drugitems` at all). Never
     /// render "ไม่พบประวัติ" in this state.
@@ -136,6 +139,16 @@ pub fn merged_timeline(results: &[DrugVerdict]) -> (Vec<DrugHistoryRecord>, bool
     (records, truncated)
 }
 
+/// The resolved drug's display identity: "name (strength)" when a strength
+/// is known — shown in verdict bands so a search by icode reveals which
+/// drug a verdict refers to (pilot feedback).
+pub fn drug_identity(drug: &DrugItem) -> String {
+    match &drug.strength {
+        Some(strength) => format!("{} ({strength})", drug.name),
+        None => drug.name.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,7 +172,30 @@ mod tests {
     fn found(records: Vec<DrugHistoryRecord>, truncated: bool) -> DrugVerdict {
         DrugVerdict {
             term: "x".into(),
-            state: DrugVerdictState::Found { records, truncated },
+            state: DrugVerdictState::Found {
+                drug: DrugItem {
+                    icode: "1-001".into(),
+                    name: "พาราเซตามอล".into(),
+                    strength: Some("500 mg".into()),
+                    trade_name: None,
+                },
+                records,
+                truncated,
+            },
+        }
+    }
+
+    fn not_found(term: &str) -> DrugVerdict {
+        DrugVerdict {
+            term: term.into(),
+            state: DrugVerdictState::NotFound {
+                drug: DrugItem {
+                    icode: "1-001".into(),
+                    name: "พาราเซตามอล".into(),
+                    strength: None,
+                    trade_name: None,
+                },
+            },
         }
     }
 
@@ -181,13 +217,7 @@ mod tests {
     #[test]
     fn merged_timeline_or_s_truncation_flags() {
         let d = NaiveDate::from_ymd_opt(2024, 1, 1).expect("valid date");
-        let results = vec![
-            found(vec![record(d, "a")], true),
-            DrugVerdict {
-                term: "b".into(),
-                state: DrugVerdictState::NotFound,
-            },
-        ];
+        let results = vec![found(vec![record(d, "a")], true), not_found("b")];
         let (records, truncated) = merged_timeline(&results);
         assert_eq!(records.len(), 1);
         assert!(truncated);
@@ -195,10 +225,7 @@ mod tests {
 
     #[test]
     fn merged_timeline_skips_non_found_drugs() {
-        let results = vec![DrugVerdict {
-            term: "b".into(),
-            state: DrugVerdictState::NotFound,
-        }];
+        let results = vec![not_found("b")];
         let (records, truncated) = merged_timeline(&results);
         assert!(records.is_empty());
         assert!(!truncated);
