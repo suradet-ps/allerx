@@ -7,6 +7,11 @@
 
 #![cfg(target_arch = "wasm32")]
 
+// Run in a real browser (wasm-pack test --headless --chrome) — these tests
+// pin IPC contract shapes, not DOM, but the mock invoke needs the browser
+// environment.
+wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+
 use std::cell::RefCell;
 
 use allerx_app::api::{self, ApiError, ApiErrorKind};
