@@ -7,7 +7,7 @@
 
 use std::collections::HashMap;
 
-use allerx_models::{DrugHistoryRecord, DrugItem, PatientSummary};
+use allerx_models::{DrugItem, HistoryVerdict, PatientSummary};
 use js_sys::{Object, Reflect};
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::prelude::*;
@@ -134,8 +134,11 @@ pub async fn search_drugs(prefix: &str) -> Result<Vec<DrugItem>, String> {
 }
 
 /// Full medication history for a patient + drug, merged most-recent-first
-/// (M4). An empty list is a legitimate "no history found".
-pub async fn fetch_history(hn: &str, drug: &str) -> Result<Vec<DrugHistoryRecord>, String> {
+/// (M4). The three-state contract (ROADMAP Phase 1): `Resolved` with empty
+/// records is a legitimate "no history"; `Unresolved` means the drug term
+/// could not be matched to the formulary and carries disambiguation
+/// candidates — the UI must never show "ไม่พบประวัติ" for it.
+pub async fn fetch_history(hn: &str, drug: &str) -> Result<HistoryVerdict, String> {
     let mut args = HashMap::new();
     args.insert("hn", hn);
     args.insert("drug", drug);

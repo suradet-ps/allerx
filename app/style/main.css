@@ -27,6 +27,9 @@
   --verdict-pending: #F5F5F5;
   --verdict-pending-text: #616161;
   --verdict-pending-border: #E0E0E0;
+  --verdict-unresolved: #FFF8E1;
+  --verdict-unresolved-text: #8a6420;
+  --verdict-unresolved-border: #FFE082;
 
   /* Surface — warm neutral */
   --canvas: #FAFAFA;
@@ -716,6 +719,12 @@ code, .mono, .code {
   background: var(--verdict-pending);
   color: var(--verdict-pending-text);
   border-color: var(--verdict-pending-border);
+}
+
+.verdict-unresolved {
+  background: var(--verdict-unresolved);
+  color: var(--verdict-unresolved-text);
+  border-color: var(--verdict-unresolved-border);
 }
 
 /* ==========================================================================

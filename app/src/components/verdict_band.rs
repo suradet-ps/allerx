@@ -32,7 +32,7 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
                 .into_any(),
             )
         }
-        VerdictState::Found { records } => {
+        VerdictState::Found { records, truncated } => {
             let latest = records.first()?;
             let visit_type = match latest.visit_type {
                 allerx_models::VisitType::Opd => "OPD",
@@ -41,6 +41,11 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
             let date = latest.visit_date.format("%d/%m/%Y").to_string();
             let prescriber = latest.prescriber.as_deref().unwrap_or("—");
             let department = latest.department.as_deref().unwrap_or("—");
+            let truncation_suffix = if truncated {
+                " — มีประวัติเก่ากว่านี้"
+            } else {
+                ""
+            };
             Some(
                 view! {
                     <section class="verdict-band verdict-found">
@@ -49,7 +54,7 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
                             <p class="verdict-band__headline">"พบประวัติการได้รับยานี้"</p>
                             <p class="verdict-band__detail">
                                 {format!(
-                                    "ครั้งล่าสุด {date} ({visit_type}) โดย {prescriber} @ {department} — ทั้งหมด {} ครั้ง",
+                                    "ครั้งล่าสุด {date} ({visit_type}) โดย {prescriber} @ {department} — ทั้งหมด {} ครั้ง{truncation_suffix}",
                                     records.len()
                                 )}
                             </p>
@@ -71,5 +76,32 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
             }
             .into_any(),
         ),
+        VerdictState::Unresolved { candidates } => {
+            let (headline, detail) = if candidates.is_empty() {
+                (
+                    "ไม่พบยานี้ในทะเบียนยา".to_string(),
+                    "ไม่สามารถตรวจประวัติได้ — ตรวจสอบการสะกดชื่อยา หรือสอบถามผู้สั่งยา"
+                        .to_string(),
+                )
+            } else {
+                (
+                    "ไม่สามารถยืนยันประวัติได้".to_string(),
+                    "ไม่พบชื่อที่ตรงกับยาในทะเบียน — เลือกยาจากรายการแนะนำทางด้านซ้าย แล้วกดตรวจประวัติ"
+                        .to_string(),
+                )
+            };
+            Some(
+                view! {
+                    <section class="verdict-band verdict-unresolved">
+                        <IconXCircle class="verdict-band__icon" />
+                        <div class="verdict-band__content">
+                            <p class="verdict-band__headline">{headline}</p>
+                            <p class="verdict-band__detail">{detail}</p>
+                        </div>
+                    </section>
+                }
+                .into_any(),
+            )
+        }
     }
 }
