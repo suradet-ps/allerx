@@ -180,6 +180,45 @@ pub async fn test_connection(
     })
 }
 
+/// Background warm-up (ROADMAP Phase 2): loads the stored settings and
+/// opens the read-only pool, forcing a real connection with a ping, so the
+/// first operator query never pays connect latency.
+///
+/// Failures are swallowed here on purpose — the first real query retries
+/// through [`acquire_pool`] and surfaces the proper (generic) error to the
+/// operator. The outcome is recorded in the PII-free stats buffer so the
+/// cold-start measurement can see it.
+pub async fn warm_up_pool(state: &AppState) {
+    if state.pool.lock().await.is_some() {
+        return;
+    }
+    let started = Instant::now();
+    let ok = match warm_up(state).await {
+        Ok(()) => true,
+        Err(_) => false,
+    };
+    state
+        .stats
+        .lock()
+        .await
+        .record("warm_up_pool", started.elapsed().as_millis() as u64, ok);
+}
+
+/// One warm-up attempt. `Ok` means a working pool is stored in `state`.
+async fn warm_up(state: &AppState) -> Result<(), ()> {
+    let store = load_vault().map_err(|_| ())?;
+    let cfg = load(&state.config_path(), &store)
+        .await
+        .map_err(|_| ())?
+        .ok_or(())?;
+    let pool = pool::connect(&cfg).await.map_err(|_| ())?;
+    let repo = HosxRepository::new(pool.clone());
+    // Force a real connection; never cache a pool to a dead database.
+    repo.ping().await.map_err(|_| ())?;
+    *state.pool.lock().await = Some(pool);
+    Ok(())
+}
+
 /// Returns the read-only pool, connecting on first use.
 ///
 /// Prefers the pool already built by [`test_connection`]; when none exists,
