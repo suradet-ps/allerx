@@ -92,6 +92,7 @@ Notes:
 | [`docs/AGENTS-RUST.md`](docs/AGENTS-RUST.md) | Rust-specific style and workflow rules |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Verified current state, gaps, and the detailed phase plan |
 | [`docs/database.md`](docs/database.md) | HOSxP schema verification log and query patterns |
+| [`docs/perf-baseline.md`](docs/perf-baseline.md) | Performance budgets, measurement protocol, DBA index checklist |
 
 ## Roadmap
 
