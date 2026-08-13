@@ -18,11 +18,15 @@ information needed for a delayed-reaction allergy assessment.
 
 - **One search box, auto-detected input** — 13-digit national ID (CID), hospital
   HN, or patient name (prefix match with contains-match fallback), 250 ms debounce.
+- **Batch drug check** — queue several drugs as chips, check them all at once
+  (one verdict band per drug), or print the history sheet.
 - **Drug autocomplete** — generic or trade name, straight from `drugitems`.
 - **Merged OPD + IPD history** — queries both visit tracks concurrently, merges
   and sorts by date, and shows the full timeline (not just the latest hit).
 - **Unambiguous verdict** — "received, most recently on [date] at [OPD/IPD] by
   [doctor]" or "no history found".
+- **Patient detail view** — full CID reveal and the last-30-days medication
+  snapshot (read-only).
 - **Read-only by construction** — the app can only ever `SELECT` from HOSxP,
   enforced in layers (§ [Security](#security-and-privacy)).
 - **Encrypted credentials at rest** — HOSxP connection settings are stored
