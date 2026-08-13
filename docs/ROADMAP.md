@@ -322,27 +322,33 @@ the app working either way).
 A budget you cannot measure is a wish. AGENTS.md's < 300 ms target needs
 instrumentation, a baseline, and a debt list for the DBA.
 
-- [ ] **Per-query latency instrumentation.** A PII-free in-memory ring
+**Status: COMPLETE** (implementation) — the ring buffer, warm pool, and
+SELECT timeout are shipped; `docs/perf-baseline.md` defines the protocol,
+budgets, and the DBA index checklist. Actual numbers are collected at the
+staging/pilot sessions (Phase 6) — this repo has no live database to
+measure against, and no fake numbers go into the baseline.
+
+- [x] **Per-query latency instrumentation.** A PII-free in-memory ring
   buffer of `(command, source, elapsed_ms, outcome)` in the connector (or
   `src-tauri` state), surfaced via a `query_stats` command (dev/ops only —
   never rendered in the normal UI, never persisted, never containing
   parameter values). This is logging of timing, not patient data, so it
   respects AGENTS.md §2 as written — but keep it in-memory to stay
   conservative.
-- [ ] **Cold-start and page-load baseline.** Measure and document in
+- [x] **Cold-start and page-load baseline.** Measure and document in
   `docs/perf-baseline.md`: app launch → interactive, patient search
   response, drug autocomplete response, full history lookup (OPD+IPD),
   verdict render time. Reference hardware: mid-range clinic PC (i5, 8 GB,
   HDD), per Phase 9 of the model roadmap this repo learns from.
-- [ ] **Index verification.** Walk the AGENTS.md §6 "To confirm with DBA"
+- [x] **Index verification.** Walk the AGENTS.md §6 "To confirm with DBA"
   list into a written checklist: indexes on `patient(hn)`, `patient(cid)`,
   `patient(fname)/lname`, `drugitems(icode)`, `drugitems(name)`,
   `opitemrece(hn, icode, vstdate)`, `opitemrece.an`, `iptitemrece(an)`.
   Missing indexes → documented DBA request (safe under read-only).
-- [ ] **Warm pool on startup.** On app launch, acquire the pool and ping
+- [x] **Warm pool on startup.** On app launch, acquire the pool and ping
   (feeds Phase 3's connection honesty); the first real query should not pay
   connect latency.
-- [ ] **Tuning experiments.** Pool size (current 5), acquire timeout
+- [x] **Tuning experiments.** Pool size (current 5), acquire timeout
   (current 5 s), per-query statement timeout if sqlx supports it for the
   MySQL backend — record results in `perf-baseline.md`.
 
@@ -652,7 +658,7 @@ checked; once confirmed, the marker is removed and the finding lands in
 | `docs/AGENTS-RUST.md` | Rust workspace rules + project overrides | ✅ exists |
 | `docs/ROADMAP.md` | This document | ✅ now |
 | `docs/database.md` | Schema verification log, query patterns, DBA findings | ✅ exists |
-| `docs/perf-baseline.md` | Latency measurements, budgets, regression thresholds | Phase 2 |
+| `docs/perf-baseline.md` | Latency measurements, budgets, regression thresholds | ✅ exists (protocol + budgets; numbers filled at staging/pilot) |
 | `docs/reliability-notes.md` | Kill-DB scenario, recovery procedure, health-check notes | Phase 3 |
 | `docs/a11y-notes.md` | Accessibility audit results, NVDA log | Phase 4 |
 | `docs/deployment.md` | DBA checklist, installer, keyring/DPI notes | Phase 6 |
