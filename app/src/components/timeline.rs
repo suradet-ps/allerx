@@ -1,17 +1,20 @@
 //! Timeline — dense scrollable list in main canvas.
 //! Two-line rows: date | badge | drug (line 1), meta (line 2).
+//! Since Phase 5 the timeline merges every found drug's records into one
+//! chronological view (each row already shows its drug name).
 
 use leptos::prelude::*;
 
 use crate::components::icons::IconCalendar;
-use crate::state::{AppState, VerdictState};
+use crate::state::{AppState, VerdictState, merged_timeline};
 
 #[component]
 pub fn Timeline(state: AppState) -> impl IntoView {
     move || {
-        let VerdictState::Found { records, truncated } = state.verdict.get() else {
+        let VerdictState::Results { results } = state.verdict.get() else {
             return None;
         };
+        let (records, truncated) = merged_timeline(&results);
         if records.is_empty() {
             return None;
         }

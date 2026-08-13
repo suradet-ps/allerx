@@ -3,7 +3,9 @@
 pub mod drug_search;
 pub mod icons;
 pub mod patient_bar;
+pub mod patient_detail_modal;
 pub mod patient_search;
+pub mod print_sheet;
 pub mod settings_modal;
 pub mod timeline;
 pub mod top_bar;
