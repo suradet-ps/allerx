@@ -1,6 +1,10 @@
 //! In-memory repository for tests and placeholder frontend use.
 
-use allerx_models::{DrugHistoryRecord, DrugItem, HistoryVerdict, PatientSummary};
+use std::collections::HashMap;
+
+use allerx_models::{
+    ConcurrentMedication, DrugHistoryRecord, DrugItem, HistoryVerdict, PatientSummary,
+};
 use async_trait::async_trait;
 
 use crate::error::RepositoryError;
@@ -131,6 +135,35 @@ impl HosxRepository for MockRepository {
             rank_candidates(self.search_drugs(drug).await?, 10),
         );
         Ok(verdict_from_resolution(resolution, records, false))
+    }
+
+    async fn fetch_concurrent_medications(
+        &self,
+        _hn: &str,
+    ) -> Result<Vec<ConcurrentMedication>, RepositoryError> {
+        // Dedupe the mock's history per icode, keeping the latest date —
+        // mirrors the real repository's GROUP BY semantics.
+        let mut latest: HashMap<&str, (chrono::NaiveDate, &str)> = HashMap::new();
+        for record in &self.history {
+            let entry = latest
+                .entry(record.drug_code.as_str())
+                .or_insert((record.visit_date, record.drug_name.as_str()));
+            if record.visit_date > entry.0 {
+                *entry = (record.visit_date, record.drug_name.as_str());
+            }
+        }
+        let mut meds: Vec<ConcurrentMedication> = latest
+            .into_iter()
+            .map(|(drug_code, (last_date, drug_name))| ConcurrentMedication {
+                drug_code: drug_code.to_string(),
+                drug_name: drug_name.to_string(),
+                trade_name: None,
+                last_date,
+            })
+            .collect();
+        meds.sort_by_key(|m| std::cmp::Reverse(m.last_date));
+        meds.truncate(30);
+        Ok(meds)
     }
 }
 
@@ -378,5 +411,58 @@ mod tests {
             .await
             .expect("mock history succeeds");
         assert!(matches!(verdict, HistoryVerdict::Unresolved { .. }));
+    }
+
+    #[tokio::test]
+    async fn check_drugs_returns_one_result_per_term_in_order() {
+        let history = vec![record(date(2024, 3, 3), Opd)];
+        let repo = MockRepository::new(true)
+            .with_drugs(sample_drugs())
+            .with_history(history);
+        let drugs = vec!["พาราเซตามอล".to_string(), "ไม่มีในระบบเลย".to_string()];
+        let results = repo
+            .check_drugs("00012345", &drugs)
+            .await
+            .expect("mock batch succeeds");
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].term, "พาราเซตามอล");
+        assert!(matches!(
+            results[0].verdict,
+            HistoryVerdict::Resolved { .. }
+        ));
+        assert_eq!(results[1].term, "ไม่มีในระบบเลย");
+        assert!(matches!(
+            results[1].verdict,
+            HistoryVerdict::Unresolved { .. }
+        ));
+    }
+
+    #[tokio::test]
+    async fn check_drugs_empty_input_yields_empty_results() {
+        let repo = MockRepository::new(true).with_drugs(sample_drugs());
+        let results = repo
+            .check_drugs("00012345", &[])
+            .await
+            .expect("mock batch succeeds");
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn concurrent_medications_dedupe_by_icode_and_sort_newest_first() {
+        let history = vec![
+            record(date(2024, 1, 1), Opd),
+            record(date(2024, 5, 5), Ipd),
+            record(date(2024, 4, 4), Opd),
+        ];
+        let repo = MockRepository::new(true).with_history(history);
+        let meds = repo
+            .fetch_concurrent_medications("00012345")
+            .await
+            .expect("mock meds succeeds");
+        // All three records share icode 1-001 → one medication, newest date.
+        assert_eq!(meds.len(), 1);
+        assert_eq!(meds[0].drug_code, "1-001");
+        assert_eq!(meds[0].last_date, date(2024, 5, 5));
     }
 }

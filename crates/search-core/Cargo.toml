@@ -9,8 +9,8 @@ description = "AllerX business logic — ranking, matching, repository contract.
 [dependencies]
 allerx-models = { path = "../models" }
 async-trait.workspace = true
+chrono.workspace = true   # NaiveDate in the mock's concurrent-medications dedupe
 thiserror.workspace = true
 
 [dev-dependencies]
-chrono.workspace = true
 tokio.workspace = true

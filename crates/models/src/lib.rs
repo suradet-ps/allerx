@@ -97,3 +97,24 @@ pub enum HistoryVerdict {
     /// means the term is not in the formulary at all.
     Unresolved { candidates: Vec<DrugItem> },
 }
+
+/// One checked drug in a batch lookup (ROADMAP Phase 5) — the term the
+/// pharmacist submitted plus that drug's verdict, so a multi-drug check
+/// can label each result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DrugCheckResult {
+    /// The term submitted for this drug — the UI's label for the verdict.
+    pub term: String,
+    /// The verdict: resolved (possibly empty) or unresolved.
+    pub verdict: HistoryVerdict,
+}
+
+/// One drug dispensed to a patient recently (ROADMAP Phase 5) — the
+/// "ยาที่ได้รับล่าสุด" snapshot, deduped per icode with the latest date.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConcurrentMedication {
+    pub drug_code: String,
+    pub drug_name: String,
+    pub trade_name: Option<String>,
+    pub last_date: NaiveDate,
+}
