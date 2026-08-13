@@ -6,15 +6,27 @@ use sqlx::MySqlPool;
 
 use crate::error::Error;
 use crate::queries::{
-    DRUG_RESOLVE_BY_ICODE, DRUG_RESOLVE_BY_NAME, DRUG_SEARCH_CONTAINS, DRUG_SEARCH_PREFIX,
-    HISTORY_IPD_STAY, HISTORY_IPD_TAKEHOME, HISTORY_OPD, PATIENT_SEARCH_BY_CID,
-    PATIENT_SEARCH_BY_HN, PATIENT_SEARCH_NAME_CONTAINS, PATIENT_SEARCH_NAME_PREFIX,
+    DRUG_RESOLVE_BY_ICODE, DRUG_RESOLVE_BY_NAME, DRUG_RESOLVE_BY_TRADE_NAME,
+    DRUG_SEARCH_CONTAINS_PLAIN, DRUG_SEARCH_CONTAINS_TRADE, DRUG_SEARCH_CONTAINS_TYPED,
+    DRUG_SEARCH_PREFIX_PLAIN, DRUG_SEARCH_PREFIX_TRADE, DRUG_SEARCH_PREFIX_TYPED, HISTORY_IPD_STAY,
+    HISTORY_IPD_STAY_TRADE, HISTORY_IPD_TAKEHOME, HISTORY_IPD_TAKEHOME_FALLBACK, HISTORY_OPD,
+    HISTORY_OPD_FALLBACK, PATIENT_SEARCH_BY_CID, PATIENT_SEARCH_BY_HN,
+    PATIENT_SEARCH_NAME_CONTAINS, PATIENT_SEARCH_NAME_PREFIX,
 };
 use crate::readonly_guard::{PING_SQL, assert_read_only};
-use allerx_models::{DrugHistoryRecord, DrugItem, PatientSummary, VisitType};
+use allerx_models::{DrugHistoryRecord, DrugItem, HistoryVerdict, PatientSummary, VisitType};
 use allerx_search_core::{
-    HosxRepository as HosxRepositoryTrait, QueryKind, RepositoryError, merge_drug_history,
+    DrugResolution, HosxRepository as HosxRepositoryTrait, QueryKind, RepositoryError,
+    classify_drug_resolution, merge_drug_history, rank_candidates, verdict_from_resolution,
 };
+
+/// Per-source row cap — must stay in sync with the `LIMIT` inside every
+/// `HISTORY_*` statement in `queries.rs` (enforced by a test below). At the
+/// cap, older history exists but is not returned and the UI must say so.
+const HISTORY_LIMIT: usize = 200;
+
+/// Maximum candidates offered when a drug term does not resolve exactly.
+const RESOLUTION_CANDIDATE_LIMIT: usize = 10;
 
 /// One `patient` row as `(hn, cid, full_name_th, birth_date, sex)`,
 /// matching the SELECT column order in `queries.rs`.
@@ -26,8 +38,9 @@ type PatientRow = (
     Option<String>,
 );
 
-/// One history row as `(visit_date, drug_code, drug_name, prescriber,
-/// department, route, quantity)` — same shape for OPD and both IPD sources.
+/// One history row as `(visit_date, drug_code, drug_name, trade_name,
+/// prescriber, department, route, quantity)` — same shape for OPD and both
+/// IPD sources, including the trade-name fallback (`NULL` in its place).
 type HistoryRow = (
     NaiveDate,
     String,
@@ -36,7 +49,12 @@ type HistoryRow = (
     Option<String>,
     Option<String>,
     Option<String>,
+    Option<String>,
 );
+
+/// One drug row as `(icode, name, strength, trade_name)` — again shared by
+/// the typed/trade/plain autocomplete tiers.
+type DrugRow = (String, String, Option<String>, Option<String>);
 
 /// The repository that talks to the real HOSxP database. Created from a
 /// [`connect`](crate::connect) pool — this is the only object that ever
@@ -89,14 +107,50 @@ impl HosxRepository {
         query.fetch_all(&self.pool).await
     }
 
-    /// Resolves a drug term to its `icode`: exact icode hit, then exact
-    /// display-name hit. `None` means the term is not in `drugitems`.
+    /// Runs the first statement that succeeds, in order.
+    ///
+    /// Statements failing with a missing-table/column error (MySQL 1146/1054
+    /// — a documented per-instance variation, AGENTS.md §6) are skipped for
+    /// the next tier, so a richer query (trade names, drug-type filter) can
+    /// degrade to the safe baseline instead of breaking the app. Any other
+    /// failure propagates immediately. Every statement must pass the
+    /// read-only guard.
+    async fn fetch_first_working<T>(&self, candidates: &[(&str, &[&str])]) -> Result<Vec<T>, Error>
+    where
+        T: for<'r> sqlx::FromRow<'r, sqlx::mysql::MySqlRow> + Send + Unpin,
+    {
+        let mut last_schema_error: Option<sqlx::Error> = None;
+        for (sql, params) in candidates {
+            assert_read_only(sql).map_err(|_| Error::Guard)?;
+            match self.raw_fetch(sql, params).await {
+                Ok(rows) => return Ok(rows),
+                Err(err) if is_schema_variation(&err) => last_schema_error = Some(err),
+                Err(err) => return Err(Error::Database(err)),
+            }
+        }
+        // Invariant: every call site passes at least one statement that the
+        // instance must support (the plain tier), so exhausting the list
+        // means even the baseline failed with a schema error.
+        Err(Error::Database(last_schema_error.expect(
+            "invariant: at least one candidate statement is provided",
+        )))
+    }
+
+    /// Resolves a drug term to its `icode`: exact icode, then exact display
+    /// name, then exact trade name. `None` means the term is not in
+    /// `drugitems` under any of the three — the caller then falls back to
+    /// candidate suggestions (never a "not found" verdict, ROADMAP Phase 1).
     async fn resolve_drug_icode(&self, drug: &str) -> Result<Option<String>, Error> {
-        let by_icode = self.fetch_single_icode(DRUG_RESOLVE_BY_ICODE, drug).await?;
-        if let Some(icode) = by_icode {
+        if let Some(icode) = self.fetch_single_icode(DRUG_RESOLVE_BY_ICODE, drug).await? {
             return Ok(Some(icode));
         }
-        self.fetch_single_icode(DRUG_RESOLVE_BY_NAME, drug).await
+        if let Some(icode) = self.fetch_single_icode(DRUG_RESOLVE_BY_NAME, drug).await? {
+            return Ok(Some(icode));
+        }
+        // A missing trade-name column is a documented schema variation —
+        // "no trade-name match", not an error.
+        self.fetch_single_icode_tolerant(DRUG_RESOLVE_BY_TRADE_NAME, drug)
+            .await
     }
 
     async fn fetch_single_icode(&self, sql: &str, param: &str) -> Result<Option<String>, Error> {
@@ -109,17 +163,45 @@ impl HosxRepository {
             .map_err(Error::from)
     }
 
-    /// OPD history — `opitemrece` rows without an admission number.
+    /// Like [`fetch_single_icode`], but a missing column/table (MySQL
+    /// 1146/1054) yields `Ok(None)` instead of an error.
+    async fn fetch_single_icode_tolerant(
+        &self,
+        sql: &str,
+        param: &str,
+    ) -> Result<Option<String>, Error> {
+        assert_read_only(sql).map_err(|_| Error::Guard)?;
+        match sqlx::query_as::<_, (String,)>(sql)
+            .bind(param)
+            .fetch_optional(&self.pool)
+            .await
+        {
+            Ok(row) => Ok(row.map(|(icode,)| icode)),
+            Err(err) if is_schema_variation(&err) => Ok(None),
+            Err(err) => Err(Error::Database(err)),
+        }
+    }
+
+    /// OPD history — `opitemrece` rows without an admission number. Returns
+    /// the rows and whether the source hit its cap (older rows exist).
     async fn fetch_opd_history(
         &self,
         hn: &str,
         icode: &str,
-    ) -> Result<Vec<DrugHistoryRecord>, Error> {
-        let rows: Vec<HistoryRow> = self.guarded_fetch(HISTORY_OPD, &[hn, icode]).await?;
-        Ok(rows
-            .into_iter()
-            .map(|r| history_record(r, VisitType::Opd))
-            .collect())
+    ) -> Result<(Vec<DrugHistoryRecord>, bool), Error> {
+        let rows: Vec<HistoryRow> = self
+            .fetch_first_working(&[
+                (HISTORY_OPD, &[hn, icode]),
+                (HISTORY_OPD_FALLBACK, &[hn, icode]),
+            ])
+            .await?;
+        let truncated = rows.len() == HISTORY_LIMIT;
+        Ok((
+            rows.into_iter()
+                .map(|r| history_record(r, VisitType::Opd))
+                .collect(),
+            truncated,
+        ))
     }
 
     /// IPD history — take-home rows in `opitemrece` plus in-stay rows in
@@ -128,28 +210,35 @@ impl HosxRepository {
         &self,
         hn: &str,
         icode: &str,
-    ) -> Result<Vec<DrugHistoryRecord>, Error> {
+    ) -> Result<(Vec<DrugHistoryRecord>, bool), Error> {
         let (takehome, stay) = tokio::join!(
             self.fetch_ipd_takehome_history(hn, icode),
             self.fetch_ipd_stay_history(hn, icode),
         );
-        let mut all = takehome?;
-        all.extend(stay?);
-        Ok(all)
+        let (mut records, takehome_truncated) = takehome?;
+        let (stay_records, stay_truncated) = stay?;
+        records.extend(stay_records);
+        Ok((records, takehome_truncated || stay_truncated))
     }
 
     async fn fetch_ipd_takehome_history(
         &self,
         hn: &str,
         icode: &str,
-    ) -> Result<Vec<DrugHistoryRecord>, Error> {
+    ) -> Result<(Vec<DrugHistoryRecord>, bool), Error> {
         let rows: Vec<HistoryRow> = self
-            .guarded_fetch(HISTORY_IPD_TAKEHOME, &[hn, icode])
+            .fetch_first_working(&[
+                (HISTORY_IPD_TAKEHOME, &[hn, icode]),
+                (HISTORY_IPD_TAKEHOME_FALLBACK, &[hn, icode]),
+            ])
             .await?;
-        Ok(rows
-            .into_iter()
-            .map(|r| history_record(r, VisitType::Ipd))
-            .collect())
+        let truncated = rows.len() == HISTORY_LIMIT;
+        Ok((
+            rows.into_iter()
+                .map(|r| history_record(r, VisitType::Ipd))
+                .collect(),
+            truncated,
+        ))
     }
 
     /// In-stay IPD dispensing. A missing `iptitemrece` table (or a hospital
@@ -159,20 +248,44 @@ impl HosxRepository {
         &self,
         hn: &str,
         icode: &str,
-    ) -> Result<Vec<DrugHistoryRecord>, Error> {
-        assert_read_only(HISTORY_IPD_STAY).map_err(|_| Error::Guard)?;
+    ) -> Result<(Vec<DrugHistoryRecord>, bool), Error> {
         let rows = match self
-            .raw_fetch::<HistoryRow>(HISTORY_IPD_STAY, &[hn, icode])
+            .fetch_first_working(&[
+                (HISTORY_IPD_STAY_TRADE, &[hn, icode]),
+                (HISTORY_IPD_STAY, &[hn, icode]),
+            ])
             .await
         {
             Ok(rows) => rows,
-            Err(err) if is_schema_variation(&err) => Vec::new(),
-            Err(err) => return Err(Error::Database(err)),
+            // Even the plain tier failed with a schema error — the
+            // `iptitemrece` table itself is absent on this instance.
+            Err(Error::Database(ref err)) if is_schema_variation(err) => Vec::new(),
+            Err(err) => return Err(err),
         };
-        Ok(rows
-            .into_iter()
-            .map(|r| history_record(r, VisitType::Ipd))
-            .collect())
+        let truncated = rows.len() == HISTORY_LIMIT;
+        Ok((
+            rows.into_iter()
+                .map(|r| history_record(r, VisitType::Ipd))
+                .collect(),
+            truncated,
+        ))
+    }
+
+    /// Full merged timeline (OPD + IPD take-home + IPD in-stay), most recent
+    /// first, plus whether any source hit its cap.
+    async fn fetch_all_history(
+        &self,
+        hn: &str,
+        icode: &str,
+    ) -> Result<(Vec<DrugHistoryRecord>, bool), Error> {
+        let (opd, ipd) = tokio::join!(
+            self.fetch_opd_history(hn, icode),
+            self.fetch_ipd_history(hn, icode),
+        );
+        let (opd_records, opd_truncated) = opd?;
+        let (ipd_records, ipd_truncated) = ipd?;
+        let records = merge_drug_history(opd_records, ipd_records);
+        Ok((records, opd_truncated || ipd_truncated))
     }
 }
 
@@ -201,7 +314,7 @@ fn patient_from_row((hn, cid, full_name_th, birth_date, sex): PatientRow) -> Pat
 }
 
 fn history_record(
-    (visit_date, drug_code, drug_name, prescriber, department, route, quantity): HistoryRow,
+    (visit_date, drug_code, drug_name, trade_name, prescriber, department, route, quantity): HistoryRow,
     visit_type: VisitType,
 ) -> DrugHistoryRecord {
     DrugHistoryRecord {
@@ -209,9 +322,7 @@ fn history_record(
         visit_type,
         drug_code,
         drug_name,
-        // `drugitems.trade_name` is not selected yet — column unverified
-        // (AGENTS.md §6).
-        trade_name: None,
+        trade_name,
         prescriber,
         department,
         quantity,
@@ -269,30 +380,29 @@ impl HosxRepositoryTrait for HosxRepository {
         }
         let prefix = format!("{term}%");
         let mut hits: Vec<DrugItem> = self
-            .guarded_fetch(DRUG_SEARCH_PREFIX, &[&prefix])
+            .fetch_first_working(&[
+                // Typed tier: trade-name matching + drug-type filter.
+                (DRUG_SEARCH_PREFIX_TYPED, &[&prefix, &prefix]),
+                // Trade tier: trade-name matching, no type filter.
+                (DRUG_SEARCH_PREFIX_TRADE, &[&prefix]),
+                // Plain tier: every instance supports this.
+                (DRUG_SEARCH_PREFIX_PLAIN, &[&prefix]),
+            ])
             .await?
             .into_iter()
-            .map(
-                |(icode, name, strength): (String, String, Option<String>)| DrugItem {
-                    icode,
-                    name,
-                    strength,
-                },
-            )
+            .map(drug_from_row)
             .collect();
         if hits.is_empty() {
             let contains = format!("%{term}%");
             hits = self
-                .guarded_fetch(DRUG_SEARCH_CONTAINS, &[&contains])
+                .fetch_first_working(&[
+                    (DRUG_SEARCH_CONTAINS_TYPED, &[&contains, &contains]),
+                    (DRUG_SEARCH_CONTAINS_TRADE, &[&contains]),
+                    (DRUG_SEARCH_CONTAINS_PLAIN, &[&contains]),
+                ])
                 .await?
                 .into_iter()
-                .map(
-                    |(icode, name, strength): (String, String, Option<String>)| DrugItem {
-                        icode,
-                        name,
-                        strength,
-                    },
-                )
+                .map(drug_from_row)
                 .collect();
         }
         Ok(hits)
@@ -302,22 +412,42 @@ impl HosxRepositoryTrait for HosxRepository {
         &self,
         hn: &str,
         drug: &str,
-    ) -> Result<Vec<DrugHistoryRecord>, RepositoryError> {
+    ) -> Result<HistoryVerdict, RepositoryError> {
         let hn = hn.trim();
         let drug = drug.trim();
         if hn.is_empty() || drug.is_empty() {
-            return Ok(Vec::new());
+            // Blank input is an unresolvable term — never a "not found"
+            // verdict (ROADMAP Phase 1 invariant).
+            return Ok(HistoryVerdict::Unresolved {
+                candidates: Vec::new(),
+            });
         }
         // OPD + IPD run concurrently, then merge most-recent-first
-        // (AGENTS.md §7.2).
-        let Some(icode) = self.resolve_drug_icode(drug).await? else {
-            return Ok(Vec::new());
+        // (AGENTS.md §7.2). The resolution flow (ROADMAP Phase 1): an exact
+        // hit (icode, generic name, trade name) is the only path to a
+        // Resolved verdict; anything else surfaces the closest formulary
+        // candidates for the operator to disambiguate.
+        let exact_icode = self.resolve_drug_icode(drug).await?;
+        let candidates = if exact_icode.is_none() {
+            rank_candidates(self.search_drugs(drug).await?, RESOLUTION_CANDIDATE_LIMIT)
+        } else {
+            Vec::new()
         };
-        let (opd, ipd) = tokio::join!(
-            self.fetch_opd_history(hn, &icode),
-            self.fetch_ipd_history(hn, &icode),
-        );
-        Ok(merge_drug_history(opd?, ipd?))
+        let resolution = classify_drug_resolution(exact_icode, candidates);
+        let (records, truncated) = match &resolution {
+            DrugResolution::Exact { icode } => self.fetch_all_history(hn, icode).await?,
+            DrugResolution::Candidates { .. } => (Vec::new(), false),
+        };
+        Ok(verdict_from_resolution(resolution, records, truncated))
+    }
+}
+
+fn drug_from_row((icode, name, strength, trade_name): DrugRow) -> DrugItem {
+    DrugItem {
+        icode,
+        name,
+        strength,
+        trade_name,
     }
 }
 
@@ -335,5 +465,24 @@ mod tests {
     #[test]
     fn non_database_errors_are_not_schema_variations() {
         assert!(!is_schema_variation(&sqlx::Error::RowNotFound));
+    }
+
+    #[test]
+    fn history_limit_stays_in_sync_with_the_sql() {
+        // Every HISTORY_* statement carries `LIMIT 200` — keep this in lock
+        // step with HISTORY_LIMIT or the truncation flag lies.
+        for sql in [
+            HISTORY_OPD,
+            HISTORY_OPD_FALLBACK,
+            HISTORY_IPD_TAKEHOME,
+            HISTORY_IPD_TAKEHOME_FALLBACK,
+            HISTORY_IPD_STAY,
+            HISTORY_IPD_STAY_TRADE,
+        ] {
+            assert!(
+                sql.ends_with(&format!("LIMIT {HISTORY_LIMIT}")),
+                "HISTORY_LIMIT must match the SQL cap: {sql}"
+            );
+        }
     }
 }
