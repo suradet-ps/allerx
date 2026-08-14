@@ -102,6 +102,11 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                     state
                         .verdict
                         .set(VerdictState::Results { results: verdicts });
+                    // A new check replaced the view — bump the seq so the
+                    // timeline can reset its per-drug filter even when the
+                    // new results look identical to the old ones (same
+                    // terms/counts/truncation flags).
+                    state.check_seq.update(|seq| *seq += 1);
                 }
                 Err(err) => {
                     state.verdict.set(VerdictState::Pending);
