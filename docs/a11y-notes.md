@@ -14,7 +14,7 @@ checked, how, and what is still pending a real screen reader.
 | `aria-label` on icon-only buttons | ✅ | `search-clear` ("ล้าง"), `banner-warning__close` ("ปิด"); icons are `aria-hidden` decorative |
 | Navigation landmark label | ✅ | Single view, no nav menu; the app header is a `<header>` — a labelled nav will be added if a menu ever appears |
 | Visible focus ring | ✅ | `:focus-visible` with `2px solid var(--brand)` on every button/input (main.css) |
-| Escape closes dialogs | ✅ | Settings modal closes via the ปิด button; an explicit Escape handler is a Phase 4 follow-up item (see below) |
+| Escape closes dialogs | ✅ | Settings and patient-detail modals close on Escape (window-level listener, guarded by the open flag), plus the ปิด/backdrop-click paths |
 | Contrast ≥ 4.5:1 normal / 3:1 large | ✅ token audit | See the contrast table below; the amber `verdict-unresolved` pair (4.6:1) was chosen to pass |
 | Never color-only | ✅ | Every colored element pairs with text or an icon: verdict headline + icon, status dot + text, badges + text |
 | Touch targets ≥ 44px | ⚠️ desktop-only app | Buttons are 36–40px tall by design (density over whitespace, DESIGN.md); mouse-driven desktop app — revisit only if touch hardware appears |
@@ -32,12 +32,11 @@ checked, how, and what is still pending a real screen reader.
 | verdict-found `#2E7D32` on `#E8F5E9` | 5.5:1 | ✅ |
 | verdict-notfound `#C62828` on `#FFEBEE` | 5.8:1 | ✅ |
 | verdict-unresolved `#8a6420` on `#FFF8E1` | 4.6:1 | ✅ (added in Phase 1 with this requirement in mind) |
-| warning-text `#F57F17` on warning-bg `#FFF8E1` | 2.6:1 | ⚠️ banner text — bump to `#8a6420` before pilot (same value as verdict-unresolved-text) |
+| warning-text `#8a6420` on warning-bg `#FFF8E1` | 4.6:1 | ✅ (bumped from the old `#F57F17` 2.6:1 pair — same value as verdict-unresolved-text, main.css `--warning-text`) |
 
-**One fix is owed before the pilot:** the `.banner-warning` color pair
-(2.6:1) fails WCAG AA for normal text. Change `--warning-text` from
-`#F57F17` to `#8a6420` (or a darker amber) in the same release as the
-pilot. This is tracked in ROADMAP Phase 6.
+**One residual is owed before the pilot:** the NVDA screen-reader pass
+itself (below) and the keyboard walkthrough on a real machine — both need a
+Windows machine with the actual app running.
 
 ## Keyboard walkthrough (to be executed on a real machine, Phase 6)
 
@@ -71,9 +70,4 @@ pilot. This is tracked in ROADMAP Phase 6.
 
 ## Known follow-ups
 
-- Explicit `Escape` handler for the settings modal and any open dropdowns
-  (DESIGN.md "Focus Management" says Escape closes dialogs — currently the
-  modal only closes via ปิด/backdrop click; Phase 4 leaves this as a
-  tracked item).
-- Warning-banner contrast fix (above) before the pilot.
 - If touch hardware ever appears: 44 px touch targets per WCAG.
