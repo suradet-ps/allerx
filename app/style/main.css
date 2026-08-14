@@ -47,7 +47,10 @@
 
   /* Status */
   --warning-bg: #FFF8E1;
-  --warning-text: #F57F17;
+  /* Dark amber, not the old #F57F17 (2.6:1): this pair must pass WCAG AA
+     normal-text contrast (4.6:1) — same value as --verdict-unresolved-text,
+     per the a11y audit (docs/a11y-notes.md). */
+  --warning-text: #8a6420;
 
   /* Elevation */
   --elev-3: 0 8px 24px rgba(0, 0, 0, 0.18);

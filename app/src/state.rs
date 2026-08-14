@@ -75,6 +75,11 @@ pub struct AppState {
     /// Degraded-mode banner message (ROADMAP Phase 3): set when a query
     /// cannot reach HOSxP, cleared on the next success or by the operator.
     pub db_banner: RwSignal<Option<String>>,
+    /// Monotonic counter of completed checks — the timeline uses it to
+    /// detect "a new check replaced the view" even when the results content
+    /// is identical (same terms, same counts, same truncation flags), so
+    /// the per-drug filter always resets with a new check.
+    pub check_seq: RwSignal<u64>,
 }
 
 /// The one loud thing on screen — only one state at a time, and the new
@@ -105,6 +110,7 @@ impl AppState {
             detail_open: RwSignal::new(false),
             health: RwSignal::new(ConnectionHealth::Unconfigured),
             db_banner: RwSignal::new(None),
+            check_seq: RwSignal::new(0),
         }
     }
 }

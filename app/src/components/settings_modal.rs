@@ -4,6 +4,9 @@
 //! settings exist). Host/port/database/user/password are sent to the
 //! backend, which encrypts them before anything touches disk (AGENTS.md §9).
 
+use std::rc::Rc;
+
+use leptos::ev;
 use leptos::prelude::*;
 
 use crate::api::{ConnectionInput, configure_connection, test_connection};
@@ -20,7 +23,11 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
     let database = RwSignal::new(String::new());
     let user = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
-    let message = RwSignal::new(Option::<String>::None);
+    // The last form operation's outcome: `Some((is_success, text))`. The
+    // flag drives the message styling — never sniff the message text for a
+    // success marker (Thai messages contain "ได้" in both outcomes, e.g.
+    // "ไม่สามารถเข้าถึงที่เก็บกุญแจของระบบได้").
+    let message = RwSignal::new(None::<(bool, String)>);
     let busy = RwSignal::new(false);
 
     /// Zeroizes an operator-typed field before dropping it — plain
@@ -49,11 +56,30 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
         wipe_field(&password);
     };
 
-    let close = move || {
+    let close = Rc::new(move || {
         wipe_fields();
         message.set(None);
         state.settings_open.set(false);
-    };
+    });
+
+    // Escape closes the dialog from anywhere (DESIGN.md "Focus Management").
+    // The listener sits on `window`, so focus location does not matter; the
+    // open-flag guard ensures an Escape pressed elsewhere (e.g. clearing a
+    // search input) never reaches `close()`, which zeroizes the typed
+    // fields. The handle must stay alive for the component's lifetime —
+    // dropping it unregisters the listener.
+    let escape_state = state.clone();
+    let close_on_escape = Rc::clone(&close);
+    let escape_handle = window_event_listener(ev::keydown, move |event| {
+        if event.key() == "Escape" && escape_state.settings_open.get_untracked() {
+            close_on_escape();
+        }
+    });
+    let _escape_handle = StoredValue::new(escape_handle);
+
+    // Clones for the view's on:click closures (each captures its own).
+    let backdrop_close = Rc::clone(&close);
+    let button_close = Rc::clone(&close);
 
     // Builds a ConnectionInput from the form fields, validating the port
     // and required fields — shared by test and save so both behave
@@ -91,15 +117,15 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             let input = match build_input() {
                 Ok(input) => input,
                 Err(err_message) => {
-                    message.set(Some(err_message));
+                    message.set(Some((false, err_message)));
                     return;
                 }
             };
             busy.set(true);
             leptos::task::spawn_local(async move {
                 match test_connection(&input).await {
-                    Ok(_) => message.set(Some("เชื่อมต่อได้".to_string())),
-                    Err(error) => message.set(Some(error.message)),
+                    Ok(_) => message.set(Some((true, "เชื่อมต่อได้".to_string()))),
+                    Err(error) => message.set(Some((false, error.message))),
                 }
                 busy.set(false);
             });
@@ -111,7 +137,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             let input = match build_input() {
                 Ok(input) => input,
                 Err(err_message) => {
-                    message.set(Some(err_message));
+                    message.set(Some((false, err_message)));
                     return;
                 }
             };
@@ -124,7 +150,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                         state.settings_open.set(false);
                     }
                     Err(error) => {
-                        message.set(Some(error.message));
+                        message.set(Some((false, error.message)));
                         busy.set(false);
                     }
                 }
@@ -144,7 +170,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                     "none"
                 }
             }
-            on:click=move |_| close()
+            on:click=move |_| backdrop_close()
         >
             <section class="modal" on:click=move |ev| ev.stop_propagation()>
                     <h2 class="modal__title">"ตั้งค่า HOSxP"</h2>
@@ -211,8 +237,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                     </div>
 
                     {move || {
-                        message.get().map(|text| {
-                            let is_success = text.contains("ได้");
+                        message.get().map(|(is_success, text)| {
                             let class = if is_success {
                                 "modal__message modal__message--success"
                             } else {
@@ -231,7 +256,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                             <IconPlug class="icon" />
                             "ทดสอบ"
                         </button>
-                        <button class="button-secondary" on:click=move |_| close()>
+                        <button class="button-secondary" on:click=move |_| button_close()>
                             <IconX class="icon" />
                             "ปิด"
                         </button>
