@@ -613,7 +613,10 @@ async fn timeline_resets_filter_on_a_new_check_with_identical_content() {
     state.verdict.set(check());
     state.check_seq.set(0);
     let view_state = state.clone();
-    let root = mount("tl-recheck", move || view! { <Timeline state=view_state /> });
+    let root = mount(
+        "tl-recheck",
+        move || view! { <Timeline state=view_state /> },
+    );
 
     // Filter to the first drug.
     let chip = root
@@ -949,7 +952,10 @@ async fn settings_modal_escape_closes_the_dialog() {
 
     press_escape();
     settle().await;
-    assert!(!state.settings_open.get_untracked(), "Escape closes the dialog");
+    assert!(
+        !state.settings_open.get_untracked(),
+        "Escape closes the dialog"
+    );
     let display = query_one(&root, ".modal-backdrop")
         .dyn_into::<HtmlElement>()
         .expect("backdrop is an HtmlElement")
