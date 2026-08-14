@@ -6,8 +6,8 @@
 
 use std::rc::Rc;
 
-use leptos::prelude::*;
 use leptos::ev;
+use leptos::prelude::*;
 
 use crate::api::{ConnectionInput, configure_connection, test_connection};
 use crate::components::icons::{IconPlug, IconSave, IconX};

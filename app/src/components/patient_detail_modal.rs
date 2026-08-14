@@ -4,8 +4,8 @@
 
 use std::rc::Rc;
 
-use leptos::prelude::*;
 use leptos::ev;
+use leptos::prelude::*;
 
 use crate::api;
 use crate::components::icons::{IconUser, IconX};
