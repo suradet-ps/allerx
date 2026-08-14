@@ -21,6 +21,7 @@ use allerx_app::components::patient_bar::PatientBar;
 use allerx_app::components::patient_detail_modal::PatientDetailModal;
 use allerx_app::components::patient_search::PatientSearch;
 use allerx_app::components::print_sheet::PrintSheet;
+use allerx_app::components::settings_modal::SettingsModal;
 use allerx_app::components::timeline::Timeline;
 use allerx_app::components::verdict_band::VerdictBand;
 use allerx_app::state::{AppState, ConnectionHealth, DrugVerdict, DrugVerdictState, VerdictState};
@@ -199,6 +200,19 @@ fn press_enter(target: &Element) {
     let event =
         KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("keydown event");
     target.dispatch_event(&event).expect("dispatch keydown");
+}
+
+/// Dispatches Escape on `window` — the target the modals' close listeners
+/// are attached to (they close from anywhere, per DESIGN.md).
+fn press_escape() {
+    let init = KeyboardEventInit::new();
+    init.set_key("Escape");
+    let event =
+        KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("keydown event");
+    web_sys::window()
+        .expect("window in test")
+        .dispatch_event(&event)
+        .expect("dispatch escape");
 }
 
 fn type_text(target: &HtmlInputElement, text: &str) {
@@ -573,6 +587,63 @@ async fn timeline_filter_isolates_one_drugs_rows() {
     assert_eq!(rows.length(), 3);
 }
 
+#[wasm_bindgen_test]
+async fn timeline_resets_filter_on_a_new_check_with_identical_content() {
+    // The same drugs checked again (e.g. for a new patient) can produce
+    // byte-identical results — the per-drug filter must still reset, or the
+    // new timeline would silently show only one drug's rows.
+    let state = AppState::new();
+    let check = || VerdictState::Results {
+        results: vec![
+            found_verdict(
+                "ยากลุ่มแรก",
+                vec![
+                    record("ยากลุ่มแรก", date(2024, 1, 1), VisitType::Opd),
+                    record("ยากลุ่มแรก", date(2024, 3, 3), VisitType::Ipd),
+                ],
+                false,
+            ),
+            found_verdict(
+                "ยากลุ่มสอง",
+                vec![record("ยากลุ่มสอง", date(2024, 6, 6), VisitType::Opd)],
+                false,
+            ),
+        ],
+    };
+    state.verdict.set(check());
+    state.check_seq.set(0);
+    let view_state = state.clone();
+    let root = mount("tl-recheck", move || view! { <Timeline state=view_state /> });
+
+    // Filter to the first drug.
+    let chip = root
+        .query_selector_all(".timeline-filter__chip")
+        .expect("chips")
+        .item(1)
+        .expect("second chip")
+        .dyn_into::<web_sys::HtmlElement>()
+        .expect("html element");
+    chip.click();
+    settle().await;
+    let rows = root.query_selector_all(".timeline-row").expect("rows");
+    assert_eq!(rows.length(), 2);
+
+    // A new check with identical content — seq bumps, filter must reset.
+    state.verdict.set(check());
+    state.check_seq.set(1);
+    settle().await;
+    let rows = root.query_selector_all(".timeline-row").expect("rows");
+    assert_eq!(rows.length(), 3, "filter reset to all drugs on a new check");
+    let active = root
+        .query_selector_all(".timeline-filter__chip--active")
+        .expect("active chips");
+    assert_eq!(active.length(), 1, "the ทั้งหมด chip is active");
+    assert_eq!(
+        active.item(0).expect("chip").text_content().expect("text"),
+        "ทั้งหมด"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Patient bar — masking and demographics (DESIGN.md)
 // ---------------------------------------------------------------------------
@@ -850,6 +921,94 @@ async fn detail_modal_shows_empty_state_for_no_recent_meds() {
         .text_content()
         .expect("modal text");
     assert!(text.contains("ไม่มีรายการจ่ายยาใน 30 วันที่ผ่านมา"));
+    api::clear_mock_invoke();
+}
+
+// ---------------------------------------------------------------------------
+// Escape closes the dialogs (DESIGN.md focus management)
+// ---------------------------------------------------------------------------
+
+#[wasm_bindgen_test]
+async fn settings_modal_escape_closes_the_dialog() {
+    api::clear_mock_invoke();
+    let state = AppState::new();
+    state.settings_open.set(true);
+    let view_state = state.clone();
+    let root = mount(
+        "sm-escape",
+        move || view! { <SettingsModal state=view_state /> },
+    );
+    // Sanity: the dialog is visible while open.
+    let display = query_one(&root, ".modal-backdrop")
+        .dyn_into::<HtmlElement>()
+        .expect("backdrop is an HtmlElement")
+        .style()
+        .get_property_value("display")
+        .expect("backdrop display");
+    assert_eq!(display, "flex");
+
+    press_escape();
+    settle().await;
+    assert!(!state.settings_open.get_untracked(), "Escape closes the dialog");
+    let display = query_one(&root, ".modal-backdrop")
+        .dyn_into::<HtmlElement>()
+        .expect("backdrop is an HtmlElement")
+        .style()
+        .get_property_value("display")
+        .expect("backdrop display");
+    assert_eq!(display, "none");
+}
+
+#[wasm_bindgen_test]
+async fn settings_modal_escape_when_closed_never_opens_or_wipes() {
+    // Escape elsewhere in the app (e.g. clearing a search input) must not
+    // touch a closed dialog — the open-flag guard is the protection.
+    api::clear_mock_invoke();
+    let state = AppState::new();
+    let view_state = state.clone();
+    let root = mount(
+        "sm-escape-closed",
+        move || view! { <SettingsModal state=view_state /> },
+    );
+    press_escape();
+    settle().await;
+    assert!(!state.settings_open.get_untracked());
+    let display = query_one(&root, ".modal-backdrop")
+        .dyn_into::<HtmlElement>()
+        .expect("backdrop is an HtmlElement")
+        .style()
+        .get_property_value("display")
+        .expect("backdrop display");
+    assert_eq!(display, "none");
+}
+
+#[wasm_bindgen_test]
+async fn detail_modal_escape_closes_the_dialog() {
+    mock_invoke(|_cmd: &str| resolve_ok(&Vec::<ConcurrentMedication>::new()));
+    let state = AppState::new();
+    state.patient.set(Some(sample_patient()));
+    state.detail_open.set(true);
+    let view_state = state.clone();
+    let root = mount(
+        "detail-escape",
+        move || view! { <PatientDetailModal state=view_state /> },
+    );
+    settle().await;
+    assert!(state.detail_open.get_untracked());
+
+    press_escape();
+    settle().await;
+    assert!(
+        !state.detail_open.get_untracked(),
+        "Escape closes the dialog"
+    );
+    let display = query_one(&root, ".modal-backdrop")
+        .dyn_into::<HtmlElement>()
+        .expect("backdrop is an HtmlElement")
+        .style()
+        .get_property_value("display")
+        .expect("backdrop display");
+    assert_eq!(display, "none");
     api::clear_mock_invoke();
 }
 
