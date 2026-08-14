@@ -70,6 +70,14 @@ cargo test                                 # all tests must pass
 cargo doc --no-deps 2>&1 | grep warning   # no doc warnings
 ```
 
+**Two workspaces.** `app/` is a separate workspace (wasm target, AGENTS-RUST.md
+§14 override) — the root `cargo fmt`/`clippy`/`test` commands do not cover it,
+and CI checks it separately (`wasm-frontend` job). When a change touches
+`app/`, repeat the checks there (`cd app`): `cargo fmt --all -- --check`,
+`cargo clippy --target wasm32-unknown-unknown --all-targets -- -D warnings`,
+and the host + wasm test suites. Skipping this is the classic "CI fails on
+fmt" recurrence.
+
 If any step fails, fix the issue **before** reporting completion. Never report completion with known failures.
 
 ---

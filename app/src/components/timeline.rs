@@ -11,21 +11,27 @@ use crate::components::icons::IconCalendar;
 use crate::state::{AppState, DrugVerdictState, VerdictState, merged_timeline};
 
 /// A cheap content fingerprint of a results list — used to detect "a new
-/// check replaced the view" without an Effect (see [`Timeline`]).
-fn results_key(results: &[crate::state::DrugVerdict]) -> String {
-    results
-        .iter()
-        .map(|v| {
-            let (count, truncated) = match &v.state {
-                DrugVerdictState::Found {
-                    records, truncated, ..
-                } => (records.len(), *truncated),
-                _ => (0, false),
-            };
-            format!("{}|{count}|{truncated}", v.term)
-        })
-        .collect::<Vec<_>>()
-        .join(",")
+/// check replaced the view" without an Effect (see [`Timeline`]). Includes
+/// the check sequence so an identical re-check (same terms, counts and
+/// truncation flags — e.g. the same drugs checked for a new patient) still
+/// counts as a new view and resets the per-drug filter.
+fn results_key(seq: u64, results: &[crate::state::DrugVerdict]) -> String {
+    format!(
+        "{seq}|{}",
+        results
+            .iter()
+            .map(|v| {
+                let (count, truncated) = match &v.state {
+                    DrugVerdictState::Found {
+                        records, truncated, ..
+                    } => (records.len(), *truncated),
+                    _ => (0, false),
+                };
+                format!("{}|{count}|{truncated}", v.term)
+            })
+            .collect::<Vec<_>>()
+            .join(",")
+    )
 }
 
 #[component]
@@ -45,7 +51,7 @@ pub fn Timeline(state: AppState) -> impl IntoView {
             last_results_key.set(None);
             return None;
         };
-        let key = results_key(&results);
+        let key = results_key(state.check_seq.get_untracked(), &results);
         if last_results_key.get_untracked().as_deref() != Some(key.as_str()) {
             last_results_key.set(Some(key));
             filter.set(None);

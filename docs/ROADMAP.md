@@ -142,17 +142,19 @@ HOSxP contains; the clinician interprets.
   (`connection_status`, `configure_connection`, `test_connection`,
   `search_patients`, `search_drugs`, `fetch_drug_history`). Thai error
   translation lives only here (`dev_log` / `map_repo_error`).
-- **Frontend**: 7 components (`top_bar`, `patient_search`, `patient_bar`,
-  `drug_search`, `settings_modal`, `verdict_band`, `timeline`) + `api.rs`
-  (the only webview→backend bridge) + shared signals in `state.rs`. Plain CSS
+- **Frontend**: 9 components (`top_bar`, `patient_search`, `patient_bar`,
+  `drug_search`, `settings_modal`, `verdict_band`, `timeline`,
+  `patient_detail_modal`, `print_sheet`) + `api.rs` (the only
+  webview→backend bridge) + shared signals in `state.rs`. Plain CSS
   implementing DESIGN.md tokens in `app/style/main.css`.
-- **Tests** (counted from the repo): ~45 unit tests — 8 in
-  `readonly_guard`, 6 in `config`, 3 in connector `error`, 1 in `queries`
-  (guard-asserts every statement), 2 in `repository`, 6 in `query_kind`,
-  4 in `history`, 8 in `mock`, 3 in `commands`, 4 in `patient_bar`
-  (host-run component tests). Integration tests in `hosxp-connector/tests`
-  are gated behind `--features integration-tests` and never part of the
-  default run.
+- **Tests** (counted from the repo): 65 Rust unit tests in the root
+  workspace (8 `readonly_guard`, 6 `config`, 3 connector `error`, 1
+  `queries` guard-assert, 3 `repository`, 6 `query_kind`, 4 `history`, 7
+  `resolution`, 18 `mock`, 1 `error`/core, 4 `commands`, 4 `stats`), 7
+  host-run component tests in `app` (`patient_bar` 4, `state` 3), and 30
+  wasm tests in headless Chrome (24 component + 6 API). Integration tests
+  in `hosxp-connector/tests` are gated behind `--features integration-tests`
+  and never part of the default run.
 - **CI** (4 workflows, all pinned Actions SHAs):
   - `ci.yml` — root workspace fmt/clippy/test; WASM frontend fmt/test/trunk
     build/clippy; cargo-deny (advisories + licenses).
@@ -402,10 +404,11 @@ scenario is documented and passed manually.
 The Rust core is well tested; the verdict state machine — the product — is
 not.
 
-**Status: COMPLETE** (implementation) — wasm test runner + 23 tests in
-headless Chrome, honest CI job names, cargo audit on the release path, and
-the a11y audit log. The NVDA pass and the on-machine keyboard walkthrough
-run during Phase 6 (documented procedures in `docs/a11y-notes.md`).
+**Status: COMPLETE** (implementation) — wasm test runner + 30 tests in
+headless Chrome (24 component + 6 API), honest CI job names, cargo audit on
+the release path, and the a11y audit log. The NVDA pass and the on-machine
+keyboard walkthrough run during Phase 6 (documented procedures in
+`docs/a11y-notes.md`).
 
 - [x] **WASM test runner.** Add `wasm-bindgen-test` to `app/` with a CI job
   (Chromium headless via `wasm-pack test --headless` or the equivalent
@@ -449,7 +452,7 @@ it violate read-only, privacy, or quiet-UI?" Items that fail the test go to
 "Out of Scope" instead. Doc-first per AGENTS.md §11 — DESIGN.md and this
 roadmap are updated in the same commit as the code.
 
-**Status: COMPLETE** — all four items implemented, tested (29 wasm tests +
+**Status: COMPLETE** — all four items implemented, tested (30 wasm tests +
 search-core/connector unit tests), and documented. The concurrent-meds
 snapshot ships behind the detail view; whether the pilot clinic finds it
 useful is a Phase 6/7 evaluation, not an engineering gate.
