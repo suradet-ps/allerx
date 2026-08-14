@@ -2,7 +2,10 @@
 //! view where the full CID is revealed, plus the "ยาที่ได้รับล่าสุด"
 //! concurrent-medications snapshot (read-only, last 30 days).
 
+use std::rc::Rc;
+
 use leptos::prelude::*;
+use leptos::ev;
 
 use crate::api;
 use crate::components::icons::{IconUser, IconX};
@@ -47,10 +50,28 @@ pub fn PatientDetailModal(state: AppState) -> impl IntoView {
         });
     });
 
-    let close = move |_| {
+    let close = Rc::new(move |_: ()| {
         state.detail_open.set(false);
         meds.set(MedsState::Idle);
-    };
+    });
+
+    // Escape closes the dialog from anywhere (DESIGN.md "Focus Management") —
+    // window-level listener, guarded by the open flag so an Escape pressed
+    // elsewhere never resets the meds snapshot state. The handle must stay
+    // alive for the component's lifetime; dropping it unregisters the
+    // listener.
+    let escape_state = state.clone();
+    let close_on_escape = Rc::clone(&close);
+    let escape_handle = window_event_listener(ev::keydown, move |event| {
+        if event.key() == "Escape" && escape_state.detail_open.get_untracked() {
+            close_on_escape(());
+        }
+    });
+    let _escape_handle = StoredValue::new(escape_handle);
+
+    // Clones for the view's on:click closures (each captures its own).
+    let backdrop_close = Rc::clone(&close);
+    let button_close = Rc::clone(&close);
 
     view! {
         <div
@@ -62,7 +83,7 @@ pub fn PatientDetailModal(state: AppState) -> impl IntoView {
                     "none"
                 }
             }
-            on:click=move |_| close(())
+            on:click=move |_| backdrop_close(())
         >
             <section class="modal modal--wide" on:click=move |ev| ev.stop_propagation()>
                 <div class="modal__header">
@@ -70,7 +91,7 @@ pub fn PatientDetailModal(state: AppState) -> impl IntoView {
                         <IconUser class="icon modal__title-icon" />
                         "ข้อมูลผู้ป่วย"
                     </h2>
-                    <button class="button-ghost" on:click=move |_| close(()) aria-label="ปิด">
+                    <button class="button-ghost" on:click=move |_| button_close(()) aria-label="ปิด">
                         <IconX class="icon" />
                     </button>
                 </div>
