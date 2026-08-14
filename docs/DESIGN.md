@@ -81,8 +81,8 @@ heavy marketing-block look.
 - **Muted Code** ({colors.muted-code}): `#757575` — HN/CID/drug-code text when de-emphasized in lists.
 
 ### Status (non-verdict)
-- **Warning Background** ({colors.warning-bg}): `#fdf6e3` — pale amber — used only for system states (e.g. "connection to HOSxP lost"), never for clinical meaning.
-- **Warning Text** ({colors.warning-text}): `#8a6420` — amber text/icon for the same.
+- **Warning Background** ({colors.warning-bg}): `#FFF8E1` — pale amber — used only for system states (e.g. "connection to HOSxP lost"), never for clinical meaning.
+- **Warning Text** ({colors.warning-text}): `#8a6420` — amber text/icon for the same — shares the value with {colors.verdict-unresolved-text} so the warning pair passes WCAG AA normal-text contrast (4.6:1).
 
 ## Typography
 
