@@ -6,6 +6,10 @@ Phase 1 completion, v0.3.0 marks the Phase 6 pilot start.
 
 ## [Unreleased]
 
+- Documented the complete HOSxP table/column access surface with
+  ready-to-run table-level and column-level GRANT templates
+  (`docs/deployment.md`) — the DBA's least-privilege answer. A new CI
+  test fails the build when a statement touches an undocumented table.
 - Upgraded `encryptman` 0.2.2 → 0.3.0 and `encryptman-keyring` 0.1.2 →
   0.1.3. Master-key generation is now fallible (`Result`, no panics on
   RNG failure) and the crates guarantee `#![forbid(unsafe_code)]`;

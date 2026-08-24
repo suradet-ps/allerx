@@ -231,34 +231,105 @@ mod tests {
     use super::*;
     use crate::readonly_guard::assert_read_only;
 
+    /// Every statement the crate can execute. Both guard tests iterate this
+    /// list — add new constants here.
+    const ALL_STATEMENTS: [&str; 23] = [
+        PATIENT_SEARCH_BY_CID,
+        PATIENT_SEARCH_BY_HN,
+        PATIENT_SEARCH_NAME_PREFIX,
+        PATIENT_SEARCH_NAME_CONTAINS,
+        DRUG_SEARCH_PREFIX_TYPED,
+        DRUG_SEARCH_PREFIX_TRADE,
+        DRUG_SEARCH_PREFIX_PLAIN,
+        DRUG_SEARCH_CONTAINS_TYPED,
+        DRUG_SEARCH_CONTAINS_TRADE,
+        DRUG_SEARCH_CONTAINS_PLAIN,
+        DRUG_RESOLVE_BY_ICODE,
+        DRUG_RESOLVE_BY_ICODE_TRADE,
+        DRUG_RESOLVE_BY_NAME,
+        DRUG_RESOLVE_BY_NAME_TRADE,
+        DRUG_RESOLVE_BY_TRADE_NAME,
+        HISTORY_OPD,
+        HISTORY_OPD_FALLBACK,
+        HISTORY_IPD_TAKEHOME,
+        HISTORY_IPD_TAKEHOME_FALLBACK,
+        HISTORY_IPD_STAY,
+        HISTORY_IPD_STAY_TRADE,
+        CONCURRENT_MEDS,
+        CONCURRENT_MEDS_TRADE,
+    ];
+
+    /// The table surface documented in docs/deployment.md Part A ("Which
+    /// tables does AllerX read?") — the DBA grants are written against it.
+    const DOCUMENTED_TABLES: [&str; 8] = [
+        "patient",
+        "drugitems",
+        "opitemrece",
+        "iptitemrece",
+        "ipt",
+        "doctor",
+        "kskdepartment",
+        "drugusage",
+    ];
+
     #[test]
     fn all_statements_are_read_only() {
-        for sql in [
-            PATIENT_SEARCH_BY_CID,
-            PATIENT_SEARCH_BY_HN,
-            PATIENT_SEARCH_NAME_PREFIX,
-            PATIENT_SEARCH_NAME_CONTAINS,
-            DRUG_SEARCH_PREFIX_TYPED,
-            DRUG_SEARCH_PREFIX_TRADE,
-            DRUG_SEARCH_PREFIX_PLAIN,
-            DRUG_SEARCH_CONTAINS_TYPED,
-            DRUG_SEARCH_CONTAINS_TRADE,
-            DRUG_SEARCH_CONTAINS_PLAIN,
-            DRUG_RESOLVE_BY_ICODE,
-            DRUG_RESOLVE_BY_ICODE_TRADE,
-            DRUG_RESOLVE_BY_NAME,
-            DRUG_RESOLVE_BY_NAME_TRADE,
-            DRUG_RESOLVE_BY_TRADE_NAME,
-            HISTORY_OPD,
-            HISTORY_OPD_FALLBACK,
-            HISTORY_IPD_TAKEHOME,
-            HISTORY_IPD_TAKEHOME_FALLBACK,
-            HISTORY_IPD_STAY,
-            HISTORY_IPD_STAY_TRADE,
-            CONCURRENT_MEDS,
-            CONCURRENT_MEDS_TRADE,
-        ] {
+        for sql in ALL_STATEMENTS {
             assert!(assert_read_only(sql).is_ok(), "must be SELECT: {sql}");
+        }
+    }
+
+    /// Identifiers immediately following a standalone `FROM` or `JOIN`
+    /// keyword — the tables a statement reads or joins.
+    fn referenced_tables(sql: &str) -> Vec<String> {
+        let lower = sql.to_ascii_lowercase();
+        let bytes = lower.as_bytes();
+        let mut tables = Vec::new();
+        for keyword in ["from", "join"] {
+            let mut start = 0;
+            while let Some(rel) = lower[start..].find(keyword) {
+                let at = start + rel;
+                let end = at + keyword.len();
+                let word_bounded = (at == 0 || !bytes[at - 1].is_ascii_alphanumeric())
+                    && (end == bytes.len() || !bytes[end].is_ascii_alphanumeric());
+                if word_bounded {
+                    let ident: String = lower[end..]
+                        .chars()
+                        .skip_while(|c| c.is_whitespace())
+                        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                        .collect();
+                    if !ident.is_empty() {
+                        tables.push(ident);
+                    }
+                }
+                start = end;
+            }
+        }
+        tables
+    }
+
+    #[test]
+    fn every_referenced_table_is_on_the_documented_access_surface() {
+        let mut seen: Vec<String> = Vec::new();
+        for sql in ALL_STATEMENTS {
+            for table in referenced_tables(sql) {
+                assert!(
+                    DOCUMENTED_TABLES.contains(&table.as_str()),
+                    "table `{table}` is not in docs/deployment.md Part A \
+                     (\"Which tables does AllerX read?\") — update that \
+                     section and the DBA grants in the same change"
+                );
+                if !seen.iter().any(|s| s == &table) {
+                    seen.push(table);
+                }
+            }
+        }
+        for documented in DOCUMENTED_TABLES {
+            assert!(
+                seen.iter().any(|s| s == documented),
+                "table `{documented}` is documented but no longer referenced \
+                 by any statement — drop its grant row from deployment.md"
+            );
         }
     }
 }
