@@ -115,8 +115,9 @@ HOSxP contains; the clinician interprets.
 
 ## Current State (verified against the repo, not assumed)
 
-- **Version**: `0.1.0` in the workspace, `src-tauri/Cargo.toml`, `app/Cargo.toml`,
-  and `tauri.conf.json`.
+- **Version**: `0.3.0` (pilot-start bump, per Phase 8's version
+  discipline) in the root workspace, `app/Cargo.toml`, and
+  `tauri.conf.json`; history in `CHANGELOG.md`.
 - **Stack**: Tauri 2 + Rust 2024 desktop shell; Leptos 0.8 CSR frontend
   (WASM via Trunk, `app/` is its own workspace); `crates/models` (domain
   types, no I/O), `crates/search-core` (pure logic + `HosxRepository` trait +
@@ -161,7 +162,9 @@ HOSxP contains; the clinician interprets.
   - `rust-safety.yml` — clippy job (named "Clippy Pedantic" but runs the
     standard `-D warnings`, not pedantic lints — see Gap G13) + Miri on
     `allerx-search-core`.
-  - `test-build.yml` — full Tauri build on ubuntu-24.04 only.
+  - `test-build.yml` — full Tauri build on ubuntu-24.04 on every push/PR,
+    plus a dispatch-only Windows job that builds and uploads the NSIS/MSI
+    installers (the pre-tag smoke, Phase 6).
   - `publish-release.yml` — 3-platform (Windows, Linux, macOS ARM) tag
     builds via `tauri-apps/tauri-action`, `releaseDraft: false`.
 - **Milestone status** (historical record per AGENTS.md §10):
@@ -175,7 +178,7 @@ HOSxP contains; the clinician interprets.
 | M4 | Medication history (OPD+IPD merged) + timeline UI | ✅ Done |
 | M5 | Performance tuning (debounce, index verification, query timing) | 🔶 Partial — debounce + result limits exist; no timing instrumentation, no index verification → Phase 2 |
 | M6 | UI polish (loading/error states, DB-unreachable handling, CID masking) | 🔶 Partial — masking + error messages done; no live connection state, no degraded-mode banner → Phase 3 |
-| M7 | Packaging (Tauri bundle), internal pharmacy pilot | 🔶 Release workflow exists, not yet exercised end-to-end; pilot not started → Phase 6 |
+| M7 | Packaging (Tauri bundle), internal pharmacy pilot | 🔶 Release workflow exists, not yet exercised end-to-end; pilot not started → Phase 6 (docs + CI smoke shipped; execution pending) |
 
 ---
 
@@ -509,25 +512,36 @@ are recorded in "Out of Scope" with the reason.
 The tool is only worth anything if it runs on the clinic PC with a real
 HOSxP user.
 
-- [ ] **DBA deployment checklist** (`docs/deployment.md`): SQL template for
+**Status: DOCS COMPLETE** — `docs/deployment.md` and `docs/pilot-notes.md`
+are shipped, both posture decisions are made (unsigned installer for v0.x,
+manual updates), CI now produces Windows installers on demand (Gap G9's
+"never built" is closed), and v0.3.0 is bumped with a CHANGELOG. The rest
+executes off-repo by necessity: the smoke-build dispatch, the `v*` tag
+exercise, install verification, keyring/DPI confirmation, and the pilot
+itself — checked off here only after they happen on the real machines.
+
+- [x] **DBA deployment checklist** (`docs/deployment.md`): SQL template for
   the dedicated SELECT-only user (`GRANT SELECT ON <schema>.* TO
   'allerx_ro'@...` — nothing else), charset verification (TIS-620 vs UTF-8,
   AGENTS.md §6), confirmation of the remaining schema items from the Debt
   Ledger, and a documented index request list from Phase 2.
-- [ ] **Windows installer verification.** Exercise `publish-release.yml`
+- [ ] **Windows installer verification** *(runbook + decisions shipped;
+  execution pending)*. Exercise `publish-release.yml`
   on a real `v*` tag; verify the NSIS/MSI artifact installs on the pilot
-  PC (Windows is the clinic reality). Decide and document: code-signing
-  posture (none / self-signed / purchased cert) and the auto-update
-  question (Tauri updater vs manual installs — recommend manual for v0.x:
-  hospital IT controls rollout).
-- [ ] **Pilot protocol** (`docs/pilot-notes.md`): 2–4 weeks with the
+  PC (Windows is the clinic reality). Decided and documented in
+  `docs/deployment.md`: code-signing posture (**unsigned for the pilot**)
+  and auto-update (**manual installs for v0.x** — hospital IT controls
+  rollout).
+- [x] **Pilot protocol** (`docs/pilot-notes.md`): 2–4 weeks with the
   pharmacy department; defined scenarios (search by HN, CID, name; trade
   vs generic names; OPD + IPD patients); a feedback form with exactly the
   questions that matter: "did a verdict ever look wrong?", "did the
   unverifiable state appear, and was it clear?", "would you use this daily?";
   and a false-verdict report channel (feeds Phase 7).
-- [ ] **Pilot machine hygiene.** Confirm keychain access works on the
-  hospital's locked-down Windows login (keyring is a Phase 3 dependency);
+- [ ] **Pilot machine hygiene** *(procedure documented in
+  `docs/pilot-notes.md`; confirmation needs the locked-down clinic PC)*.
+  Confirm keychain access works on the hospital's locked-down Windows login
+  (keyring is a Phase 3 dependency);
   confirm window sizing/DPI on the clinic's display; log any crashes with
   timestamps (PII-free).
 
@@ -696,12 +710,12 @@ checked; once confirmed, the marker is removed and the finding lands in
 | `docs/perf-baseline.md` | Latency measurements, budgets, regression thresholds | ✅ exists (protocol + budgets; numbers filled at staging/pilot) |
 | `docs/reliability-notes.md` | Kill-DB scenario, recovery procedure, health-check notes | ✅ exists |
 | `docs/a11y-notes.md` | Accessibility audit results, NVDA log | ✅ exists (audit + contrast done; NVDA pass scheduled for Phase 6) |
-| `docs/deployment.md` | DBA checklist, installer, keyring/DPI notes | Phase 6 |
-| `docs/pilot-notes.md` | Pilot protocol, feedback form, field reports | Phase 6 |
+| `docs/deployment.md` | DBA checklist, installer, keyring/DPI notes | ✅ exists (execution pending pilot machine) |
+| `docs/pilot-notes.md` | Pilot protocol, feedback form, field reports | ✅ exists (protocol ready; pilot not started) |
 | `docs/validation-report.md` | False-verdict rates, root causes, go/no-go | Phase 7 |
 | `docs/architecture.md` | Module dependencies, data flow diagrams | Phase 8 |
 | `docs/security.md` | Threat model, credential-at-rest, shared-workstation posture | Phase 8 |
-| `CHANGELOG.md` | Version history | Phase 8 |
+| `CHANGELOG.md` | Version history | ✅ exists (started at v0.3.0) |
 
 ---
 
