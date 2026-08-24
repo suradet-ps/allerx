@@ -181,7 +181,7 @@ matches the searched drug`, and adds the IPD-side equivalent (§6.3) run concurr
 
 - Mask CID partially in list views (`1-XXXX-XXXXX-XX-1`), show in full only on the detail view.
 - No PII in persisted logs — log query timing/error type, not parameter values.
-- Keep the DB connection string out of source control (`.env` + `.gitignore`, or the same encrypted-credential pattern used in `encryptman` + `encryptman-keyring`(https://docs.rs/encryptman/0.2.2/encryptman/)if client-side credential storage is needed).
+- Keep the DB connection string out of source control (`.env` + `.gitignore`, or the same encrypted-credential pattern used in `encryptman` + `encryptman-keyring`(https://docs.rs/encryptman/0.3.0/encryptman/)if client-side credential storage is needed).
 - The DB password is a `secrecy::SecretString` end to end in Rust: zeroized on drop, `Debug`-redacted (`ConnectionInput` and `HosxConfig`). Two plaintext windows are documented residuals, not bugs: (1) the webview's JS heap while the operator types/confirms — inherent to a desktop IPC flow; (2) sqlx's internal copy inside `MySqlPool`, retained for reconnects for the pool's lifetime. Never log or Debug-print `ConnectionInput`/`HosxConfig` values.
 - Optional (M6+): local application-level audit trail (who searched what, when) for internal hospital compliance.
 
