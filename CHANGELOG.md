@@ -6,6 +6,12 @@ Phase 1 completion, v0.3.0 marks the Phase 6 pilot start.
 
 ## [Unreleased]
 
+- Upgraded `encryptman` 0.2.2 → 0.3.0 and `encryptman-keyring` 0.1.2 →
+  0.1.3. Master-key generation is now fallible (`Result`, no panics on
+  RNG failure) and the crates guarantee `#![forbid(unsafe_code)]`;
+  ciphertext and keychain formats are unchanged, so existing encrypted
+  settings keep decrypting — no migration.
+
 ## [0.3.0] — pilot start (Phase 6)
 
 - `docs/deployment.md`: DBA sign-off checklist (SELECT-only user,
