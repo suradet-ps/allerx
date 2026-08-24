@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "allerx-app"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "allerx-models",
  "allerx-search-core",
@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "allerx-models"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "serde",
@@ -38,7 +38,7 @@ dependencies = [
 
 [[package]]
 name = "allerx-search-core"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "allerx-models",
  "async-trait",
