@@ -267,7 +267,10 @@ mod tests {
     use tempfile::tempdir;
 
     fn test_store() -> MasterKeyStore {
-        MasterKeyStore(generate_master_key())
+        // encryptman 0.3 made key generation fallible (RNG failure is no
+        // longer a panic inside the crate); the OS RNG is always available
+        // under `cargo test`, so expect here with that invariant.
+        MasterKeyStore(generate_master_key().expect("os RNG available during tests"))
     }
 
     fn sample_config() -> HosxConfig {
