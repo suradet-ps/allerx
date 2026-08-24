@@ -32,6 +32,75 @@ SHOW GRANTS FOR 'allerx_ro'@'<pilot-pc-host-or-ip>';
   guard, parameterized queries) — but the grant is the boundary that
   matters.
 
+#### Which tables does AllerX read? (the least-privilege answer)
+
+AllerX executes exactly the statements in
+`crates/hosxp-connector/src/queries.rs` — compile-time constants,
+SELECT-only, parameterized. Their complete table/column surface:
+
+| Table | Columns read | Used by |
+|---|---|---|
+| `patient` | `hn`, `cid`, `pname`, `fname`, `lname`, `birthday`, `sex` | patient search (HN / CID / name) |
+| `drugitems` | `icode`, `name`, `strength`, `trade_name`¹, `istype`¹ | drug autocomplete, resolution, history join, recent meds |
+| `opitemrece` | `vstdate`, `vsttime`, `an`, `hn`, `icode`, `qty`, `doctor`, `dep_code`, `drugusage` | OPD history, IPD take-home history, recent meds |
+| `iptitemrece`² | `idate`, `itime`, `an`, `icode`, `qty`, `doctor`, `depcode`, `drugusage` | IPD in-stay history |
+| `ipt` | `an`, `hn` | IPD in-stay join only |
+| `doctor` | `code`, `name` | prescriber name |
+| `kskdepartment` | `depcode`, `department` | department name |
+| `drugusage` | `drugusage`, `name1` | usage line |
+
+No other table is ever referenced; the health ping / connection test is
+`SELECT 1` and touches nothing.
+
+> ¹ optional columns — grant only when confirmed present (checklist A3);
+> statements using them fall back automatically when absent.
+> ² the whole table may be absent or named differently per instance;
+> tolerated at runtime ("no in-stay records").
+
+**Table-level grants** (recommended — least privilege that stays
+maintainable):
+
+```sql
+CREATE USER 'allerx_ro'@'<pilot-pc-host-or-ip>' IDENTIFIED BY '<password>';
+GRANT SELECT ON <schema>.patient       TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT ON <schema>.drugitems     TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT ON <schema>.opitemrece    TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT ON <schema>.iptitemrece   TO 'allerx_ro'@'<pilot-pc-host-or-ip>'; -- skip if absent
+GRANT SELECT ON <schema>.ipt           TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT ON <schema>.doctor        TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT ON <schema>.kskdepartment TO 'allerx_ro'@'<pilot-pc-host-or-ip>'; -- required: no runtime fallback for this join
+GRANT SELECT ON <schema>.drugusage     TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+
+SHOW GRANTS FOR 'allerx_ro'@'<pilot-pc-host-or-ip>'; -- verify: SELECT rows only
+```
+
+**Column-level grants** (the maximum form): every statement selects
+explicit columns — there is no `SELECT *` anywhere — so column-level
+privileges work today:
+
+```sql
+GRANT SELECT (hn, cid, pname, fname, lname, birthday, sex) ON <schema>.patient TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT (icode, name, strength)                      ON <schema>.drugitems TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+-- + trade_name / istype after checklist A3 confirms they exist
+GRANT SELECT (vstdate, vsttime, an, hn, icode, qty, doctor, dep_code, drugusage) ON <schema>.opitemrece   TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT (idate, itime, an, icode, qty, doctor, depcode, drugusage)          ON <schema>.iptitemrece  TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT (an, hn)                                     ON <schema>.ipt            TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT (code, name)                                 ON <schema>.doctor         TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT (depcode, department)                        ON <schema>.kskdepartment  TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT (drugusage, name1)                           ON <schema>.drugusage      TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+```
+
+Trade-off, stated honestly: column-level is audit-proof minimal, but any
+future harmless addition (e.g. selecting one more descriptive column)
+fails until the DBA re-grants — pick it only if the hospital wants that
+friction. Table-level is the default recommendation; both are far tighter
+than `<schema>.*`.
+
+**Maintenance rule:** a statement that touches a new table fails CI by
+test (`every_referenced_table_is_on_the_documented_access_surface` in
+`queries.rs`) until this section and the DBA grants are updated in the
+same change.
+
 ### A2. Charset verification (drives Thai name search)
 
 ```sql
