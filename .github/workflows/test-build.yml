@@ -38,7 +38,7 @@ jobs:
         uses: swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
           workspaces: |
-            ./src-tauri -> src-tauri/target
+            . -> target
             ./app -> app/target
 
       - name: Install system dependencies
@@ -99,7 +99,7 @@ jobs:
         uses: swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
           workspaces: |
-            ./src-tauri -> src-tauri/target
+            . -> target
             ./app -> app/target
 
       - name: Install Trunk
@@ -139,7 +139,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: allerx-windows-installers
+          # src-tauri is a workspace member, so tauri bundles land in the
+          # workspace target dir, not src-tauri/target.
           path: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
+            target/release/bundle/msi/*.msi
           if-no-files-found: error
