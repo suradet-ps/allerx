@@ -81,7 +81,7 @@ This is a hard requirement, so it's enforced in layers:
 ## 6. HOSxP integration — reviewed schema notes (⚠️ still confirm against the live instance before M1)
 
 This layout has been reviewed against standard HOSxP v3/v4 conventions and is more reliable
-than a cold guess, but it has **not** been checked against pilot hospital's actual instance
+than a cold guess, but it has **not** been checked against the pilot hospital's actual instance
 yet. Treat table/column names below as "likely correct, confirm with `SHOW COLUMNS`," and treat
 the filtering/join nuances as load-bearing — they're the parts most likely to cause silent bugs
 (wrong rows, not errors) if skipped.

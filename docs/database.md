@@ -22,7 +22,7 @@ instance, what is still pending, and the query patterns the connector uses.
 | `iptitemrece` table + `idate`/`itime` + `ipt.hn` | IPD in-stay history | Standard HOSxP table (some instances name it `ipitemrece`) | Tolerated at runtime: a missing table yields "no in-stay records", never an error. Missing in-stay records is a known coverage gap on such instances. |
 | `kskdepartment.depcode` | department name join | `depcode` is the PK of `kskdepartment` | Wrong name → 1054 → history queries fail loudly (no fallback for this join). |
 | `opitemrece` IPD take-home branch (`an IS NOT NULL`) | IPD take-home history | This instance logs take-home meds in `opitemrece` with `an` populated | If false, IPD take-home coverage is silently empty. Must be confirmed. |
-| pilot-hospital HN pattern (drives `detect_query_kind`) | patient search | 5–10 digits = HN, 13 digits = CID | Wrong pattern → searches classified as name search; still works, but slower and with more results. |
+| Pilot-hospital HN pattern (drives `detect_query_kind`) | patient search | 5–10 digits = HN, 13 digits = CID | Wrong pattern → searches classified as name search; still works, but slower and with more results. |
 | Database charset (TIS-620 vs UTF-8) | Thai name search | UTF-8 (modern instances) | TIS-620 → Thai `LIKE` matching may fail silently; name search must be re-validated. |
 | HOSxP allergy/adverse-reaction table | Phase 7 (proposed cross-check) | Table name varies by instance | n/a — not implemented yet. |
 

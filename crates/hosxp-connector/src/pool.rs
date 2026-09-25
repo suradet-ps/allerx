@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use sqlx::mysql::{MySqlConnectOptions, MySqlPool, MySqlPoolOptions};
+use sqlx::mysql::{MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlSslMode};
 
 use secrecy::ExposeSecret;
 
@@ -14,6 +14,12 @@ use crate::readonly_guard::READ_ONLY_SESSION_SQL;
 /// Pool size: ~5 connections is enough for a single-hospital desktop app
 /// (AGENTS.md §8).
 const MAX_CONNECTIONS: u32 = 5;
+
+/// Minimum TLS posture: the channel must be encrypted. `Required` never
+/// falls back to plaintext; certificate *verification*
+/// (`VerifyCa`/`VerifyIdentity`) is the follow-up once the hospital CA is
+/// available (docs/deployment.md A5).
+const SSL_MODE: MySqlSslMode = MySqlSslMode::Required;
 
 /// Server-side SELECT timeout: 5000 ms, expressed in milliseconds.
 ///
@@ -31,6 +37,10 @@ const STATEMENT_TIMEOUT_SESSION_SQL: &str = "SET SESSION max_execution_time = 50
 
 /// Opens a pool of read-only MySQL connections.
 ///
+/// The channel is encrypted by contract: TLS is *required*, so a server
+/// without TLS makes the connection fail instead of silently sending
+/// credentials in plaintext (docs/deployment.md A5).
+///
 /// Every new connection immediately runs `SET SESSION TRANSACTION READ
 /// ONLY`, so the session itself rejects any DML even if a non-SELECT query
 /// slips through the application-level guard. The SELECT timeout is applied
@@ -47,6 +57,7 @@ pub async fn connect(cfg: &HosxConfig) -> Result<MySqlPool, Error> {
         .port(cfg.port)
         .database(&cfg.database)
         .username(&cfg.user)
+        .ssl_mode(SSL_MODE)
         // sqlx 0.8 keeps its own plaintext copy of the password inside the
         // pool (needed to reconnect) — documented residual, out of our
         // control. Everything under our control is zeroized on drop.

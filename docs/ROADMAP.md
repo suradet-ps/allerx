@@ -223,7 +223,7 @@ HOSxP contains; the clinician interprets.
    test runner, no e2e. (Phase 4)
 8. **G8 — HN pattern and remaining schema unverified.** `detect_query_kind`'s
    "5–10 digits = HN" rule is a documented default, not confirmed against
-   pilot hospital (AGENTS.md §6). `// SCHEMA-UNVERIFIED` markers remain on
+   the pilot hospital (AGENTS.md §6). `// SCHEMA-UNVERIFIED` markers remain on
    `drugitems.name`/`strength` and the whole `iptitemrece` query. Charset
    (TIS-620 vs UTF-8) is unconfirmed. See the Schema Debt Ledger. (Phases 1, 5, 6)
 9. **G9 — No deployment/pilot materials.** No DBA checklist (SELECT-only
@@ -690,7 +690,7 @@ checked; once confirmed, the marker is removed and the finding lands in
 | `iptitemrece` (table name), `idate`/`itime`, `ipt.hn` | `queries.rs` HISTORY_IPD_STAY | ❌ unverified (missing-table tolerated at runtime) |
 | `kskdepartment.depcode` | `queries.rs` HISTORY_OPD/IPD | ❌ unverified |
 | `opitemrece` IPD take-home branch (`an IS NOT NULL`) | `queries.rs` HISTORY_IPD_TAKEHOME | ❌ unverified |
-| pilot-hospital HN pattern (drives `detect_query_kind`) | `query_kind.rs` | ❌ unverified |
+| Pilot-hospital HN pattern (drives `detect_query_kind`) | `query_kind.rs` | ❌ unverified |
 | Database charset (TIS-620 vs UTF-8) | AGENTS.md §6 | ❌ unverified |
 | `patient.birthday` (vs `birthdate`) | `queries.rs` | ✅ confirmed on live instance |
 | `opitemrece.dep_code` (vs `depcode`) | `queries.rs` | ✅ confirmed on live instance |
