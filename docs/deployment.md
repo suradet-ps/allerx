@@ -154,24 +154,29 @@ and their process); requests are PII-free and safe under the read-only
 model. If a budget from `perf-baseline.md` is later missed, the missing
 index named there is the first suspect.
 
-### A5. TLS on the HOSxP MySQL/MariaDB server (required — the app fails closed)
+### A5. TLS on the HOSxP MySQL/MariaDB server (advisory — the app degrades safely)
 
-AllerX requires an encrypted channel (`ssl-mode=REQUIRED` in
-`crates/hosxp-connector/src/pool.rs`): if the server does not offer TLS,
-the connection fails and the app shows the connection error. Credentials
-are never sent in plaintext.
+The pilot HOSxP instance has TLS disabled, so AllerX connects with
+`ssl-mode=Preferred`: TLS is used when the server offers it, and the
+connection falls back to an unencrypted channel on the hospital LAN when it
+does not. This is a documented residual; the enforced boundaries remain the
+dedicated read-only user, the read-only session, and the SQL guard.
 
 ```sql
-SHOW VARIABLES LIKE 'have_ssl';       -- MySQL: expect YES
-SHOW VARIABLES LIKE 'ssl_cert';       -- MySQL 8 / MariaDB: path must be set
-SHOW VARIABLES LIKE 'version_ssl%';   -- expect TLS version + cipher
+SHOW VARIABLES LIKE 'have_ssl';       -- YES = TLS available
+SHOW VARIABLES LIKE 'ssl_cert';       -- path must be set when TLS is on
+SHOW VARIABLES LIKE 'version_ssl%';   -- TLS version + cipher
 ```
 
-If TLS is off, ask the DBA to enable it before the pilot (server cert +
-key). Certificate *verification* (`VerifyCa`/`VerifyIdentity`) is the
-planned follow-up once the hospital CA is available; until then the channel
-is encrypted but the server certificate is not validated — a same-LAN MITM
-remains a documented residual risk.
+Record the result in `database.md`. If TLS is off, note it as accepted for
+the pilot (LAN-only, read-only account). If the DBA enables TLS, raise the
+bar without a code change:
+
+```
+ALLERX_HOSXP_SSL_MODE=required          # encrypt, no certificate validation
+ALLERX_HOSXP_SSL_MODE=verify_ca         # + verify the chain
+ALLERX_HOSXP_SSL_MODE=verify_identity   # + verify the hostname
+```
 
 **Sign-off:** A1 ☐ A2 ☐ A3 ☐ A4 ☐ A5 ☐ — dated, recorded in `database.md`.
 

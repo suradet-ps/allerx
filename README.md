@@ -83,10 +83,11 @@ Three crates, one hard law: HOSxP is read-only, without exceptions.
 - **Guards** - read-only is enforced in layers: a dedicated user with
   `GRANT SELECT` only, `SET SESSION TRANSACTION READ ONLY` on every pooled
   connection, an application-level guard rejecting anything but a single
-  read statement, parameterized queries everywhere. The MySQL channel must
-  be encrypted (`ssl-mode=REQUIRED`) - plaintext fallback is impossible.
-  Logs carry timings and error types, never patient names. CIDs are masked
-  until the detail view.
+  read statement, parameterized queries everywhere. The MySQL link is
+  opportunistic about TLS (`ssl-mode=Preferred`, `ALLERX_HOSXP_SSL_MODE` to
+  raise it) because the pilot HOSxP has TLS disabled - a documented
+  residual (`docs/deployment.md` A5). Logs carry timings and error types,
+  never patient names. CIDs are masked until the detail view.
 - **Seals** - HOSxP credentials rest AES-256-GCM-encrypted with the key in
   the OS keychain; the password is a `secrecy::SecretString` end to end,
   zeroized on drop, `Debug`-redacted.
