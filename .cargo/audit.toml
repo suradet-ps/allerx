@@ -1,0 +1,33 @@
+# cargo-audit configuration — mirrors deny.toml so the dedicated release
+# audit and the per-PR cargo-deny check agree on what is knowingly accepted.
+#
+# RUSTSEC-2024-0429 (glib unsoundness) is intentionally NOT ignored: cargo
+# audit surfaces it as a warning, and it should stay visible.
+
+[advisories]
+ignore = [
+    # Marvin attack timing sidechannel on rsa (sqlx-mysql
+    # caching_sha2_password auth). The pilot HOSxP has TLS disabled, so the
+    # connector uses opportunistic TLS on the hospital LAN with a
+    # SELECT-only account; no patched release exists.
+    "RUSTSEC-2023-0071",
+    # proc-macro-error unmaintained (transitive dep of glib/gtk)
+    "RUSTSEC-2024-0370",
+    # GTK3 bindings unmaintained (transitive deps of tauri on Linux)
+    "RUSTSEC-2024-0411",
+    "RUSTSEC-2024-0412",
+    "RUSTSEC-2024-0413",
+    "RUSTSEC-2024-0414",
+    "RUSTSEC-2024-0415",
+    "RUSTSEC-2024-0416",
+    "RUSTSEC-2024-0417",
+    "RUSTSEC-2024-0418",
+    "RUSTSEC-2024-0419",
+    "RUSTSEC-2024-0420",
+    # unic-* unmaintained (transitive dep of tauri-utils via urlpattern)
+    "RUSTSEC-2025-0075",
+    "RUSTSEC-2025-0080",
+    "RUSTSEC-2025-0081",
+    "RUSTSEC-2025-0098",
+    "RUSTSEC-2025-0100",
+]
