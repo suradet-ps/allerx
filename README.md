@@ -1,13 +1,10 @@
 # AllerX
 
-```
- █████╗ ██╗     ██╗     ███████╗██████╗ ██╗  ██╗
-██╔══██╗██║     ██║     ██╔════╝██╔══██╗╚██╗██╔╝
-███████║██║     ██║     █████╗  ██████╔╝ ╚███╔╝
-██╔══██║██║     ██║     ██╔══╝  ██╔══██╗ ███╔╝
-██║  ██║███████╗███████╗███████╗██║  ██║██╔██╗
-╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝╚═╝
-```
+[![CI](https://github.com/suradet-ps/allerx/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/suradet-ps/allerx/actions/workflows/ci.yml)
+[![Rust Safety Check](https://github.com/suradet-ps/allerx/actions/workflows/rust-safety.yml/badge.svg?branch=main)](https://github.com/suradet-ps/allerx/actions/workflows/rust-safety.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app/)
+[![Leptos 0.8](https://img.shields.io/badge/Leptos-0.8-blue.svg)](https://leptos.dev)
 
 ---
 
