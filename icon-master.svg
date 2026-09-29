@@ -1,66 +1,45 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
-    <!-- Drop shadow for dimension on screen -->
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.25"/>
-    </filter>
-    
-    <!-- Circular background gradient -->
-    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FF5252"/>
-      <stop offset="100%" stop-color="#D32F2F"/>
+    <!-- Ruby panel gradient: #E11D48 (light) -> #881337 (deep) -->
+    <linearGradient id="bgRuby" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48" />
+      <stop offset="100%" stop-color="#881337" />
     </linearGradient>
 
-    <!-- Pill bottle cap gradient -->
-    <linearGradient id="cap-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#E0E0E0"/>
-    </linearGradient>
+    <!-- Soft inner glow under the capsules. There is deliberately no
+         outer drop shadow so the icon keeps a clean silhouette at every
+         platform size (dock, taskbar, store tiles). -->
+    <filter id="innerGlow1" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
   </defs>
 
-  <!-- Warning circle background -->
-  <circle cx="256" cy="256" r="236" fill="url(#bg-gradient)" filter="url(#shadow)"/>
+  <!-- Ruby panel -->
+  <rect
+    x="16"
+    y="16"
+    width="480"
+    height="480"
+    rx="96"
+    fill="url(#bgRuby)"
+    stroke="#FB7185"
+    stroke-width="8"
+  />
 
-  <!-- White outer ring -->
-  <circle cx="256" cy="256" r="220" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-opacity="0.3"/>
+  <!-- Crossed capsules -->
+  <g transform="translate(256, 205) scale(1.18)" filter="url(#innerGlow1)">
+    <g transform="rotate(-45)">
+      <rect x="-120" y="-40" width="240" height="80" rx="40" fill="#FFFFFF" stroke="#9F1239" stroke-width="6" />
+      <line x1="0" y1="-40" x2="0" y2="40" stroke="#9F1239" stroke-width="5" />
+    </g>
+    <g transform="rotate(45)">
+      <rect x="-120" y="-40" width="240" height="80" rx="40" fill="#FF1744" stroke="#FFFFFF" stroke-width="6" />
+      <line x1="0" y1="-40" x2="0" y2="40" stroke="#FFFFFF" stroke-width="5" />
+    </g>
+  </g>
 
-  <!-- Pill bottle and warning mark group -->
-  <g transform="translate(0, 0)">
-    <!-- Bottle cap -->
-    <rect x="206" y="100" width="100" height="32" rx="6" fill="url(#cap-gradient)"/>
-    <rect x="216" y="132" width="80" height="16" fill="#BDBDBD"/>
-
-    <!-- Bottle body (rounded shape) -->
-    <path d="M 166 160 
-             C 166 148, 176 148, 186 148 
-             L 326 148 
-             C 336 148, 346 148, 346 160 
-             L 346 370 
-             C 346 392, 328 410, 306 410 
-             L 206 410 
-             C 184 410, 166 392, 166 370 
-             Z" 
-          fill="#FFFFFF"/>
-
-    <!-- Drug label on bottle (light tone) -->
-    <rect x="186" y="180" width="140" height="200" rx="12" fill="#FFEBEE"/>
-
-    <!-- Warning triangle & exclamation mark -->
-    <!-- Orange-red warning triangle -->
-    <path d="M 256 205 
-             L 310 295 
-             C 314 302, 309 310, 300 310 
-             L 212 310 
-             C 203 310, 198 302, 202 295 
-             Z" 
-          fill="#D32F2F"/>
-    
-    <!-- White exclamation mark (!) -->
-    <path d="M 256 235 L 256 270" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
-    <circle cx="256" cy="287" r="4.5" fill="#FFFFFF"/>
-
-    <!-- Allergy indicator / warning bars below the label -->
-    <line x1="216" y1="340" x2="296" y2="340" stroke="#D32F2F" stroke-width="8" stroke-linecap="round"/>
-    <line x1="216" y1="360" x2="276" y2="360" stroke="#B0BEC5" stroke-width="6" stroke-linecap="round"/>
+  <!-- Wordmark -->
+  <g transform="translate(256, 435)">
+    <text text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="64" font-weight="900" fill="#FFFFFF" letter-spacing="2"><tspan fill="#FFFFFF">Aller</tspan><tspan fill="#FFEBEE">X</tspan></text>
   </g>
 </svg>
