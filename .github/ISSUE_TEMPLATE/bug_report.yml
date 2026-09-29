@@ -1,0 +1,89 @@
+name: Bug report
+description: Something is not working as it should
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make AllerX better. Please fill in the fields below.
+
+        A wrong verdict is a patient-safety event - especially a false
+        "ไม่พบประวัติ" when the record contains the drug. If that is what you
+        hit, say so up front.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A short, clear description of the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Search ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the error message shown in the app, if any.
+    validations:
+      required: true
+  - type: dropdown
+    id: verdict
+    attributes:
+      label: Verdict band shown
+      description: If the bug involves a drug check, which verdict did AllerX display?
+      options:
+        - พบประวัติ (found)
+        - ไม่พบประวัติ (not found)
+        - ไม่สามารถยืนยันได้ (cannot confirm)
+        - Not applicable
+    validations:
+      required: false
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: AllerX version
+      description: From the GitHub release or installer you used.
+      placeholder: "e.g. 0.3.2"
+    validations:
+      required: true
+  - type: input
+    id: hosxp
+    attributes:
+      label: HOSxP / MariaDB version
+      description: If known - HOSxP schema drifts between sites and versions, and some AllerX queries still carry SCHEMA-UNVERIFIED assumptions.
+      placeholder: "e.g. HOSxP XE 4.x, MariaDB 10.5"
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or extra context
+      description: Paste relevant logs. Never paste passwords, connection strings, or patient data (HN, CID, names) - AllerX logs timings and error types only, never PII.
+      render: text
+    validations:
+      required: false

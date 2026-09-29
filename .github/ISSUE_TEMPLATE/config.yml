@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Development guide
+    url: https://github.com/suradet-ps/allerx/blob/main/AGENTS.md
+    about: Hard rules (read-only HOSxP, no PII in logs), architecture, and conventions
+  - name: Deployment runbook
+    url: https://github.com/suradet-ps/allerx/blob/main/docs/deployment.md
+    about: DBA sign-off checklist, GRANT templates, and connection troubleshooting
