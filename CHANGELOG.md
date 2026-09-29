@@ -6,6 +6,12 @@ Phase 1 completion, v0.3.0 marks the Phase 6 pilot start.
 
 ## [Unreleased]
 
+- Design: new app icon artwork (crossed capsules on a ruby tile) with the
+  outer drop shadow removed; all platform icons regenerated.
+- Design: top-bar logo redrawn from the new artwork, and the brand palette
+  moved to the icon rose (`#E11D48` / `#881337`) with the contrast audit
+  updated.
+
 ## [0.3.1] — pilot connectivity
 
 - Fixed: the pilot HOSxP instance has TLS disabled, so `ssl-mode=REQUIRED`
