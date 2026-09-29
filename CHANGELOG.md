@@ -6,6 +6,8 @@ Phase 1 completion, v0.3.0 marks the Phase 6 pilot start.
 
 ## [Unreleased]
 
+## [0.3.2] - brand refresh
+
 - Design: new app icon artwork (crossed capsules on a ruby tile) with the
   outer drop shadow removed; all platform icons regenerated.
 - Design: top-bar logo redrawn from the new artwork, and the brand palette
@@ -71,7 +73,8 @@ here together so the history is honest:
   (full CID reveal + recent-meds snapshot), print sheet, all documented
   in DESIGN.md and this roadmap.
 
-[Unreleased]: https://github.com/suradet-ps/allerx/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/suradet-ps/allerx/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/suradet-ps/allerx/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/suradet-ps/allerx/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/suradet-ps/allerx/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/suradet-ps/allerx/compare/v0.1.0...v0.2.0
