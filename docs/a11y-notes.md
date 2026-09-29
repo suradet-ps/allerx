@@ -27,8 +27,8 @@ checked, how, and what is still pending a real screen reader.
 | ink `#212121` on canvas-raised `#FFFFFF` | 16.6:1 | ✅ |
 | slate `#616161` on canvas-raised | 5.6:1 | ✅ |
 | steel `#9E9E9E` on canvas-raised | 2.9:1 | ⚠️ placeholders/tertiary only (3:1 large-text rule; captions at 12px are borderline — placeholders are non-essential text, accepted) |
-| brand `#D32F2F` on white (buttons, focus) | 5.4:1 | ✅ |
-| on-brand `#FFFFFF` on brand `#D32F2F` | 5.4:1 | ✅ |
+| brand `#E11D48` on white (buttons, focus) | 4.7:1 | ✅ |
+| on-brand `#FFFFFF` on brand `#E11D48` | 4.7:1 | ✅ |
 | verdict-found `#2E7D32` on `#E8F5E9` | 5.5:1 | ✅ |
 | verdict-notfound `#C62828` on `#FFEBEE` | 5.8:1 | ✅ |
 | verdict-unresolved `#8a6420` on `#FFF8E1` | 4.6:1 | ✅ (added in Phase 1 with this requirement in mind) |

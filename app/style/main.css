@@ -8,9 +8,9 @@
    ========================================================================== */
 
 :root {
-  /* Brand — red family from app icon (#FF5252 / #D32F2F) */
-  --brand: #D32F2F;
-  --brand-dark: #B71C1C;
+  /* Brand - rose family from app icon (#E11D48 / #881337) */
+  --brand: #E11D48;
+  --brand-dark: #881337;
   --brand-soft: #FFEBEE;
 
   /* Status — connection dot (independent from brand) */

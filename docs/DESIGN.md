@@ -20,18 +20,18 @@ so this band is the only loud thing on screen.
 Outside that one moment, the palette stays calm and paper-like — closer to a well-typeset
 clinical reference than to a product homepage — because the app is read constantly during a
 shift and visual fatigue matters. The accent color used for chrome (primary buttons, focused
-inputs, selected rows) is a deep red, aligned with the app icon's palette (`#FF5252` →
-`#D32F2F`), kept deliberately separate from the semantic red/green of the verdict so the two
+inputs, selected rows) is a deep rose, aligned with the app icon's palette (`#E11D48` →
+`#881337`), kept deliberately separate from the semantic red/green of the verdict so the two
 never compete for the same attention.
 
 **Key characteristics:**
 - Neutral warm paper workspace ({colors.canvas}), calm and low-fatigue for repeated all-shift use
 - Flat, hairline-bordered surfaces — structure comes from 1px borders, not shadows or elevation
 - One loud element only: the verdict band (tinted alert: green = found, red = not found)
-- Deep red ({colors.brand}) used with restraint — buttons, focus, selected rows only, matches app icon
+- Deep rose ({colors.brand}) used with restraint for buttons, focus, and selected rows only, matching the app icon
 - IBM Plex Sans Thai + IBM Plex Sans for bilingual clarity; IBM Plex Mono for HN/CID/drug codes
 - Restrained corners ({rounded.md}, 6px) — a clinical tool, not a consumer app
-- App logo (pill bottle icon) in top bar, red gradient matching brand chrome
+- App logo (crossed capsules icon) in top bar, ruby gradient matching brand chrome
 
 ### Design Principles (informed by Microsoft UX Guidelines & Desktop Design Systems)
 
@@ -51,8 +51,8 @@ never compete for the same attention.
 ## Colors
 
 ### Brand & Chrome (aligned with app icon palette)
-- **Brand** ({colors.brand}): `#D32F2F` — deep red from app icon. Used for primary buttons, focused input borders, selected rows. Matches the icon gradient's darker stop. Never used for the verdict band.
-- **Brand Dark** ({colors.brand-dark}): `#B71C1C` — hover/pressed state of red elements.
+- **Brand** ({colors.brand}): `#E11D48` rose red from the app icon, used for primary buttons, focused input borders, selected rows. Matches the icon gradient's lighter stop. Never used for the verdict band.
+- **Brand Dark** ({colors.brand-dark}): `#881337` hover/pressed state of red elements, matches the icon gradient's darker stop.
 - **Brand Soft** ({colors.brand-soft}): `#FFEBEE` — pale tint for selected-row backgrounds, patient bar.
 
 ### Semantic — Verdict (reserved, used nowhere else)
@@ -207,7 +207,7 @@ app chasing friendliness. Pill-shaped (`{rounded.full}`) elements are limited to
 
 **`top-bar`** — Thin (44px), flat, neutral header spanning full width.
 - Background `{colors.canvas-raised}`, bottom border `1px solid {colors.hairline}`.
-- **`top-bar__left`** — App logo (inline SVG pill bottle, 28×28, red gradient) + title.
+- **`top-bar__left`** — App logo (inline SVG crossed capsules, 28×28, ruby gradient) + title.
 - **`top-bar__title`** — "AllerX", `16px/700`, left-aligned. No tagline on this layout.
 - **`top-bar__status`** — Connection indicator: 8px dot + text, right-aligned next to settings.
 - **`top-bar__button`** — Ghost button with gear icon, tooltip "ตั้งค่า".
@@ -370,5 +370,5 @@ When dark mode is implemented, the following tokens need dark variants:
 --ink:           #212121  → #e8eaed
 --slate:         #616161  → #9aa0a6
 --steel:         #9E9E9E  → #6b7280
---brand:         #D32F2F  → #FF6659 (lighter for dark bg contrast)
+--brand:         #E11D48  → #FB7185 (lighter for dark bg contrast)
 ```
