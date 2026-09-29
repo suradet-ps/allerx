@@ -6,6 +6,12 @@ Phase 1 completion, v0.3.0 marks the Phase 6 pilot start.
 
 ## [Unreleased]
 
+- Fixed: exact drug-name resolution is deterministic. When several
+  `drugitems` rows share the typed name (different strengths), AllerX now
+  surfaces them as disambiguation candidates instead of letting the
+  database pick an arbitrary row; this removes a path to a false
+  "ไม่พบประวัติ" for a strength the patient actually received (issue #15).
+
 ## [0.3.2] - brand refresh
 
 - Design: new app icon artwork (crossed capsules on a ruby tile) with the

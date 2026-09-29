@@ -49,16 +49,24 @@ The IPD in-stay source additionally tolerates the whole table being absent
 
 `fetch_drug_history` maps a typed drug term to an icode in this order:
 
-1. exact `drugitems.icode` hit;
-2. exact generic-name hit (`drugitems.name`);
-3. exact trade-name hit (`drugitems.trade_name`, tolerant);
+1. exact `drugitems.icode` hit (unique by primary key);
+2. exact generic-name hits (`drugitems.name`, all matches fetched
+   `ORDER BY icode LIMIT 11`);
+3. exact trade-name hits (`drugitems.trade_name`, tolerant of the missing
+   column, same ordering/cap);
 4. otherwise → ranked candidates (top 10, sorted by name) surfaced as
    `HistoryVerdict::Unresolved` — **never** a silent "not found".
 
-Only steps 1–3 can produce a `Resolved` verdict (possibly empty = definitive
-"no dispensing history"). This is the core patient-safety invariant of the
-tool: a false "ไม่พบประวัติ" is impossible by construction for a drug term
-the system cannot identify.
+Steps 1-3 produce a `Resolved` verdict only when **exactly one** row
+matches. Several rows sharing the typed name (different strengths are
+different icodes) classify as ambiguous and surface as
+`HistoryVerdict::Unresolved` candidates too, in deterministic icode order —
+the resolver never picks an arbitrary strength, and identical searches
+present the same candidate list.
+
+This is the core patient-safety invariant of the tool: a false
+"ไม่พบประวัติ" is impossible by construction for a drug term the system
+cannot identify or cannot disambiguate.
 
 ### History coverage
 

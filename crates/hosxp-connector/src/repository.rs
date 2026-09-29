@@ -2,8 +2,8 @@
 
 use crate::error::Error;
 use crate::queries::{
-    CONCURRENT_MEDS, CONCURRENT_MEDS_TRADE, DRUG_RESOLVE_BY_ICODE, DRUG_RESOLVE_BY_ICODE_TRADE,
-    DRUG_RESOLVE_BY_NAME, DRUG_RESOLVE_BY_NAME_TRADE, DRUG_RESOLVE_BY_TRADE_NAME,
+    CONCURRENT_MEDS, CONCURRENT_MEDS_TRADE, DRUG_MATCH_BY_NAME, DRUG_MATCH_BY_NAME_TRADE,
+    DRUG_MATCH_BY_TRADE_NAME, DRUG_RESOLVE_BY_ICODE, DRUG_RESOLVE_BY_ICODE_TRADE,
     DRUG_SEARCH_CONTAINS_PLAIN, DRUG_SEARCH_CONTAINS_TRADE, DRUG_SEARCH_CONTAINS_TYPED,
     DRUG_SEARCH_PREFIX_PLAIN, DRUG_SEARCH_PREFIX_TRADE, DRUG_SEARCH_PREFIX_TYPED, HISTORY_IPD_STAY,
     HISTORY_IPD_STAY_TRADE, HISTORY_IPD_TAKEHOME, HISTORY_IPD_TAKEHOME_FALLBACK, HISTORY_OPD,
@@ -16,8 +16,8 @@ use allerx_models::{
     PatientSummary, VisitType,
 };
 use allerx_search_core::{
-    DrugResolution, HosxRepository as HosxRepositoryTrait, QueryKind, RepositoryError,
-    classify_drug_resolution, merge_drug_history, rank_candidates, verdict_from_resolution,
+    DrugResolution, ExactMatch, HosxRepository as HosxRepositoryTrait, QueryKind, RepositoryError,
+    classify_exact_matches, merge_drug_history, rank_candidates, verdict_from_resolution,
 };
 use async_trait::async_trait;
 use chrono::NaiveDate;
@@ -28,7 +28,10 @@ use sqlx::MySqlPool;
 /// cap, older history exists but is not returned and the UI must say so.
 const HISTORY_LIMIT: usize = 200;
 
-/// Maximum candidates offered when a drug term does not resolve exactly.
+/// Maximum candidates offered when a drug term does not resolve uniquely
+/// (no exact match, or several rows sharing the typed name). Must stay one
+/// less than the `LIMIT` inside the `DRUG_MATCH_*` statements so a set
+/// larger than the window still classifies as ambiguous.
 const RESOLUTION_CANDIDATE_LIMIT: usize = 10;
 
 /// One `patient` row as `(hn, cid, full_name_th, birth_date, sex)`,
@@ -141,31 +144,41 @@ impl HosxRepository {
         )))
     }
 
-    /// Resolves a drug term to its full `drugitems` row (icode, name,
+    /// Resolves a drug term to its full `drugitems` entry (icode, name,
     /// strength, trade name): exact icode, then exact display name, then
-    /// exact trade name. `None` means the term is not in `drugitems` under
+    /// exact trade name.
+    ///
+    /// An icode is the primary key, so that tier can only return
+    /// [`ExactMatch::Unique`]. Name and trade-name tiers return *all*
+    /// matching rows (ordered by icode): exactly one row is a `Unique` hit,
+    /// several rows are [`ExactMatch::Ambiguous`] and the caller offers
+    /// disambiguation instead of picking an arbitrary strength (issue #15).
+    /// [`ExactMatch::NoMatch`] means the term is not in `drugitems` under
     /// any of the three — the caller then falls back to candidate
     /// suggestions (never a "not found" verdict, ROADMAP Phase 1).
     ///
     /// The returned identity labels the verdict — a pharmacist searching by
     /// icode sees the drug's name and strength, not a bare code.
-    async fn resolve_drug_item(&self, drug: &str) -> Result<Option<DrugItem>, Error> {
+    async fn resolve_drug_item(&self, drug: &str) -> Result<ExactMatch, Error> {
         if let Some(item) = self
             .fetch_single_drug_item_tiered(DRUG_RESOLVE_BY_ICODE_TRADE, DRUG_RESOLVE_BY_ICODE, drug)
             .await?
         {
-            return Ok(Some(item));
+            return Ok(ExactMatch::Unique(item));
         }
-        if let Some(item) = self
-            .fetch_single_drug_item_tiered(DRUG_RESOLVE_BY_NAME_TRADE, DRUG_RESOLVE_BY_NAME, drug)
-            .await?
-        {
-            return Ok(Some(item));
+        let by_name = self
+            .fetch_drug_items_tiered(DRUG_MATCH_BY_NAME_TRADE, DRUG_MATCH_BY_NAME, drug)
+            .await?;
+        let by_name = classify_exact_matches(by_name);
+        if !matches!(by_name, ExactMatch::NoMatch) {
+            return Ok(by_name);
         }
         // A missing trade-name column is a documented schema variation —
         // "no trade-name match", not an error.
-        self.fetch_single_drug_item_tolerant(DRUG_RESOLVE_BY_TRADE_NAME, drug)
-            .await
+        let by_trade_name = self
+            .fetch_drug_items_tolerant(DRUG_MATCH_BY_TRADE_NAME, drug)
+            .await?;
+        Ok(classify_exact_matches(by_trade_name))
     }
 
     /// Fetches one drug row, degrading the trade-name column to the
@@ -187,21 +200,6 @@ impl HosxRepository {
         }
     }
 
-    /// Like [`fetch_single_drug_item_tiered`], but a missing column/table
-    /// (MySQL 1146/1054) yields `Ok(None)` instead of an error.
-    async fn fetch_single_drug_item_tolerant(
-        &self,
-        sql: &str,
-        param: &str,
-    ) -> Result<Option<DrugItem>, Error> {
-        assert_read_only(sql).map_err(|_| Error::Guard)?;
-        match self.fetch_single_drug_row(sql, param).await {
-            Ok(row) => Ok(row),
-            Err(Error::Database(ref err)) if is_schema_variation(err) => Ok(None),
-            Err(err) => Err(err),
-        }
-    }
-
     async fn fetch_single_drug_row(
         &self,
         sql: &str,
@@ -212,6 +210,50 @@ impl HosxRepository {
             .fetch_optional(&self.pool)
             .await
             .map(|row| row.map(drug_from_row))
+            .map_err(Error::from)
+    }
+
+    /// Fetches every exact-match drug row for one tier, degrading the
+    /// trade-name column to the fallback statement when the instance lacks
+    /// it (MySQL 1054).
+    async fn fetch_drug_items_tiered(
+        &self,
+        sql: &str,
+        fallback_sql: &str,
+        param: &str,
+    ) -> Result<Vec<DrugItem>, Error> {
+        assert_read_only(sql).map_err(|_| Error::Guard)?;
+        assert_read_only(fallback_sql).map_err(|_| Error::Guard)?;
+        match self.fetch_drug_rows(sql, param).await {
+            Ok(rows) => Ok(rows),
+            Err(Error::Database(ref err)) if is_schema_variation(err) => {
+                self.fetch_drug_rows(fallback_sql, param).await
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Like [`fetch_drug_items_tiered`], but a missing column/table (MySQL
+    /// 1146/1054) yields an empty match set instead of an error.
+    async fn fetch_drug_items_tolerant(
+        &self,
+        sql: &str,
+        param: &str,
+    ) -> Result<Vec<DrugItem>, Error> {
+        assert_read_only(sql).map_err(|_| Error::Guard)?;
+        match self.fetch_drug_rows(sql, param).await {
+            Ok(rows) => Ok(rows),
+            Err(Error::Database(ref err)) if is_schema_variation(err) => Ok(Vec::new()),
+            Err(err) => Err(err),
+        }
+    }
+
+    async fn fetch_drug_rows(&self, sql: &str, param: &str) -> Result<Vec<DrugItem>, Error> {
+        sqlx::query_as::<_, DrugRow>(sql)
+            .bind(param)
+            .fetch_all(&self.pool)
+            .await
+            .map(|rows| rows.into_iter().map(drug_from_row).collect())
             .map_err(Error::from)
     }
 
@@ -470,22 +512,34 @@ impl HosxRepositoryTrait for HosxRepository {
             });
         }
         // OPD + IPD run concurrently, then merge most-recent-first
-        // (AGENTS.md §7.2). The resolution flow (ROADMAP Phase 1): an exact
-        // hit (icode, generic name, trade name) is the only path to a
-        // Resolved verdict; anything else surfaces the closest formulary
+        // (AGENTS.md §7.2). The resolution flow (ROADMAP Phase 1): a unique
+        // exact hit (icode, generic name, trade name) is the only path to a
+        // Resolved verdict; an unresolvable term or an ambiguous name
+        // (several icodes share it, issue #15) surfaces formulary
         // candidates for the operator to disambiguate. The resolved
         // `DrugItem` (name/strength) labels the verdict — an icode search
         // shows which drug it referred to.
-        let exact = self.resolve_drug_item(drug).await?;
-        let candidates = if exact.is_none() {
-            rank_candidates(self.search_drugs(drug).await?, RESOLUTION_CANDIDATE_LIMIT)
-        } else {
-            Vec::new()
-        };
-        let resolution = classify_drug_resolution(exact, candidates);
-        let (records, truncated) = match &resolution {
-            DrugResolution::Exact { drug } => self.fetch_all_history(hn, &drug.icode).await?,
-            DrugResolution::Candidates { .. } => (Vec::new(), false),
+        let (resolution, records, truncated) = match self.resolve_drug_item(drug).await? {
+            ExactMatch::Unique(drug) => {
+                let (records, truncated) = self.fetch_all_history(hn, &drug.icode).await?;
+                (DrugResolution::Exact { drug }, records, truncated)
+            }
+            ExactMatch::Ambiguous(items) => (
+                DrugResolution::Candidates {
+                    items: rank_candidates(items, RESOLUTION_CANDIDATE_LIMIT),
+                },
+                Vec::new(),
+                false,
+            ),
+            ExactMatch::NoMatch => {
+                let candidates =
+                    rank_candidates(self.search_drugs(drug).await?, RESOLUTION_CANDIDATE_LIMIT);
+                (
+                    DrugResolution::Candidates { items: candidates },
+                    Vec::new(),
+                    false,
+                )
+            }
         };
         Ok(verdict_from_resolution(resolution, records, truncated))
     }
@@ -571,6 +625,27 @@ mod tests {
     #[test]
     fn non_database_errors_are_not_schema_variations() {
         assert!(!is_schema_variation(&sqlx::Error::RowNotFound));
+    }
+
+    #[test]
+    fn exact_match_queries_stay_within_the_disambiguation_window() {
+        // The exact-match tiers fetch one row past the candidate window so
+        // any set larger than it still classifies as ambiguous (issue #15);
+        // `ORDER BY icode` keeps the candidate order deterministic. Keep
+        // this in lock step with the SQL cap.
+        for sql in [
+            DRUG_MATCH_BY_NAME_TRADE,
+            DRUG_MATCH_BY_NAME,
+            DRUG_MATCH_BY_TRADE_NAME,
+        ] {
+            assert!(
+                sql.ends_with(&format!(
+                    "ORDER BY icode LIMIT {}",
+                    RESOLUTION_CANDIDATE_LIMIT + 1
+                )),
+                "exact-match queries must cap at the candidate window + 1: {sql}"
+            );
+        }
     }
 
     #[test]
