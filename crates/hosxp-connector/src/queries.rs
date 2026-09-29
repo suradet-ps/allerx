@@ -92,24 +92,29 @@ pub const DRUG_RESOLVE_BY_ICODE_TRADE: &str =
 pub const DRUG_RESOLVE_BY_ICODE: &str =
     "SELECT icode, name, strength, NULL AS trade_name FROM drugitems WHERE icode = ? LIMIT 1";
 
-/// Resolves a drug term to its `drugitems` row — exact display-name hit
-/// second.
+/// Exact generic-name matches — every icode sharing the typed name (issue
+/// #15). Several rows mean the name is ambiguous (different strengths) and
+/// the caller must offer disambiguation instead of picking one silently;
+/// `ORDER BY icode` makes the candidate set deterministic, and the cap is
+/// the disambiguation window + 1 so any larger set still classifies as
+/// ambiguous.
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6.
-pub const DRUG_RESOLVE_BY_NAME_TRADE: &str =
-    "SELECT icode, name, strength, trade_name FROM drugitems WHERE name = ? LIMIT 1";
+pub const DRUG_MATCH_BY_NAME_TRADE: &str = "SELECT icode, name, strength, trade_name \
+     FROM drugitems WHERE name = ? ORDER BY icode LIMIT 11";
 
-/// Exact display-name hit without the trade-name column — same shape.
-pub const DRUG_RESOLVE_BY_NAME: &str =
-    "SELECT icode, name, strength, NULL AS trade_name FROM drugitems WHERE name = ? LIMIT 1";
+/// Exact generic-name matches without the trade-name column — same shape,
+/// `NULL` in its place (used when the instance fails with 1054).
+pub const DRUG_MATCH_BY_NAME: &str = "SELECT icode, name, strength, NULL AS trade_name \
+     FROM drugitems WHERE name = ? ORDER BY icode LIMIT 11";
 
-/// Resolves a drug term to its `drugitems` row — exact trade-name hit third
-/// (ROADMAP Phase 1, trade-name search).
+/// Exact trade-name matches — same ambiguity and ordering rules as the
+/// generic-name tier (ROADMAP Phase 1, trade-name search).
 ///
 /// // SCHEMA-UNVERIFIED: `drugitems.trade_name` per AGENTS.md §6 — a missing
 /// // column is tolerated at runtime (treated as "no trade-name match").
-pub const DRUG_RESOLVE_BY_TRADE_NAME: &str =
-    "SELECT icode, name, strength, trade_name FROM drugitems WHERE trade_name = ? LIMIT 1";
+pub const DRUG_MATCH_BY_TRADE_NAME: &str = "SELECT icode, name, strength, trade_name \
+     FROM drugitems WHERE trade_name = ? ORDER BY icode LIMIT 11";
 
 /// OPD dispensing history — `opitemrece` rows without an admission number
 /// (AGENTS.md §6.2; reference join from §6.6). Selects the trade name when
@@ -246,9 +251,9 @@ mod tests {
         DRUG_SEARCH_CONTAINS_PLAIN,
         DRUG_RESOLVE_BY_ICODE,
         DRUG_RESOLVE_BY_ICODE_TRADE,
-        DRUG_RESOLVE_BY_NAME,
-        DRUG_RESOLVE_BY_NAME_TRADE,
-        DRUG_RESOLVE_BY_TRADE_NAME,
+        DRUG_MATCH_BY_NAME,
+        DRUG_MATCH_BY_NAME_TRADE,
+        DRUG_MATCH_BY_TRADE_NAME,
         HISTORY_OPD,
         HISTORY_OPD_FALLBACK,
         HISTORY_IPD_TAKEHOME,

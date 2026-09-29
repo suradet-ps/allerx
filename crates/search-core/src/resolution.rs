@@ -20,6 +20,44 @@ pub enum DrugResolution {
     Candidates { items: Vec<DrugItem> },
 }
 
+/// The result of an exact-match query against the formulary (by generic or
+/// trade name).
+///
+/// Several `drugitems` rows can share the same name — different strengths
+/// are different icodes. Picking one silently would make identical searches
+/// resolve to different drugs (issue #15), so more than one row is
+/// ambiguity that must surface for disambiguation, never an arbitrary pick.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExactMatch {
+    /// Exactly one formulary entry matched the term.
+    Unique(DrugItem),
+    /// Several entries matched the same term (e.g. strengths of one drug);
+    /// the operator must choose.
+    Ambiguous(Vec<DrugItem>),
+    /// Nothing matched exactly; the caller falls through to candidate
+    /// suggestions.
+    NoMatch,
+}
+
+/// Classifies the rows returned by an exact-name or exact-trade-name query.
+///
+/// The database side fetches a bounded, deterministically ordered set
+/// (`ORDER BY icode LIMIT n`); this function decides whether the term is
+/// unambiguous. Exactly one row is an exact hit; more than one is
+/// ambiguity and stays ordered as returned.
+pub fn classify_exact_matches(items: Vec<DrugItem>) -> ExactMatch {
+    let mut iter = items.into_iter();
+    match (iter.next(), iter.next()) {
+        (None, _) => ExactMatch::NoMatch,
+        (Some(only), None) => ExactMatch::Unique(only),
+        (Some(first), Some(second)) => {
+            let mut rest = vec![first, second];
+            rest.extend(iter);
+            ExactMatch::Ambiguous(rest)
+        }
+    }
+}
+
 /// Classifies an exact hit (from exact icode/name/trade-name lookups)
 /// against the candidate shortlist.
 ///
@@ -173,6 +211,39 @@ mod tests {
             }
             other => panic!("expected Resolved, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn no_exact_matches_classify_as_no_match() {
+        assert_eq!(classify_exact_matches(Vec::new()), ExactMatch::NoMatch);
+    }
+
+    #[test]
+    fn one_exact_match_classifies_as_unique() {
+        assert_eq!(
+            classify_exact_matches(vec![item("พาราเซตามอล", "1-001")]),
+            ExactMatch::Unique(item("พาราเซตามอล", "1-001"))
+        );
+    }
+
+    #[test]
+    fn several_exact_matches_classify_as_ambiguous_in_icode_order() {
+        // Same name, different strengths (different icodes): the caller must
+        // offer disambiguation, and the candidates keep the SQL order
+        // (`ORDER BY icode`) so identical searches present the same list.
+        let matches = classify_exact_matches(vec![
+            item("พาราเซตามอล", "1-001"),
+            item("พาราเซตามอล", "1-002"),
+            item("พาราเซตามอล", "1-003"),
+        ]);
+        assert_eq!(
+            matches,
+            ExactMatch::Ambiguous(vec![
+                item("พาราเซตามอล", "1-001"),
+                item("พาราเซตามอล", "1-002"),
+                item("พาราเซตามอล", "1-003"),
+            ])
+        );
     }
 
     #[test]

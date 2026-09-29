@@ -18,5 +18,6 @@ pub use mock::MockRepository;
 pub use query_kind::{QueryKind, detect_query_kind};
 pub use repository::HosxRepository;
 pub use resolution::{
-    DrugResolution, classify_drug_resolution, rank_candidates, verdict_from_resolution,
+    DrugResolution, ExactMatch, classify_drug_resolution, classify_exact_matches, rank_candidates,
+    verdict_from_resolution,
 };
