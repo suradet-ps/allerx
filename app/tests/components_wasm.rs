@@ -13,7 +13,8 @@
 // browser (wasm-pack test --headless --chrome).
 wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 use allerx_app::api;
 use allerx_app::components::drug_search::DrugSearch;
@@ -845,6 +846,46 @@ async fn patient_search_debounces_then_renders_results() {
     assert!(text.contains("สมชาย ใจดี"));
     assert!(text.contains("00012345"));
     api::clear_mock_invoke();
+}
+
+#[wasm_bindgen_test]
+async fn patient_search_enter_cancels_pending_debounce() {
+    let calls = Rc::new(Cell::new(0_u32));
+    let call_count = Rc::clone(&calls);
+
+    mock_invoke(move |cmd: &str| {
+        assert_eq!(cmd, "search_patients");
+        call_count.set(call_count.get() + 1);
+        resolve_ok(&vec![sample_patient()])
+    });
+
+    let state = AppState::new();
+    let root = mount("ps-enter-debounce", move || {
+        view! { <PatientSearch state=state /> }
+    });
+
+    let search_input = input(&root);
+    type_text(&search_input, "Somchai");
+    press_enter(&search_input);
+
+    settle().await;
+    let calls_after_enter = calls.get();
+
+    // Wait longer than the 250ms debounce to detect a duplicate search.
+    wait(400).await;
+    settle().await;
+    let calls_after_debounce = calls.get();
+
+    api::clear_mock_invoke();
+
+    assert_eq!(
+        calls_after_enter, 1,
+        "Enter must trigger an immediate search"
+    );
+    assert_eq!(
+        calls_after_debounce, 1,
+        "Enter must cancel the pending debounce search"
+    );
 }
 
 #[wasm_bindgen_test]

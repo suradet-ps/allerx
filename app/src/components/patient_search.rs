@@ -56,6 +56,7 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
     });
     let run_search_enter = Rc::clone(&run_search);
     let debounce = Rc::new(Cell::new(None::<TimeoutHandle>));
+    let debounce_enter = Rc::clone(&debounce);
 
     let clear_input = move |_| {
         term.set(String::new());
@@ -92,6 +93,9 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
                     }
                     on:keydown=move |ev| {
                         if ev.key() == "Enter" {
+                            if let Some(handle) = debounce_enter.take() {
+                                handle.clear();
+                            }
                             run_search_enter();
                         }
                     }
