@@ -62,7 +62,7 @@ pub async fn connect(cfg: &HosxConfig) -> Result<MySqlPool, Error> {
         .database(&cfg.database)
         .username(&cfg.user)
         .ssl_mode(configured_ssl_mode())
-        // sqlx 0.8 keeps its own plaintext copy of the password inside the
+        // sqlx keeps its own plaintext copy of the password inside the
         // pool (needed to reconnect) — documented residual, out of our
         // control. Everything under our control is zeroized on drop.
         .password(cfg.password.expose_secret());

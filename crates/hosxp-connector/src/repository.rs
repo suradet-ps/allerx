@@ -84,7 +84,7 @@ impl HosxRepository {
     /// by the caller.
     async fn fetch_patients(
         &self,
-        sql: &str,
+        sql: &'static str,
         params: &[&str],
     ) -> Result<Vec<PatientSummary>, Error> {
         let rows: Vec<PatientRow> = self.guarded_fetch(sql, params).await?;
@@ -94,7 +94,7 @@ impl HosxRepository {
     /// Runs one statement with the given bound parameters, applying the
     /// read-only guard. Guard rejections surface as [`Error::Guard`],
     /// server-side failures as [`Error::Database`].
-    async fn guarded_fetch<T>(&self, sql: &str, params: &[&str]) -> Result<Vec<T>, Error>
+    async fn guarded_fetch<T>(&self, sql: &'static str, params: &[&str]) -> Result<Vec<T>, Error>
     where
         T: for<'r> sqlx::FromRow<'r, sqlx::mysql::MySqlRow> + Send + Unpin,
     {
@@ -104,7 +104,7 @@ impl HosxRepository {
 
     /// Runs one statement with the given bound parameters, returning raw
     /// sqlx errors so callers can apply error-policy decisions.
-    async fn raw_fetch<T>(&self, sql: &str, params: &[&str]) -> Result<Vec<T>, sqlx::Error>
+    async fn raw_fetch<T>(&self, sql: &'static str, params: &[&str]) -> Result<Vec<T>, sqlx::Error>
     where
         T: for<'r> sqlx::FromRow<'r, sqlx::mysql::MySqlRow> + Send + Unpin,
     {
@@ -123,7 +123,10 @@ impl HosxRepository {
     /// degrade to the safe baseline instead of breaking the app. Any other
     /// failure propagates immediately. Every statement must pass the
     /// read-only guard.
-    async fn fetch_first_working<T>(&self, candidates: &[(&str, &[&str])]) -> Result<Vec<T>, Error>
+    async fn fetch_first_working<T>(
+        &self,
+        candidates: &[(&'static str, &[&str])],
+    ) -> Result<Vec<T>, Error>
     where
         T: for<'r> sqlx::FromRow<'r, sqlx::mysql::MySqlRow> + Send + Unpin,
     {
@@ -185,8 +188,8 @@ impl HosxRepository {
     /// fallback statement when the instance lacks it (MySQL 1054).
     async fn fetch_single_drug_item_tiered(
         &self,
-        sql: &str,
-        fallback_sql: &str,
+        sql: &'static str,
+        fallback_sql: &'static str,
         param: &str,
     ) -> Result<Option<DrugItem>, Error> {
         assert_read_only(sql).map_err(|_| Error::Guard)?;
@@ -202,7 +205,7 @@ impl HosxRepository {
 
     async fn fetch_single_drug_row(
         &self,
-        sql: &str,
+        sql: &'static str,
         param: &str,
     ) -> Result<Option<DrugItem>, Error> {
         sqlx::query_as::<_, DrugRow>(sql)
@@ -218,8 +221,8 @@ impl HosxRepository {
     /// it (MySQL 1054).
     async fn fetch_drug_items_tiered(
         &self,
-        sql: &str,
-        fallback_sql: &str,
+        sql: &'static str,
+        fallback_sql: &'static str,
         param: &str,
     ) -> Result<Vec<DrugItem>, Error> {
         assert_read_only(sql).map_err(|_| Error::Guard)?;
@@ -237,7 +240,7 @@ impl HosxRepository {
     /// 1146/1054) yields an empty match set instead of an error.
     async fn fetch_drug_items_tolerant(
         &self,
-        sql: &str,
+        sql: &'static str,
         param: &str,
     ) -> Result<Vec<DrugItem>, Error> {
         assert_read_only(sql).map_err(|_| Error::Guard)?;
@@ -248,7 +251,11 @@ impl HosxRepository {
         }
     }
 
-    async fn fetch_drug_rows(&self, sql: &str, param: &str) -> Result<Vec<DrugItem>, Error> {
+    async fn fetch_drug_rows(
+        &self,
+        sql: &'static str,
+        param: &str,
+    ) -> Result<Vec<DrugItem>, Error> {
         sqlx::query_as::<_, DrugRow>(sql)
             .bind(param)
             .fetch_all(&self.pool)
