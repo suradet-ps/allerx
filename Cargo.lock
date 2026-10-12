@@ -74,6 +74,7 @@ dependencies = [
  "chrono",
  "encryptman",
  "encryptman-keyring",
+ "percent-encoding",
  "secrecy",
  "serde",
  "serde_json",

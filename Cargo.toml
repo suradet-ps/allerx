@@ -33,3 +33,4 @@ thiserror = "2"                                       # structured errors in lib
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }  # async runtime + timeouts
 tempfile = "3"                                        # dev: test-only config files
 url = "2"                                             # dev: parse the test database URL in integration tests
+percent-encoding = "2"                                # dev: decode URL credentials like sqlx does

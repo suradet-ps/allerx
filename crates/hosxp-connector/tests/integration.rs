@@ -66,13 +66,21 @@ async fn connector_pool_applies_read_only_mode() {
     let url = test_url();
     // `MySqlConnectOptions` no longer exposes the parsed password, so the
     // URL is parsed directly to build the same config the connector takes.
+    // Credentials are percent-decoded because `Url` keeps them encoded,
+    // while sqlx decodes them when connecting from the URL.
     let parsed = url::Url::parse(&url).expect("valid mysql:// test URL");
+    let decode = |raw: &str| {
+        percent_encoding::percent_decode_str(raw)
+            .decode_utf8()
+            .expect("URL credentials must be valid UTF-8")
+            .into_owned()
+    };
     let cfg = allerx_hosxp_connector::config::HosxConfig::new(
         parsed.host_str().expect("host in URL").to_string(),
         parsed.port().unwrap_or(3306),
         parsed.path().trim_start_matches('/').to_string(),
-        parsed.username().to_string(),
-        SecretString::from(parsed.password().unwrap_or_default().to_string()),
+        decode(parsed.username()),
+        SecretString::from(decode(parsed.password().unwrap_or_default())),
     );
     let pool = pool::connect(&cfg).await.expect("connect via connector");
     let mut conn = pool.acquire().await.expect("acquire from connector pool");

@@ -21,6 +21,7 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["fs"] }
 
 [dev-dependencies]
+percent-encoding.workspace = true
 tempfile.workspace = true
 url.workspace = true
 
