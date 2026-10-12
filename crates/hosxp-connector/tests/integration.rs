@@ -13,25 +13,27 @@
 
 use allerx_hosxp_connector::pool;
 use allerx_hosxp_connector::readonly_guard::READ_ONLY_SESSION_SQL;
-use sqlx::mysql::MySqlConnectOptions;
-use sqlx::{MySqlPool, MySqlPoolOptions};
+use secrecy::SecretString;
+use sqlx::MySqlPool;
+use sqlx::mysql::MySqlPoolOptions;
 
 fn test_url() -> String {
     std::env::var("ALLERX_TEST_DATABASE_URL")
         .expect("set ALLERX_TEST_DATABASE_URL to a test/staging HOSxP instance")
 }
 
-fn test_pool(url: &str) -> MySqlPool {
+async fn test_pool(url: &str) -> MySqlPool {
     MySqlPoolOptions::new()
         .max_connections(2)
         .connect(url)
+        .await
         .expect("connect to the test instance")
 }
 
 #[tokio::test]
 async fn select_one_smoke_test_round_trips() {
     let url = test_url();
-    let pool = test_pool(&url);
+    let pool = test_pool(&url).await;
     let row: (i32,) = sqlx::query_as("SELECT 1")
         .fetch_one(&pool)
         .await
@@ -42,7 +44,7 @@ async fn select_one_smoke_test_round_trips() {
 #[tokio::test]
 async fn read_only_session_rejects_dml() {
     let url = test_url();
-    let pool = test_pool(&url);
+    let pool = test_pool(&url).await;
     let mut conn = pool.acquire().await.expect("acquire a connection");
     sqlx::query(READ_ONLY_SESSION_SQL)
         .execute(&mut *conn)
@@ -62,13 +64,23 @@ async fn connector_pool_applies_read_only_mode() {
     // Uses the connector's own pool builder (after_connect hook), then
     // verifies the session really rejects a write.
     let url = test_url();
-    let options = MySqlConnectOptions::from_url(&url).expect("parse test URL");
+    // `MySqlConnectOptions` no longer exposes the parsed password, so the
+    // URL is parsed directly to build the same config the connector takes.
+    // Credentials are percent-decoded because `Url` keeps them encoded,
+    // while sqlx decodes them when connecting from the URL.
+    let parsed = url::Url::parse(&url).expect("valid mysql:// test URL");
+    let decode = |raw: &str| {
+        percent_encoding::percent_decode_str(raw)
+            .decode_utf8()
+            .expect("URL credentials must be valid UTF-8")
+            .into_owned()
+    };
     let cfg = allerx_hosxp_connector::config::HosxConfig::new(
-        options.get_host().to_string(),
-        options.get_port(),
-        options.get_database().expect("database in URL").to_string(),
-        options.get_username().expect("user in URL").to_string(),
-        options.get_password().unwrap_or_default(),
+        parsed.host_str().expect("host in URL").to_string(),
+        parsed.port().unwrap_or(3306),
+        parsed.path().trim_start_matches('/').to_string(),
+        decode(parsed.username()),
+        SecretString::from(decode(parsed.password().unwrap_or_default())),
     );
     let pool = pool::connect(&cfg).await.expect("connect via connector");
     let mut conn = pool.acquire().await.expect("acquire from connector pool");

@@ -9,12 +9,13 @@ feature-depth = 1
 
 [advisories]
 ignore = [
-  # Marvin Attack timing sidechannel on rsa (transitive dep of sqlx-mysql
-  # for caching_sha2_password auth). The pilot HOSxP instance has TLS
-  # disabled, so the connector uses opportunistic TLS on the hospital LAN
-  # with a SELECT-only account; the advisory itself says local use on a
-  # non-compromised computer is fine. No patched release exists.
-  { id = "RUSTSEC-2023-0071", reason = "sqlx-mysql RSA auth exchange; pilot HOSxP has TLS disabled, LAN-only deployment with a read-only account" },
+  # Marvin Attack timing sidechannel on rsa (pulled by the sqlx 0.9
+  # `mysql-rsa` feature for caching_sha2_password auth). The pilot HOSxP
+  # instance has TLS disabled, so the connector uses opportunistic TLS on
+  # the hospital LAN with a SELECT-only account; the advisory itself says
+  # local use on a non-compromised computer is fine. No patched release
+  # exists, including rsa 0.10.0-rc.
+  { id = "RUSTSEC-2023-0071", reason = "sqlx 0.9 mysql-rsa RSA auth exchange; pilot HOSxP has TLS disabled, LAN-only deployment with a read-only account" },
   # GTK3 bindings unmaintained (transitive deps of tauri on Linux)
   "RUSTSEC-2024-0411",
   "RUSTSEC-2024-0412",
