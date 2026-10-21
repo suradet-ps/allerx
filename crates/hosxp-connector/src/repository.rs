@@ -326,8 +326,9 @@ impl HosxRepository {
     /// In-stay IPD dispensing. Only a missing `iptitemrece` table (or a
     /// hospital that names it differently, AGENTS.md §6.3) is a documented
     /// coverage gap and yields no records. Any other schema failure, in
-    /// particular an unknown column, propagates so a wrong column name can
-    /// never present as "no in-stay history" (issue #16).
+    /// particular an unknown column or a missing joined table, propagates so
+    /// a schema mismatch can never present as "no in-stay history"
+    /// (issue #16).
     async fn fetch_ipd_stay_history(
         &self,
         hn: &str,
@@ -409,21 +410,40 @@ fn is_schema_variation(err: &sqlx::Error) -> bool {
     schema_variation(err).is_some()
 }
 
-/// Applies the in-stay source's schema policy to a fetch result: a missing
+/// Table whose absence is a documented in-stay coverage gap: some hospitals
+/// name it `ipitemrece` instead (AGENTS.md §6.3).
+const IN_STAY_TABLE: &str = "iptitemrece";
+
+/// Applies the in-stay source's schema policy to a fetch result: an absent
 /// `iptitemrece` table is a documented coverage gap (empty source), while an
-/// unknown column fails loudly instead of silently dropping the source
-/// (issue #16).
+/// unknown column or an absent joined table fails loudly instead of silently
+/// dropping the source (issue #16).
 fn in_stay_schema_outcome(
     result: Result<Vec<HistoryRow>, Error>,
 ) -> Result<Vec<HistoryRow>, Error> {
     match result {
-        Err(Error::Database(ref err))
-            if schema_variation(err) == Some(SchemaVariation::MissingTable) =>
-        {
-            Ok(Vec::new())
-        }
+        Err(Error::Database(ref err)) if is_missing_in_stay_table(err) => Ok(Vec::new()),
         other => other,
     }
+}
+
+/// True when the statement failed because `iptitemrece` itself is absent.
+///
+/// Both in-stay tiers join `drugusage`, `doctor`, `kskdepartment`, `ipt`, and
+/// `drugitems`; a 1146 for any of those is a real join failure, not the
+/// documented table-name variation, so it must propagate.
+fn is_missing_in_stay_table(err: &sqlx::Error) -> bool {
+    schema_variation(err) == Some(SchemaVariation::MissingTable)
+        && missing_table_name(err).is_some_and(|table| table.eq_ignore_ascii_case(IN_STAY_TABLE))
+}
+
+/// Extracts the table name from a MySQL 1146 message such as
+/// "Table 'hosxp.iptitemrece' doesn't exist".
+fn missing_table_name(err: &sqlx::Error) -> Option<&str> {
+    let message = err.as_database_error()?.message();
+    let start = message.find('\'')? + 1;
+    let end = start + message.get(start..)?.find('\'')?;
+    message[start..end].rsplit('.').next()
 }
 
 fn patient_from_row((hn, cid, full_name_th, birth_date, sex): PatientRow) -> PatientSummary {
@@ -676,11 +696,12 @@ mod tests {
     #[derive(Debug)]
     struct FakeDatabaseError {
         code: &'static str,
+        message: &'static str,
     }
 
     impl std::fmt::Display for FakeDatabaseError {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "fake database error {}", self.code)
+            write!(f, "{}: {}", self.code, self.message)
         }
     }
 
@@ -688,7 +709,7 @@ mod tests {
 
     impl sqlx::error::DatabaseError for FakeDatabaseError {
         fn message(&self) -> &str {
-            "fake database error"
+            self.message
         }
 
         fn code(&self) -> Option<std::borrow::Cow<'_, str>> {
@@ -713,7 +734,11 @@ mod tests {
     }
 
     fn fake_db_error(code: &'static str) -> sqlx::Error {
-        sqlx::Error::Database(Box::new(FakeDatabaseError { code }))
+        fake_db_error_with_message(code, "fake database error")
+    }
+
+    fn fake_db_error_with_message(code: &'static str, message: &'static str) -> sqlx::Error {
+        sqlx::Error::Database(Box::new(FakeDatabaseError { code, message }))
     }
 
     #[test]
@@ -735,10 +760,22 @@ mod tests {
     }
 
     #[test]
-    fn in_stay_tolerates_only_a_missing_table() {
-        // 42S02 (missing table): documented coverage gap, empty source.
-        let missing_table = in_stay_schema_outcome(Err(Error::Database(fake_db_error("42S02"))));
+    fn in_stay_tolerates_only_a_missing_iptitemrece_table() {
+        // Missing iptitemrece (naming variation): documented gap, empty source.
+        let missing_table = in_stay_schema_outcome(Err(Error::Database(
+            fake_db_error_with_message("42S02", "Table 'hosxp.iptitemrece' doesn't exist"),
+        )));
         assert!(matches!(missing_table, Ok(rows) if rows.is_empty()));
+
+        // Missing joined table (for example drugusage): must fail loudly.
+        let missing_join = in_stay_schema_outcome(Err(Error::Database(
+            fake_db_error_with_message("42S02", "Table 'hosxp.drugusage' doesn't exist"),
+        )));
+        assert!(matches!(missing_join, Err(Error::Database(_))));
+
+        // 42S02 without a parseable table name fails closed.
+        let unparseable = in_stay_schema_outcome(Err(Error::Database(fake_db_error("42S02"))));
+        assert!(matches!(unparseable, Err(Error::Database(_))));
 
         // 42S22 (unknown column): must fail loudly (issue #16).
         let unknown_column = in_stay_schema_outcome(Err(Error::Database(fake_db_error("42S22"))));
