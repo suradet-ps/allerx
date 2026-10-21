@@ -6,6 +6,10 @@ Phase 1 completion, v0.3.0 marks the Phase 6 pilot start.
 
 ## [Unreleased]
 
+- Fixed: the IPD in-stay source no longer treats every schema error as
+  "table absent". Only a missing `iptitemrece` table degrades to an empty
+  source; an unknown column now fails loudly instead of silently dropping
+  in-stay medications from the timeline (issue #16).
 - Fixed: exact drug-name resolution is deterministic. When several
   `drugitems` rows share the typed name (different strengths), AllerX now
   surfaces them as disambiguation candidates instead of letting the

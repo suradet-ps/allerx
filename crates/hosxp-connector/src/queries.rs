@@ -181,7 +181,8 @@ pub const HISTORY_IPD_TAKEHOME_FALLBACK: &str = "SELECT o.vstdate, o.icode, d.na
 /// // SCHEMA-UNVERIFIED: `iptitemrece.idate/itime` and `ipt.hn` per
 /// // AGENTS.md §6.3 — confirm the table name and date column on the live
 /// // instance. A missing table (named differently) is tolerated at runtime
-/// // and treated as "no in-stay records" (see repository.rs).
+/// // and treated as "no in-stay records"; an unknown column is not tolerated
+/// // and fails the lookup (see repository.rs).
 pub const HISTORY_IPD_STAY_TRADE: &str = "SELECT i.idate, i.icode, d.name, d.strength, d.trade_name, doc.name AS prescriber, dep.department, u.name1 AS route, CAST(i.qty AS CHAR) AS quantity \
      FROM iptitemrece i \
      INNER JOIN ipt ON i.an = ipt.an \

@@ -19,7 +19,7 @@ instance, what is still pending, and the query patterns the connector uses.
 |---|---|---|---|
 | `drugitems.trade_name` | drug autocomplete, resolution, history (Phase 1) | Column exists | Tolerated at runtime: tiered queries fall back to the plain baseline (missing column → MySQL 1054 → fallback), so the app degrades to name-only matching. Marker stays until confirmed. |
 | `drugitems` drug-type field (`istype` vs `item_type`) | drug autocomplete typed tier (Phase 1) | `istype = '1'` = drugs/medical supplies (AGENTS.md §6.2) | If the column is absent → 1054 → fallback (autocomplete unfiltered). If it exists with different value semantics, autocomplete can silently return nothing — **must** be confirmed before pilot. |
-| `iptitemrece` table + `idate`/`itime` + `ipt.hn` | IPD in-stay history | Standard HOSxP table (some instances name it `ipitemrece`) | Tolerated at runtime: a missing table yields "no in-stay records", never an error. Missing in-stay records is a known coverage gap on such instances. |
+| `iptitemrece` table + `idate`/`itime` + `ipt.hn` | IPD in-stay history | Standard HOSxP table (some instances name it `ipitemrece`) | Tolerated at runtime: only a missing table (MySQL 1146 / SQLSTATE 42S02) yields "no in-stay records", a known coverage gap. An unknown column (1054 / 42S22) fails loudly instead of dropping the source (issue #16). |
 | `kskdepartment.depcode` | department name join | `depcode` is the PK of `kskdepartment` | Wrong name → 1054 → history queries fail loudly (no fallback for this join). |
 | `opitemrece` IPD take-home branch (`an IS NOT NULL`) | IPD take-home history | This instance logs take-home meds in `opitemrece` with `an` populated | If false, IPD take-home coverage is silently empty. Must be confirmed. |
 | Pilot-hospital HN pattern (drives `detect_query_kind`) | patient search | 5–10 digits = HN, 13 digits = CID | Wrong pattern → searches classified as name search; still works, but slower and with more results. |
@@ -42,8 +42,10 @@ read-only guard; tiers differ only in optional columns/filters:
 3. **Plain tier** — baseline every instance supports (name match only).
 
 The IPD in-stay source additionally tolerates the whole table being absent
-(MySQL 1146) by yielding zero records — the pattern established for
-`iptitemrece` in M1.
+(MySQL 1146) by yielding zero records, the pattern established for
+`iptitemrece` in M1. A missing column is **not** tolerated: it surfaces as a
+query error so a wrong column name can never present as "no history"
+(issue #16).
 
 ### Resolution flow (ROADMAP Phase 1)
 
