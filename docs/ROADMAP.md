@@ -687,7 +687,7 @@ checked; once confirmed, the marker is removed and the finding lands in
 |---|---|---|
 | `drugitems.trade_name` (matching + display) | `queries.rs` DRUG_SEARCH_*/HISTORY_* tiers, Phase 1 | ❌ unverified (runtime fallback in place) |
 | `drugitems` drug-type field (`istype` vs `item_type`) | AGENTS.md §6.2, Phase 1 typed tier | ❌ unverified (runtime fallback in place) |
-| `iptitemrece` (table name), `idate`/`itime`, `ipt.hn` | `queries.rs` HISTORY_IPD_STAY | ❌ unverified (missing-table tolerated at runtime) |
+| `iptitemrece` (table name), `idate`/`itime`, `ipt.hn` | `queries.rs` HISTORY_IPD_STAY | ❌ unverified (missing `iptitemrece` tolerated; other schema errors fail loudly, issue #16) |
 | `kskdepartment.depcode` | `queries.rs` HISTORY_OPD/IPD | ❌ unverified |
 | `opitemrece` IPD take-home branch (`an IS NOT NULL`) | `queries.rs` HISTORY_IPD_TAKEHOME | ❌ unverified |
 | Pilot-hospital HN pattern (drives `detect_query_kind`) | `query_kind.rs` | ❌ unverified |

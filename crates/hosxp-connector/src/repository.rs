@@ -323,27 +323,24 @@ impl HosxRepository {
         ))
     }
 
-    /// In-stay IPD dispensing. A missing `iptitemrece` table (or a hospital
-    /// that names it differently, AGENTS.md §6.3) is a documented schema
-    /// variation — it yields no records instead of failing the whole lookup.
+    /// In-stay IPD dispensing. Only a missing `iptitemrece` table (or a
+    /// hospital that names it differently, AGENTS.md §6.3) is a documented
+    /// coverage gap and yields no records. Any other schema failure, in
+    /// particular an unknown column or a missing joined table, propagates so
+    /// a schema mismatch can never present as "no in-stay history"
+    /// (issue #16).
     async fn fetch_ipd_stay_history(
         &self,
         hn: &str,
         icode: &str,
     ) -> Result<(Vec<DrugHistoryRecord>, bool), Error> {
-        let rows = match self
-            .fetch_first_working(&[
+        let rows = in_stay_schema_outcome(
+            self.fetch_first_working(&[
                 (HISTORY_IPD_STAY_TRADE, &[hn, icode]),
                 (HISTORY_IPD_STAY, &[hn, icode]),
             ])
-            .await
-        {
-            Ok(rows) => rows,
-            // Even the plain tier failed with a schema error — the
-            // `iptitemrece` table itself is absent on this instance.
-            Err(Error::Database(ref err)) if is_schema_variation(err) => Vec::new(),
-            Err(err) => return Err(err),
-        };
+            .await,
+        )?;
         let truncated = rows.len() == HISTORY_LIMIT;
         Ok((
             rows.into_iter()
@@ -371,18 +368,82 @@ impl HosxRepository {
     }
 }
 
-/// True when the query failed because a table/column does not exist on this
-/// instance — a documented per-hospital variation (AGENTS.md §6.3), not a
-/// real failure.
+/// Which kind of table/column mismatch a failed statement hit.
 ///
-/// Traps for the unwary: the generic `DatabaseError::code()` is the
-/// **SQLSTATE** ("42S02"/"42S22"), not the MySQL error number — the numeric
-/// codes (1146/1054) live on the MySQL-specific `number()`, so the error
-/// must be downcast first.
+/// The two kinds have different meanings (AGENTS.md §6.3): a missing table
+/// is a documented per-instance variation, while an unknown column is a bug
+/// in our SQL for this instance. Only callers that can tolerate the former
+/// may collapse them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SchemaVariation {
+    /// MySQL 1146 / SQLSTATE 42S02: the table does not exist here.
+    MissingTable,
+    /// MySQL 1054 / SQLSTATE 42S22: a column does not exist here.
+    UnknownColumn,
+}
+
+/// Classifies a schema failure, if it is one.
+///
+/// The MySQL-specific `number()` is checked first (1146/1054); the SQLSTATE
+/// fallback ("42S02"/"42S22") also classifies mocked `DatabaseError`s in
+/// tests. Traps for the unwary: the generic `DatabaseError::code()` is the
+/// **SQLSTATE**, never the MySQL error number.
+fn schema_variation(err: &sqlx::Error) -> Option<SchemaVariation> {
+    let db_err = err.as_database_error()?;
+    if let Some(mysql_err) = db_err.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
+        return match mysql_err.number() {
+            1146 => Some(SchemaVariation::MissingTable),
+            1054 => Some(SchemaVariation::UnknownColumn),
+            _ => None,
+        };
+    }
+    match db_err.code().as_deref() {
+        Some("42S02") => Some(SchemaVariation::MissingTable),
+        Some("42S22") => Some(SchemaVariation::UnknownColumn),
+        _ => None,
+    }
+}
+
+/// True for any schema variation, used by the tiered fallback where both
+/// kinds are equally recoverable (the next tier can still succeed).
 fn is_schema_variation(err: &sqlx::Error) -> bool {
-    err.as_database_error()
-        .and_then(|db_err| db_err.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>())
-        .is_some_and(|mysql_err| matches!(mysql_err.number(), 1146 | 1054))
+    schema_variation(err).is_some()
+}
+
+/// Table whose absence is a documented in-stay coverage gap: some hospitals
+/// name it `ipitemrece` instead (AGENTS.md §6.3).
+const IN_STAY_TABLE: &str = "iptitemrece";
+
+/// Applies the in-stay source's schema policy to a fetch result: an absent
+/// `iptitemrece` table is a documented coverage gap (empty source), while an
+/// unknown column or an absent joined table fails loudly instead of silently
+/// dropping the source (issue #16).
+fn in_stay_schema_outcome(
+    result: Result<Vec<HistoryRow>, Error>,
+) -> Result<Vec<HistoryRow>, Error> {
+    match result {
+        Err(Error::Database(ref err)) if is_missing_in_stay_table(err) => Ok(Vec::new()),
+        other => other,
+    }
+}
+
+/// True when the statement failed because `iptitemrece` itself is absent.
+///
+/// Both in-stay tiers join `drugusage`, `doctor`, `kskdepartment`, `ipt`, and
+/// `drugitems`; a 1146 for any of those is a real join failure, not the
+/// documented table-name variation, so it must propagate.
+fn is_missing_in_stay_table(err: &sqlx::Error) -> bool {
+    schema_variation(err) == Some(SchemaVariation::MissingTable)
+        && missing_table_name(err).is_some_and(|table| table.eq_ignore_ascii_case(IN_STAY_TABLE))
+}
+
+/// Extracts the table name from a MySQL 1146 message such as
+/// "Table 'hosxp.iptitemrece' doesn't exist".
+fn missing_table_name(err: &sqlx::Error) -> Option<&str> {
+    let message = err.as_database_error()?.message();
+    let start = message.find('\'')? + 1;
+    let end = start + message.get(start..)?.find('\'')?;
+    message[start..end].rsplit('.').next()
 }
 
 fn patient_from_row((hn, cid, full_name_th, birth_date, sex): PatientRow) -> PatientSummary {
@@ -629,9 +690,104 @@ mod tests {
         assert!(assert_read_only(PING_SQL).is_ok());
     }
 
+    /// Mocked `DatabaseError` so the schema classification can be tested
+    /// without a live server (the real `MySqlDatabaseError` has no public
+    /// constructor).
+    #[derive(Debug)]
+    struct FakeDatabaseError {
+        code: &'static str,
+        message: &'static str,
+    }
+
+    impl std::fmt::Display for FakeDatabaseError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}: {}", self.code, self.message)
+        }
+    }
+
+    impl std::error::Error for FakeDatabaseError {}
+
+    impl sqlx::error::DatabaseError for FakeDatabaseError {
+        fn message(&self) -> &str {
+            self.message
+        }
+
+        fn code(&self) -> Option<std::borrow::Cow<'_, str>> {
+            Some(std::borrow::Cow::Borrowed(self.code))
+        }
+
+        fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+            self
+        }
+
+        fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync + 'static) {
+            self
+        }
+
+        fn into_error(self: Box<Self>) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+            self
+        }
+
+        fn kind(&self) -> sqlx::error::ErrorKind {
+            sqlx::error::ErrorKind::Other
+        }
+    }
+
+    fn fake_db_error(code: &'static str) -> sqlx::Error {
+        fake_db_error_with_message(code, "fake database error")
+    }
+
+    fn fake_db_error_with_message(code: &'static str, message: &'static str) -> sqlx::Error {
+        sqlx::Error::Database(Box::new(FakeDatabaseError { code, message }))
+    }
+
     #[test]
     fn non_database_errors_are_not_schema_variations() {
         assert!(!is_schema_variation(&sqlx::Error::RowNotFound));
+    }
+
+    #[test]
+    fn schema_variations_are_classified_by_kind() {
+        assert_eq!(
+            schema_variation(&fake_db_error("42S02")),
+            Some(SchemaVariation::MissingTable)
+        );
+        assert_eq!(
+            schema_variation(&fake_db_error("42S22")),
+            Some(SchemaVariation::UnknownColumn)
+        );
+        assert_eq!(schema_variation(&fake_db_error("42000")), None);
+    }
+
+    #[test]
+    fn in_stay_tolerates_only_a_missing_iptitemrece_table() {
+        // Missing iptitemrece (naming variation): documented gap, empty source.
+        let missing_table = in_stay_schema_outcome(Err(Error::Database(
+            fake_db_error_with_message("42S02", "Table 'hosxp.iptitemrece' doesn't exist"),
+        )));
+        assert!(matches!(missing_table, Ok(rows) if rows.is_empty()));
+
+        // Missing joined table (for example drugusage): must fail loudly.
+        let missing_join = in_stay_schema_outcome(Err(Error::Database(
+            fake_db_error_with_message("42S02", "Table 'hosxp.drugusage' doesn't exist"),
+        )));
+        assert!(matches!(missing_join, Err(Error::Database(_))));
+
+        // 42S02 without a parseable table name fails closed.
+        let unparseable = in_stay_schema_outcome(Err(Error::Database(fake_db_error("42S02"))));
+        assert!(matches!(unparseable, Err(Error::Database(_))));
+
+        // 42S22 (unknown column): must fail loudly (issue #16).
+        let unknown_column = in_stay_schema_outcome(Err(Error::Database(fake_db_error("42S22"))));
+        assert!(matches!(unknown_column, Err(Error::Database(_))));
+
+        // Non-schema failures and guard rejections propagate too.
+        assert!(in_stay_schema_outcome(Err(Error::Guard)).is_err());
+        assert!(in_stay_schema_outcome(Err(Error::Database(sqlx::Error::RowNotFound))).is_err());
+
+        // A successful fetch passes through untouched.
+        let success = in_stay_schema_outcome(Ok(Vec::new()));
+        assert!(matches!(success, Ok(rows) if rows.is_empty()));
     }
 
     #[test]
