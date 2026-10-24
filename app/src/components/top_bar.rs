@@ -17,16 +17,19 @@ pub fn TopBar(state: AppState) -> impl IntoView {
                             <stop offset="0%" stop-color="#E11D48"/>
                             <stop offset="100%" stop-color="#881337"/>
                         </linearGradient>
+                        <filter id="logo-inner-glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.3"/>
+                        </filter>
                     </defs>
                     <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#logo-bg)" stroke="#FB7185" stroke-width="8"/>
-                    <g transform="translate(256, 256) scale(1.18)">
+                    <g transform="translate(256, 256) scale(1.48)" filter="url(#logo-inner-glow)">
                         <g transform="rotate(-45)">
-                            <rect x="-120" y="-40" width="240" height="80" rx="40" fill="#FFF" stroke="#9F1239" stroke-width="8"/>
-                            <line x1="0" y1="-40" x2="0" y2="40" stroke="#9F1239" stroke-width="8"/>
+                            <rect x="-120" y="-40" width="240" height="80" rx="40" fill="#FFF" stroke="#9F1239" stroke-width="6"/>
+                            <line x1="0" y1="-40" x2="0" y2="40" stroke="#9F1239" stroke-width="5"/>
                         </g>
                         <g transform="rotate(45)">
-                            <rect x="-120" y="-40" width="240" height="80" rx="40" fill="#FF1744" stroke="#FFF" stroke-width="8"/>
-                            <line x1="0" y1="-40" x2="0" y2="40" stroke="#FFF" stroke-width="8"/>
+                            <rect x="-120" y="-40" width="240" height="80" rx="40" fill="#FF1744" stroke="#FFF" stroke-width="6"/>
+                            <line x1="0" y1="-40" x2="0" y2="40" stroke="#FFF" stroke-width="5"/>
                         </g>
                     </g>
                 </svg>
