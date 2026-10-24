@@ -10,15 +10,17 @@
 use std::time::Duration;
 use std::time::Instant;
 
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 use tokio::sync::Mutex;
 
 use allerx_hosxp_connector::config::{HosxConfig, load, load_vault, save_encrypted};
 use allerx_hosxp_connector::{HosxRepository, MySqlPool, pool};
-use allerx_models::{ConcurrentMedication, DrugCheckResult, DrugItem, PatientSummary};
-use allerx_search_core::{HosxRepository as _, RepositoryError, detect_query_kind};
+use allerx_models::{ConcurrentMedication, DrugCheckResult, DrugItem, PatientSummary, SessionUser};
+use allerx_search_core::{
+    HosxRepository as _, RepositoryError, detect_query_kind, verify_password,
+};
 
 use crate::state::{AppState, ConnectionHealth};
 use crate::stats::{QuerySample, QueryStats};
@@ -43,6 +45,10 @@ pub enum CommandErrorKind {
     Guard,
     /// The statement failed server-side.
     Query,
+    /// The operator's input was rejected before any I/O.
+    Validation,
+    /// The operator is not signed in, or the credentials were rejected.
+    Auth,
 }
 
 /// User-facing command error: a machine-readable kind plus the Thai message
@@ -60,6 +66,24 @@ impl CommandError {
             kind,
             message: message.into(),
         }
+    }
+
+    /// "ข้อมูลไม่ถูกต้อง: ..." — rejected before any database I/O.
+    fn validation(message: impl Into<String>) -> Self {
+        Self::new(
+            CommandErrorKind::Validation,
+            format!("ข้อมูลไม่ถูกต้อง: {}", message.into()),
+        )
+    }
+
+    /// "กรุณาเข้าสู่ระบบก่อนใช้งาน".
+    fn unauthorized() -> Self {
+        Self::new(CommandErrorKind::Auth, "กรุณาเข้าสู่ระบบก่อนใช้งาน")
+    }
+
+    /// An authentication failure with its Thai message.
+    fn auth(message: impl Into<String>) -> Self {
+        Self::new(CommandErrorKind::Auth, message)
     }
 }
 
@@ -169,6 +193,18 @@ pub struct ConnectionTestResult {
     pub ok: bool,
 }
 
+/// Username/password submitted from the login gate. Does not derive `Debug`:
+/// the password must never be formatted into a log line.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginInput {
+    /// HOSxP `officer.officer_login_name`.
+    pub username: String,
+    /// Plaintext password, verified in memory against the stored MD5 and
+    /// then dropped.
+    pub password: SecretString,
+}
+
 /// Encrypts and stores HOSxP connection settings.
 ///
 /// The plaintext fields exist only inside this call frame — nothing is
@@ -205,10 +241,12 @@ pub async fn configure_connection(
                 "บันทึกการตั้งค่าการเชื่อมต่อไม่สำเร็จ",
             )
         })?;
-    // Reconfigured — drop the old pool and re-verify in the background so
-    // the status dot is honest about the new settings.
+    // Reconfigured — the signed-in officer was verified against the old
+    // database, so the session is no longer valid. Drop the old pool and
+    // re-verify in the background so the status dot is honest.
     *state.pool.lock().await = None;
     *state.health.lock().await = ConnectionHealth::Disconnected;
+    *state.session.lock().await = None;
     let probe_state = state.inner().clone();
     tauri::async_runtime::spawn(async move {
         let health = health_check(&probe_state).await;
@@ -435,6 +473,95 @@ async fn acquire_pool(state: &AppState) -> Result<MySqlPool, CommandError> {
     Ok(pool)
 }
 
+/// Verifies a HOSxP `officer` password and starts an in-memory session.
+///
+/// The plaintext password is moved into a [`SecretString`] for the
+/// verification window; the stored hash never leaves this process, and a
+/// failed attempt never reveals whether the username exists.
+#[tauri::command]
+pub async fn login(
+    state: State<'_, AppState>,
+    input: LoginInput,
+) -> Result<SessionUser, CommandError> {
+    let username = input.username.trim();
+    if username.is_empty() {
+        return Err(CommandError::validation("กรุณากรอกชื่อผู้ใช้"));
+    }
+    if username.chars().count() > 100 {
+        return Err(CommandError::validation("ชื่อผู้ใช้ยาวเกินไป"));
+    }
+    if input.password.expose_secret().is_empty() {
+        return Err(CommandError::validation("กรุณากรอกรหัสผ่าน"));
+    }
+    if input.password.expose_secret().chars().count() > 200 {
+        return Err(CommandError::validation("รหัสผ่านยาวเกินไป"));
+    }
+
+    // A new attempt invalidates any previous session, matching the session
+    // lifetime rule: memory-only, replaced on login, cleared on logout or a
+    // connection change.
+    *state.session.lock().await = None;
+    let pool = acquire_pool(&state).await?;
+    let repo = HosxRepository::new(pool);
+    let lookup = repo.fetch_officer(username).await;
+    update_health_from_repo_result(&state, &lookup).await;
+    let Some(account) = lookup.map_err(|err| map_repo_error(err, "เข้าสู่ระบบ"))?
+    else {
+        return Err(CommandError::auth("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"));
+    };
+    if account.auth_type_id != 1 {
+        return Err(CommandError::auth(
+            "บัญชีนี้ใช้การยืนยันตัวตนแบบ LDAP ซึ่งยังไม่เปิดใช้งาน",
+        ));
+    }
+    if !account.active.eq_ignore_ascii_case("Y") {
+        return Err(CommandError::auth("บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ"));
+    }
+    if !verify_password(input.password.expose_secret(), &account.password_md5) {
+        return Err(CommandError::auth("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"));
+    }
+
+    let display_name = if account.display_name.trim().is_empty() {
+        account.login_name.clone()
+    } else {
+        account.display_name
+    };
+    let user = SessionUser {
+        officer_id: account.officer_id,
+        login_name: account.login_name,
+        display_name,
+        doctor_code: account.doctor_code,
+        role: "STAFF".to_string(),
+    };
+    *state.session.lock().await = Some(user.clone());
+    Ok(user)
+}
+
+/// Clears the in-memory session.
+#[tauri::command]
+pub async fn logout(state: State<'_, AppState>) -> Result<(), CommandError> {
+    *state.session.lock().await = None;
+    Ok(())
+}
+
+/// Returns the current session, if any (memory only).
+#[tauri::command]
+pub async fn current_session(
+    state: State<'_, AppState>,
+) -> Result<Option<SessionUser>, CommandError> {
+    Ok(state.session.lock().await.clone())
+}
+
+/// Rejects a command that requires a signed-in operator.
+async fn require_session(state: &AppState) -> Result<SessionUser, CommandError> {
+    state
+        .session
+        .lock()
+        .await
+        .clone()
+        .ok_or_else(CommandError::unauthorized)
+}
+
 /// Patient search by HN / CID / name (AGENTS.md §7.1, milestone M2).
 ///
 /// The input type is auto-detected; an empty term short-circuits to an
@@ -445,6 +572,7 @@ pub async fn search_patients(
     state: State<'_, AppState>,
     term: String,
 ) -> Result<Vec<PatientSummary>, CommandError> {
+    require_session(&state).await?;
     let term = term.trim().to_string();
     if term.is_empty() {
         return Ok(Vec::new());
@@ -469,6 +597,7 @@ pub async fn search_drugs(
     state: State<'_, AppState>,
     term: String,
 ) -> Result<Vec<DrugItem>, CommandError> {
+    require_session(&state).await?;
     let term = term.trim().to_string();
     if term.is_empty() {
         return Ok(Vec::new());
@@ -499,6 +628,7 @@ pub async fn check_drugs(
     hn: String,
     drugs: Vec<String>,
 ) -> Result<Vec<DrugCheckResult>, CommandError> {
+    require_session(&state).await?;
     let hn = hn.trim().to_string();
     if hn.is_empty() || drugs.is_empty() {
         return Ok(Vec::new());
@@ -521,6 +651,7 @@ pub async fn fetch_concurrent_medications(
     state: State<'_, AppState>,
     hn: String,
 ) -> Result<Vec<ConcurrentMedication>, CommandError> {
+    require_session(&state).await?;
     let hn = hn.trim().to_string();
     if hn.is_empty() {
         return Ok(Vec::new());
@@ -562,6 +693,22 @@ mod tests {
         );
         assert_eq!(err.kind, CommandErrorKind::Query);
         assert_eq!(err.message, "ตรวจสอบประวัติไม่สำเร็จ");
+    }
+
+    #[test]
+    fn validation_error_has_its_own_kind() {
+        let err = CommandError::validation("กรุณากรอกชื่อผู้ใช้");
+        assert_eq!(err.kind, CommandErrorKind::Validation);
+        assert!(err.message.starts_with("ข้อมูลไม่ถูกต้อง:"));
+    }
+
+    #[test]
+    fn unauthorized_and_auth_share_the_auth_kind() {
+        assert_eq!(CommandError::unauthorized().kind, CommandErrorKind::Auth);
+        assert_eq!(
+            CommandError::auth("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง").kind,
+            CommandErrorKind::Auth
+        );
     }
 
     #[test]

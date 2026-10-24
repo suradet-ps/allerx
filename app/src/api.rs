@@ -12,7 +12,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use allerx_models::{ConcurrentMedication, DrugCheckResult, DrugItem, PatientSummary};
+use allerx_models::{ConcurrentMedication, DrugCheckResult, DrugItem, PatientSummary, SessionUser};
 use js_sys::{Object, Reflect};
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::prelude::*;
@@ -74,6 +74,8 @@ pub enum ApiErrorKind {
     Connection,
     Guard,
     Query,
+    Validation,
+    Auth,
 }
 
 /// A backend command failure: machine-readable kind + the Thai message to
@@ -96,6 +98,17 @@ pub struct ConnectionInput {
     pub port: u16,
     pub database: String,
     pub user: String,
+    pub password: String,
+}
+
+/// Login credentials sent to the backend. The password lives in the webview
+/// heap while the operator types; the backend never stores it.
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginInput {
+    /// HOSxP `officer.officer_login_name`.
+    pub username: String,
+    /// HOSxP password.
     pub password: String,
 }
 
@@ -204,6 +217,29 @@ pub async fn configure_connection(input: &ConnectionInput) -> Result<(), ApiErro
 pub async fn test_connection(input: &ConnectionInput) -> Result<u64, ApiError> {
     let result: ConnectionTestResult = call_struct_arg("test_connection", "input", input).await?;
     Ok(result.latency_ms)
+}
+
+/// Verifies a HOSxP officer against the backend and starts a session.
+pub async fn login(username: &str, password: &str) -> Result<SessionUser, ApiError> {
+    call_struct_arg(
+        "login",
+        "input",
+        &LoginInput {
+            username: username.to_string(),
+            password: password.to_string(),
+        },
+    )
+    .await
+}
+
+/// Clears the backend session.
+pub async fn logout() -> Result<(), ApiError> {
+    call_empty("logout").await
+}
+
+/// Current backend session, if any.
+pub async fn current_session() -> Result<Option<SessionUser>, ApiError> {
+    call_empty("current_session").await
 }
 
 /// Patient search by HN / CID / name via the backend (M2).

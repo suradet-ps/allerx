@@ -25,6 +25,9 @@ instance, what is still pending, and the query patterns the connector uses.
 | Pilot-hospital HN pattern (drives `detect_query_kind`) | patient search | 5–10 digits = HN, 13 digits = CID | Wrong pattern → searches classified as name search; still works, but slower and with more results. |
 | Database charset (TIS-620 vs UTF-8) | Thai name search | UTF-8 (modern instances) | TIS-620 → Thai `LIKE` matching may fail silently; name search must be re-validated. |
 | HOSxP allergy/adverse-reaction table | Phase 7 (proposed cross-check) | Table name varies by instance | n/a — not implemented yet. |
+| `officer` login columns and `MD5` scheme | Login gate (`docs/auth.md`) | Standard HOSxP `officer` columns; `MD5(UTF-8 password)` with no salt | Login fails for every account until corrected. Confirm with one real test account (and the password encoding) before the pilot. |
+| `officer_authentication_type_id` | Login gate | `1` = local database; `NULL` treated as `1`; LDAP rejected | Wrong semantics could reject valid local officers or admit an unsupported auth method. |
+| `officer_doctor_code` → `doctor.name` | Login display name | Code links to `doctor.code`; display-name fallback | Wrong join only affects the displayed name; login still works, falling back to the login name. |
 
 ## Query patterns (Phase 1)
 

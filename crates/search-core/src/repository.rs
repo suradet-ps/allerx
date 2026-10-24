@@ -4,7 +4,7 @@
 //! database; tests and the frontend use [`MockRepository`](crate::mock::MockRepository).
 
 use allerx_models::{
-    ConcurrentMedication, DrugCheckResult, DrugItem, HistoryVerdict, PatientSummary,
+    ConcurrentMedication, DrugCheckResult, DrugItem, HistoryVerdict, OfficerAccount, PatientSummary,
 };
 use async_trait::async_trait;
 
@@ -22,6 +22,17 @@ pub trait HosxRepository: Send + Sync {
     /// Returns [`RepositoryError::Connection`] when the pool cannot reach
     /// the database, or [`RepositoryError::Query`] when the statement fails.
     async fn ping(&self) -> Result<(), RepositoryError>;
+
+    /// Reads one `officer` account by login name for local password
+    /// verification. The password hash stays in the backend.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RepositoryError::Connection`] / [`RepositoryError::Query`].
+    async fn fetch_officer(
+        &self,
+        login_name: &str,
+    ) -> Result<Option<OfficerAccount>, RepositoryError>;
 
     /// Searches patients by HN, CID, or name (AGENTS.md §7.1).
     ///

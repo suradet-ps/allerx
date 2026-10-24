@@ -32,6 +32,8 @@ never compete for the same attention.
 - IBM Plex Sans Thai + IBM Plex Sans for bilingual clarity; IBM Plex Mono for HN/CID/drug codes
 - Restrained corners ({rounded.md}, 6px) — a clinical tool, not a consumer app
 - App logo (crossed capsules icon) in top bar, ruby gradient matching brand chrome
+- Login gate before the workspace: split brand/credential surface, the HOSxP
+  `officer` sign-in, and the connection status/settings entry point
 
 ### Design Principles (informed by Microsoft UX Guidelines & Desktop Design Systems)
 
@@ -124,7 +126,7 @@ heavy marketing-block look.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ Top bar (40px: app name · connection dot · settings)            │
+│ Top bar (44px: app name · connection · settings · officer · logout) │
 ├───────────────────────┬─────────────────────────────────────────┤
 │                       │                                         │
 │  SIDEBAR (360px)      │  MAIN CANVAS (remaining)               │
@@ -176,6 +178,58 @@ answer on the right."
 sides have fundamentally different roles (input vs output) and different scroll behaviors
 (sidebar fixed, canvas scrollable). A two-panel layout handles this correctly.
 
+### Login Gate
+
+The login gate replaces the workspace until a HOSxP `officer` signs in
+(`docs/auth.md`). It mirrors the sibling ER-Refill gate: a split brand
+surface on the left and a focused credential card on the right. It is a
+pre-workspace surface, not a marketing landing page.
+
+```
+┌──────────────────────────────┬──────────────────────────────────────┐
+│  AllerX mark + name          │                              [ตั้งค่า] │
+│                              │                                      │
+│  ตรวจสอบประวัติการใช้ยา         │  ┌────────────────────────────────┐  │
+│  ก่อนประเมินการแพ้ยา            │  │ เข้าสู่ระบบ                     │  │
+│                              │  │ [ชื่อผู้ใช้]                    │  │
+│  [medication-history art]    │  │ [รหัสผ่าน]                      │  │
+│                              │  │ [→ เข้าสู่ระบบ]                 │  │
+│                              │  └────────────────────────────────┘  │
+└──────────────────────────────┴──────────────────────────────────────┘
+```
+
+- **`login__brand`** — left panel (hidden below 900px): app mark + name
+  top-left, then a centered headline ("ตรวจสอบประวัติการใช้ยา / ก่อนประเมิน
+  การแพ้ยา") and the original `login-illustration.svg` artwork. The
+  illustration is a bold ruby medication-record card: a translucent search
+  bar, a vertical medication timeline, and a large green verified badge
+  overlapping the lower-right corner. The card uses the icon's deep ruby
+  gradient for contrast against the pale rose brand panel, so the record and
+  the verified verdict are the only focal points — there are no decorative
+  capsules, sparkles, or white orbital rings. Background: a single soft rose
+  glow behind the card.
+- **`login__main`** — right panel (`#FFF9FB`): a ghost "ตั้งค่า" button in
+  the top-right corner, then a centered credential card. The login gate
+  intentionally has no connection-status strip — the status dot belongs to
+  the signed-in workspace; an unconfigured connection is shown as the
+  amber notice inside the card.
+- **`login__card`** — 460px max, 32px padding, white surface, rose-tinted
+  hairline border, 8px radius and a soft `0 4px 12px` shadow (the login
+  card is the one pre-workspace surface allowed to lift). `<h2>เข้าสู่ระบบ
+  </h2>` at 26px/700, then username/password fields (`form-input`, 40px),
+  the inline error (lock icon + red tinted alert), and a full-width primary
+  submit with an arrow icon. The submit button is disabled while
+  unconfigured or a login attempt is in flight.
+- **`login__notice`** — appears only when no encrypted connection config
+  exists; it is a system warning (amber), never a clinical verdict color.
+- **`TopBar` after sign-in** — adds a `user-chip` (initials avatar +
+  display name) and a compact "ออกจากระบบ" button. The chip is truncated
+  at 180px; logout clears all patient/drug state before returning to the
+  gate.
+- **Focus/keyboard** — the username field is the first focusable element;
+  Enter submits the form; Escape closes the settings dialog. Errors are
+  announced via `role="alert"`.
+
 ## Elevation & Depth
 
 Elevation is minimal. The sidebar and canvas are distinguished by background color
@@ -211,6 +265,11 @@ app chasing friendliness. Pill-shaped (`{rounded.full}`) elements are limited to
 - **`top-bar__title`** — "AllerX", `16px/700`, left-aligned. No tagline on this layout.
 - **`top-bar__status`** — Connection indicator: 8px dot + text, right-aligned next to settings.
 - **`top-bar__button`** — Ghost button with gear icon, tooltip "ตั้งค่า".
+- **`user-chip`** — Signed-in officer: 24px initials avatar (brand-soft) +
+  display name, hairline pill. No role badge for the current single-role
+  model.
+- **`top-bar__logout`** — Compact ghost button with a log-out icon and
+  "ออกจากระบบ"; ends the session and returns to the login gate.
 
 ### Sidebar
 

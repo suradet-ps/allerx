@@ -121,3 +121,25 @@ icon!(
     <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" />
     <rect x="6" y="14" width="12" height="8" rx="1" />
 );
+
+icon!(
+    /// Lock — login gate / authentication error.
+    IconLock,
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+);
+
+icon!(
+    /// Log-out — end the signed-in session.
+    IconLogOut,
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" x2="9" y1="12" y2="12" />
+);
+
+icon!(
+    /// Arrow-right — submit the login form / continue.
+    IconArrowRight,
+    <path d="M5 12h14" />
+    <path d="m12 5 7 7-7 7" />
+);

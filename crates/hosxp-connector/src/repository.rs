@@ -5,15 +5,15 @@ use crate::queries::{
     CONCURRENT_MEDS, CONCURRENT_MEDS_TRADE, DRUG_MATCH_BY_NAME, DRUG_MATCH_BY_NAME_TRADE,
     DRUG_MATCH_BY_TRADE_NAME, DRUG_RESOLVE_BY_ICODE, DRUG_RESOLVE_BY_ICODE_TRADE,
     DRUG_SEARCH_CONTAINS_PLAIN, DRUG_SEARCH_CONTAINS_TRADE, DRUG_SEARCH_CONTAINS_TYPED,
-    DRUG_SEARCH_PREFIX_PLAIN, DRUG_SEARCH_PREFIX_TRADE, DRUG_SEARCH_PREFIX_TYPED, HISTORY_IPD_STAY,
-    HISTORY_IPD_STAY_TRADE, HISTORY_IPD_TAKEHOME, HISTORY_IPD_TAKEHOME_FALLBACK, HISTORY_OPD,
-    HISTORY_OPD_FALLBACK, PATIENT_SEARCH_BY_CID, PATIENT_SEARCH_BY_HN,
-    PATIENT_SEARCH_NAME_CONTAINS, PATIENT_SEARCH_NAME_PREFIX,
+    DRUG_SEARCH_PREFIX_PLAIN, DRUG_SEARCH_PREFIX_TRADE, DRUG_SEARCH_PREFIX_TYPED,
+    FETCH_OFFICER_SQL, HISTORY_IPD_STAY, HISTORY_IPD_STAY_TRADE, HISTORY_IPD_TAKEHOME,
+    HISTORY_IPD_TAKEHOME_FALLBACK, HISTORY_OPD, HISTORY_OPD_FALLBACK, PATIENT_SEARCH_BY_CID,
+    PATIENT_SEARCH_BY_HN, PATIENT_SEARCH_NAME_CONTAINS, PATIENT_SEARCH_NAME_PREFIX,
 };
 use crate::readonly_guard::{PING_SQL, assert_read_only};
 use allerx_models::{
     ConcurrentMedication, DrugCheckResult, DrugHistoryRecord, DrugItem, HistoryVerdict,
-    PatientSummary, VisitType,
+    OfficerAccount, PatientSummary, VisitType,
 };
 use allerx_search_core::{
     DrugResolution, ExactMatch, HosxRepository as HosxRepositoryTrait, QueryKind, RepositoryError,
@@ -63,6 +63,10 @@ type HistoryRow = (
 /// One drug row as `(icode, name, strength, trade_name)` — again shared by
 /// the typed/trade/plain autocomplete tiers.
 type DrugRow = (String, String, Option<String>, Option<String>);
+
+/// One `officer` row matching the SELECT column order in
+/// [`FETCH_OFFICER_SQL`].
+type OfficerRow = (i64, String, String, String, i64, Option<String>, String);
 
 /// The repository that talks to the real HOSxP database. Created from a
 /// [`connect`](crate::connect) pool — this is the only object that ever
@@ -446,6 +450,28 @@ fn missing_table_name(err: &sqlx::Error) -> Option<&str> {
     message[start..end].rsplit('.').next()
 }
 
+fn officer_from_row(
+    (
+        officer_id,
+        login_name,
+        password_md5,
+        active,
+        auth_type_id,
+        doctor_code,
+        display_name,
+    ): OfficerRow,
+) -> OfficerAccount {
+    OfficerAccount {
+        officer_id,
+        login_name,
+        password_md5,
+        active,
+        auth_type_id,
+        doctor_code,
+        display_name,
+    }
+}
+
 fn patient_from_row((hn, cid, full_name_th, birth_date, sex): PatientRow) -> PatientSummary {
     PatientSummary {
         hn,
@@ -494,6 +520,19 @@ impl HosxRepositoryTrait for HosxRepository {
             .map(|_| ())
             .map_err(Error::from)?;
         Ok(())
+    }
+
+    async fn fetch_officer(
+        &self,
+        login_name: &str,
+    ) -> Result<Option<OfficerAccount>, RepositoryError> {
+        assert_read_only(FETCH_OFFICER_SQL).map_err(|_| Error::Guard)?;
+        let row: Option<OfficerRow> = sqlx::query_as(FETCH_OFFICER_SQL)
+            .bind(login_name)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(Error::from)?;
+        Ok(row.map(officer_from_row))
     }
 
     async fn search_patients(

@@ -5,6 +5,36 @@
 //! must pass [`assert_read_only`] — enforced by the test at the bottom of
 //! this module and by the guard on every execution path.
 
+/// Reads one local HOSxP `officer` account for password verification.
+///
+/// Only `officer` is read: `opduser` is not used (old V3 accounts; the
+/// HOSxP gateway blacklists it), and the plaintext
+/// `officer_login_password` column is never selected. The display name
+/// falls back to `doctor.name` through `officer_doctor_code` when the
+/// officer name fields are blank.
+///
+/// // SCHEMA-UNVERIFIED: the `officer` login columns (`officer_login_name`,
+/// // `officer_login_password_md5`, `officer_active`,
+/// // `officer_authentication_type_id`, `officer_doctor_code`, and the
+/// // officer name fields) are standard HOSxP conventions but have not been
+/// // confirmed on the pilot instance (docs/auth.md).
+pub const FETCH_OFFICER_SQL: &str = "\
+SELECT CAST(o.officer_id AS SIGNED) AS officer_id,
+       o.officer_login_name AS login_name,
+       COALESCE(o.officer_login_password_md5, '') AS password_md5,
+       COALESCE(o.officer_active, 'N') AS active,
+       CAST(COALESCE(o.officer_authentication_type_id, 1) AS SIGNED) AS auth_type_id,
+       NULLIF(o.officer_doctor_code, '') AS doctor_code,
+       COALESCE(
+           NULLIF(TRIM(CONCAT(COALESCE(o.officer_pname, ''), COALESCE(o.officer_fname, ''), ' ', COALESCE(o.officer_lname, ''))), ''),
+           NULLIF(TRIM(d.name), ''),
+           ''
+       ) AS display_name
+FROM officer o
+LEFT JOIN doctor d ON d.code = NULLIF(o.officer_doctor_code, '')
+WHERE o.officer_login_name = ?
+LIMIT 1";
+
 /// Patient lookup by exact national ID (13 digits) — AGENTS.md §6.1.
 ///
 /// Columns confirmed against the live instance (`birthday`, not the
@@ -240,7 +270,8 @@ mod tests {
 
     /// Every statement the crate can execute. Both guard tests iterate this
     /// list — add new constants here.
-    const ALL_STATEMENTS: [&str; 23] = [
+    const ALL_STATEMENTS: [&str; 24] = [
+        FETCH_OFFICER_SQL,
         PATIENT_SEARCH_BY_CID,
         PATIENT_SEARCH_BY_HN,
         PATIENT_SEARCH_NAME_PREFIX,
@@ -268,7 +299,8 @@ mod tests {
 
     /// The table surface documented in docs/deployment.md Part A ("Which
     /// tables does AllerX read?") — the DBA grants are written against it.
-    const DOCUMENTED_TABLES: [&str; 8] = [
+    const DOCUMENTED_TABLES: [&str; 9] = [
+        "officer",
         "patient",
         "drugitems",
         "opitemrece",
