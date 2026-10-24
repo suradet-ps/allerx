@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use allerx_hosxp_connector::MySqlPool;
 use allerx_hosxp_connector::config::CONFIG_FILE_NAME;
+use allerx_models::SessionUser;
 use serde::Serialize;
 use tokio::sync::Mutex;
 
@@ -44,6 +45,9 @@ pub struct AppState {
     /// Live reachability of HOSxP, kept fresh by the health monitor and
     /// every query outcome (ROADMAP Phase 3).
     pub health: Arc<Mutex<ConnectionHealth>>,
+    /// Signed-in HOSxP officer for this app process. Memory only — a restart
+    /// requires signing in again; a connection change clears it.
+    pub session: Arc<Mutex<Option<SessionUser>>>,
 }
 
 impl AppState {
@@ -53,6 +57,7 @@ impl AppState {
             pool: Arc::new(Mutex::new(None)),
             stats: Arc::new(Mutex::new(QueryStats::new())),
             health: Arc::new(Mutex::new(ConnectionHealth::Unconfigured)),
+            session: Arc::new(Mutex::new(None)),
         }
     }
 

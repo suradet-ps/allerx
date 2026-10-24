@@ -18,6 +18,7 @@ use std::rc::Rc;
 
 use allerx_app::api;
 use allerx_app::components::drug_search::DrugSearch;
+use allerx_app::components::login_screen::LoginScreen;
 use allerx_app::components::patient_bar::PatientBar;
 use allerx_app::components::patient_detail_modal::PatientDetailModal;
 use allerx_app::components::patient_search::PatientSearch;
@@ -28,7 +29,7 @@ use allerx_app::components::verdict_band::VerdictBand;
 use allerx_app::state::{AppState, ConnectionHealth, DrugVerdict, DrugVerdictState, VerdictState};
 use allerx_models::{
     ConcurrentMedication, DrugCheckResult, DrugHistoryRecord, DrugItem, HistoryVerdict,
-    PatientSummary, ResolvedHistory, VisitType,
+    PatientSummary, ResolvedHistory, SessionUser, VisitType,
 };
 use chrono::NaiveDate;
 use js_sys::Promise;
@@ -88,6 +89,16 @@ fn sample_drug() -> DrugItem {
         name: "พาราเซตามอล".into(),
         strength: Some("500 mg".into()),
         trade_name: None,
+    }
+}
+
+fn sample_session() -> SessionUser {
+    SessionUser {
+        officer_id: 7,
+        login_name: "pharm".into(),
+        display_name: "เภสัชกร ทดสอบ".into(),
+        doctor_code: None,
+        role: "STAFF".into(),
     }
 }
 
@@ -1110,4 +1121,53 @@ async fn health_states_round_trip_through_the_api_boundary() {
         let js = to_value(&variant).expect("serialize health");
         assert_eq!(js.as_string(), Some(name.to_string()));
     }
+}
+
+// ---------------------------------------------------------------------------
+// Login gate
+// ---------------------------------------------------------------------------
+
+#[wasm_bindgen_test]
+async fn login_screen_blocks_submit_until_connection_is_configured() {
+    let state = AppState::new();
+    let root = mount("login-off", move || view! { <LoginScreen state=state /> });
+    assert!(query_optional(&root, ".login__notice").is_some());
+    let submit = query_one(&root, ".login__submit");
+    assert!(submit.has_attribute("disabled"));
+}
+
+#[wasm_bindgen_test]
+async fn login_screen_signs_in_and_sets_the_session() {
+    mock_invoke(|cmd| {
+        assert_eq!(cmd, "login");
+        resolve_ok(&sample_session())
+    });
+    let state = AppState::new();
+    state.configured.set(true);
+    let view_state = state.clone();
+    let root = mount(
+        "login-ok",
+        move || view! { <LoginScreen state=view_state /> },
+    );
+
+    let username = input(&root);
+    type_text(&username, "pharm");
+    let password = query_one(&root, "input[type='password']")
+        .dyn_into::<HtmlInputElement>()
+        .expect("password input");
+    type_text(&password, "secret");
+
+    let form = query_one(&root, "form");
+    let event = web_sys::SubmitEvent::new("submit").expect("submit event");
+    form.dispatch_event(&event).expect("dispatch submit");
+    settle().await;
+
+    assert_eq!(
+        state
+            .session
+            .get_untracked()
+            .map(|user: SessionUser| user.login_name),
+        Some("pharm".to_string())
+    );
+    api::clear_mock_invoke();
 }

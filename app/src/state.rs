@@ -1,6 +1,6 @@
 //! Client-side application state (signals shared between components).
 
-use allerx_models::{DrugHistoryRecord, DrugItem, PatientSummary};
+use allerx_models::{DrugHistoryRecord, DrugItem, PatientSummary, SessionUser};
 use leptos::prelude::*;
 
 /// Live HOSxP reachability, mirrored from the backend's `connection_health`
@@ -15,6 +15,17 @@ pub enum ConnectionHealth {
     Connected,
     /// HOSxP could not be reached.
     Disconnected,
+}
+
+impl ConnectionHealth {
+    /// Thai label for the login screen and status dot.
+    pub fn label_th(self) -> &'static str {
+        match self {
+            Self::Unconfigured => "ยังไม่ได้ตั้งค่าการเชื่อมต่อ",
+            Self::Connected => "เชื่อมต่อ HOSxP แล้ว",
+            Self::Disconnected => "HOSxP ไม่พร้อมใช้งาน",
+        }
+    }
 }
 
 /// One drug the pharmacist queued for checking (ROADMAP Phase 5). `icode`
@@ -66,6 +77,13 @@ pub struct AppState {
     pub drug_chips: RwSignal<Vec<DrugChip>>,
     /// Whether encrypted HOSxP connection settings exist on this machine.
     pub configured: RwSignal<bool>,
+    /// Signed-in HOSxP officer, mirrored from the backend session.
+    pub session: RwSignal<Option<SessionUser>>,
+    /// True once the startup probe (settings, connection, session) finished.
+    pub auth_checked: RwSignal<bool>,
+    /// Bumped on every login/logout so an in-flight query started under a
+    /// previous session can never write its result into the new session.
+    pub auth_generation: RwSignal<u64>,
     /// Whether the connection settings dialog is open.
     pub settings_open: RwSignal<bool>,
     /// Whether the patient detail modal is open.
@@ -106,6 +124,9 @@ impl AppState {
             verdict: RwSignal::new(VerdictState::Pending),
             drug_chips: RwSignal::new(Vec::new()),
             configured: RwSignal::new(false),
+            session: RwSignal::new(None),
+            auth_checked: RwSignal::new(false),
+            auth_generation: RwSignal::new(0),
             settings_open: RwSignal::new(false),
             detail_open: RwSignal::new(false),
             health: RwSignal::new(ConnectionHealth::Unconfigured),
@@ -118,6 +139,37 @@ impl AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl AppState {
+    /// Completes a successful login. Any prior patient/drug state belongs to
+    /// the previous operator and is dropped.
+    pub fn finish_login(&self, user: SessionUser) {
+        self.clear_work();
+        self.auth_generation.update(|generation| *generation += 1);
+        self.session.set(Some(user));
+    }
+
+    /// Clears the session UI (the backend logout is performed by the
+    /// caller). Also used after a connection change, which invalidates the
+    /// session server-side.
+    pub fn clear_session(&self) {
+        self.auth_generation.update(|generation| *generation += 1);
+        self.session.set(None);
+        self.clear_work();
+        self.settings_open.set(false);
+    }
+
+    /// Drops everything that belongs to the signed-in operator's current
+    /// patient and drug check.
+    fn clear_work(&self) {
+        self.patient.set(None);
+        self.verdict.set(VerdictState::Pending);
+        self.drug_chips.set(Vec::new());
+        self.detail_open.set(false);
+        self.db_banner.set(None);
+        self.check_seq.set(0);
     }
 }
 
@@ -213,6 +265,41 @@ mod tests {
                 },
             },
         }
+    }
+
+    #[test]
+    fn new_state_has_no_session_until_startup_finishes() {
+        let state = AppState::new();
+        assert!(state.session.get_untracked().is_none());
+        assert!(!state.auth_checked.get_untracked());
+    }
+
+    #[test]
+    fn finish_login_sets_the_session_and_clear_session_drops_work() {
+        let state = AppState::new();
+        state.patient.set(Some(PatientSummary {
+            hn: "00012345".into(),
+            cid: None,
+            full_name_th: "ทดสอบ".into(),
+            birth_date: None,
+            sex: None,
+        }));
+        state.finish_login(SessionUser {
+            officer_id: 7,
+            login_name: "pharm".into(),
+            display_name: "Pharmacist".into(),
+            doctor_code: None,
+            role: "STAFF".into(),
+        });
+        assert_eq!(
+            state.session.get_untracked().map(|user| user.login_name),
+            Some("pharm".to_string())
+        );
+        assert!(state.patient.get_untracked().is_none());
+        let generation = state.auth_generation.get_untracked();
+        state.clear_session();
+        assert!(state.session.get_untracked().is_none());
+        assert!(state.auth_generation.get_untracked() > generation);
     }
 
     #[test]

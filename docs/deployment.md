@@ -40,12 +40,13 @@ SELECT-only, parameterized. Their complete table/column surface:
 
 | Table | Columns read | Used by |
 |---|---|---|
+| `officer` | `officer_id`, `officer_login_name`, `officer_login_password_md5`, `officer_active`, `officer_authentication_type_id`, `officer_doctor_code`, `officer_pname`, `officer_fname`, `officer_lname` | login gate (HOSxP officer authentication, docs/auth.md) |
 | `patient` | `hn`, `cid`, `pname`, `fname`, `lname`, `birthday`, `sex` | patient search (HN / CID / name) |
 | `drugitems` | `icode`, `name`, `strength`, `trade_name`¹, `istype`¹ | drug autocomplete, resolution, history join, recent meds |
 | `opitemrece` | `vstdate`, `vsttime`, `an`, `hn`, `icode`, `qty`, `doctor`, `dep_code`, `drugusage` | OPD history, IPD take-home history, recent meds |
 | `iptitemrece`² | `idate`, `itime`, `an`, `icode`, `qty`, `doctor`, `depcode`, `drugusage` | IPD in-stay history |
 | `ipt` | `an`, `hn` | IPD in-stay join only |
-| `doctor` | `code`, `name` | prescriber name |
+| `doctor` | `code`, `name` | prescriber name; login display-name fallback |
 | `kskdepartment` | `depcode`, `department` | department name |
 | `drugusage` | `drugusage`, `name1` | usage line |
 
@@ -62,6 +63,7 @@ maintainable):
 
 ```sql
 CREATE USER 'allerx_ro'@'<pilot-pc-host-or-ip>' IDENTIFIED BY '<password>';
+GRANT SELECT ON <schema>.officer       TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT ON <schema>.patient       TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT ON <schema>.drugitems     TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT ON <schema>.opitemrece    TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
@@ -79,13 +81,17 @@ explicit columns — there is no `SELECT *` anywhere — so column-level
 privileges work today:
 
 ```sql
+GRANT SELECT (officer_id, officer_login_name, officer_login_password_md5, officer_active,
+               officer_authentication_type_id, officer_doctor_code,
+               officer_pname, officer_fname, officer_lname)
+  ON <schema>.officer TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (hn, cid, pname, fname, lname, birthday, sex) ON <schema>.patient TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (icode, name, strength)                      ON <schema>.drugitems TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 -- + trade_name / istype after checklist A3 confirms they exist
 GRANT SELECT (vstdate, vsttime, an, hn, icode, qty, doctor, dep_code, drugusage) ON <schema>.opitemrece   TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (idate, itime, an, icode, qty, doctor, depcode, drugusage)          ON <schema>.iptitemrece  TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (an, hn)                                     ON <schema>.ipt            TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
-GRANT SELECT (code, name)                                 ON <schema>.doctor         TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT (code, name)                                 ON <schema>.doctor         TO 'allerx_ro'@'<pilot-pc-host-or-ip>'; -- also login display-name fallback
 GRANT SELECT (depcode, department)                        ON <schema>.kskdepartment  TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (drugusage, name1)                           ON <schema>.drugusage      TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 ```

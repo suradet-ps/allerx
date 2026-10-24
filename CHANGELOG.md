@@ -6,6 +6,10 @@ Phase 1 completion, v0.3.0 marks the Phase 6 pilot start.
 
 ## [Unreleased]
 
+- Feature: HOSxP `officer` login gate (read-only `officer` lookup, MD5
+  verification, in-memory session, logout). Data commands now require a
+  session; a connection change clears it and returns to the gate. Design
+  and caveats: `docs/auth.md`.
 - Fixed: the IPD in-stay source no longer treats every schema error as
   "table absent". Only a missing `iptitemrece` table degrades to an empty
   source; an unknown column or a missing joined table now fails loudly

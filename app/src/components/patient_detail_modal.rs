@@ -39,9 +39,11 @@ pub fn PatientDetailModal(state: AppState) -> impl IntoView {
             return;
         };
         let hn = patient.hn.clone();
+        let generation = state.auth_generation.get_untracked();
         meds.set(MedsState::Loading);
         leptos::task::spawn_local(async move {
             match api::fetch_concurrent_medications(&hn).await {
+                _ if state.auth_generation.get_untracked() != generation => {}
                 Ok(list) => meds.set(MedsState::Loaded { meds: list }),
                 Err(err) => meds.set(MedsState::Failed {
                     message: err.message,

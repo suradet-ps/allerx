@@ -28,9 +28,11 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
             error.set(None);
             return;
         }
+        let generation = state.auth_generation.get_untracked();
         leptos::task::spawn_local(async move {
             searched.set(true);
             match api::search_patients(&query).await {
+                _ if state.auth_generation.get_untracked() != generation => {}
                 Ok(list) => {
                     state.db_banner.set(None);
                     error.set(None);

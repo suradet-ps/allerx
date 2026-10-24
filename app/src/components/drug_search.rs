@@ -61,8 +61,10 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
         }
         note.set(None);
         let hn = patient.hn.clone();
+        let generation = state.auth_generation.get_untracked();
         leptos::task::spawn_local(async move {
             match api::check_history(&hn, &terms).await {
+                _ if state.auth_generation.get_untracked() != generation => {}
                 Ok(results) => {
                     state.db_banner.set(None);
                     let verdicts = results
@@ -169,10 +171,13 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                         if let Some(handle) = debounce.get() {
                             handle.clear();
                         }
+                        let generation = state.auth_generation.get_untracked();
                         let schedule = Rc::new(move || {
                             let prefix = value.clone();
+                            let generation = generation;
                             leptos::task::spawn_local(async move {
                                 match api::search_drugs(&prefix).await {
+                                    _ if state.auth_generation.get_untracked() != generation => {}
                                     Ok(list) => {
                                         state.db_banner.set(None);
                                         suggestions.set(list);

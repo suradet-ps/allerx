@@ -4,7 +4,7 @@ This file gives coding agents (and future contributors) the context needed to wo
 
 ## 1. What this project is
 
-AllerX is a desktop app that helps pharmacists/physicians check a patient's medication history before an allergy assessment. It searches HOSxP (hospital MySQL/MariaDB database) **read-only** and answers one question fast: *"Has this patient ever received this drug, and when?"*
+AllerX is a desktop app that helps pharmacists/physicians check a patient's medication history before an allergy assessment. It searches HOSxP (hospital MySQL/MariaDB database) **read-only** and answers one question fast: *"Has this patient ever received this drug, and when?"* The login gate is the first screen and signs the operator in with their HOSxP **`officer`** account; the session is in-memory only (`docs/auth.md`).
 
 **Design goals:** simple, no unnecessary features; fast (< 300ms for typical queries); strict read-only against HOSxP with no exceptions; UI is not required to work fully offline, but the frontend (SPA/WASM) only ever talks to the database through the Tauri backend.
 
@@ -20,6 +20,7 @@ AllerX is a desktop app that helps pharmacists/physicians check a patient's medi
 2. **Never log PII.** No patient name, CID, HN, or drug history content in persisted logs. Log query timing and error types, not parameter values.
 3. **Parameterized queries only.** Never build SQL by string concatenation, even for values that "look safe" like an HN.
 4. **No schema guessing without a flag.** HOSxP table/column names in this repo are best-effort until verified against the real instance. Any query touching a table listed as "assumption" in §6 must be marked with a `// SCHEMA-UNVERIFIED:` comment until confirmed.
+5. **Login reads `officer` only.** Never query `opduser` (old V3 accounts; the HOSxP gateway blacklists it), never select the plaintext `officer_login_password` column, never log usernames/passwords, and never persist a login log or session token to HOSxP. The session lives only in the Tauri process; the MD5 assumption is documented in `docs/auth.md`.
 
 ## 3. Workspace layout (ports-lite)
 
@@ -67,6 +68,13 @@ pub struct DrugSearchHit {
     pub records: Vec<DrugHistoryRecord>,  // most recent first
 }
 ```
+
+- `OfficerAccount` (backend-only) — one `officer` row: login name, MD5
+  password hash, active flag, auth type, doctor code, display name. The
+  hash never crosses the IPC boundary; `Debug` redacts it.
+- `SessionUser` — the sanitized login result (officer id, login name,
+  display name, doctor code, role) sent to the frontend. Role is `STAFF`
+  for everyone until app-specific roles exist.
 
 ## 5. Strict read-only - enforcement mechanism
 
@@ -150,6 +158,22 @@ ORDER BY o.vn, o.item_no;
 AllerX's actual query replaces the `vstdate = CURDATE()` filter with `hn = ? AND icode/drug_name
 matches the searched drug`, and adds the IPD-side equivalent (§6.3) run concurrently — see §7.2.
 
+### 6.7 Authentication (`officer`)
+- Read one row by `officer_login_name`; check `officer_active = 'Y'`,
+  `IFNULL(officer_authentication_type_id, 1) = 1`, and
+  `MD5(password) = officer_login_password_md5` (case-insensitive).
+- Never select the plaintext `officer_login_password`; never read
+  `opduser`; never write a session or audit row to HOSxP.
+- Display name comes from `officer_pname`/`fname`/`lname`, falling back to
+  `doctor.name` through `officer_doctor_code`, then the login name.
+- Every signed-in officer gets `role = "STAFF"` for now; HOSxP group
+  permissions are not a usable source.
+- The MD5 assumption and acceptance checklist live in `docs/auth.md`.
+  `officer` and its login columns are still `SCHEMA-UNVERIFIED` until one
+  real test account signs in successfully on the pilot instance.
+- A connection change clears the session; the operator must sign in again
+  against the new database.
+
 **To confirm with DBA before M1 (still open):**
 - Real table/column names on this specific instance (each hospital customizes slightly), and which of `istype`/`item_type` the drug-type filter actually uses.
 - Existing indexes on `hn`, `cid`, `pname`, `icode`, `an` — missing indexes will make search slow; may need to request new indexes (safe under read-only — indexes don't touch data).
@@ -157,6 +181,11 @@ matches the searched drug`, and adds the IPD-side equivalent (§6.3) run concurr
 - Whether this instance logs IPD take-home meds in `opitemrece`, `iptitemrece`, or both (§6.3).
 
 ## 7. Search flow
+
+All HOSxP data commands (`search_patients`, `search_drugs`, `check_drugs`,
+`fetch_concurrent_medications`) require a signed-in officer at the Tauri
+command boundary. Connection setup, login/logout, session lookup, and health
+checks remain available before sign-in.
 
 ### 7.1 Patient search (name / HN / CID)
 - Single search box, auto-detects input type: 13-digit numeric → CID; hospital HN pattern → HN; anything else → name (prefix-match `LIKE` first to use indexes, fallback to contains-match).
@@ -183,7 +212,10 @@ matches the searched drug`, and adds the IPD-side equivalent (§6.3) run concurr
 - No PII in persisted logs — log query timing/error type, not parameter values.
 - Keep the DB connection string out of source control (`.env` + `.gitignore`, or the same encrypted-credential pattern used in `encryptman` + `encryptman-keyring`(https://docs.rs/encryptman/0.3.0/encryptman/)if client-side credential storage is needed).
 - The DB password is a `secrecy::SecretString` end to end in Rust: zeroized on drop, `Debug`-redacted (`ConnectionInput` and `HosxConfig`). Two plaintext windows are documented residuals, not bugs: (1) the webview's JS heap while the operator types/confirms — inherent to a desktop IPC flow; (2) sqlx's internal copy inside `MySqlPool`, retained for reconnects for the pool's lifetime. Never log or Debug-print `ConnectionInput`/`HosxConfig` values.
-- Optional (M6+): local application-level audit trail (who searched what, when) for internal hospital compliance.
+- Login passwords are deserialized into a `secrecy::SecretString` at the Tauri boundary, verified in memory against the stored MD5, and dropped; they are never stored or logged. `LoginInput` deliberately does not derive `Debug`. The backend session is memory-only and is cleared on logout, app restart, or a connection change.
+- The frontend never receives the officer password hash. The top bar shows only the sanitized `SessionUser` (display name and login name).
+- The frontend tracks an auth generation counter (`AppState::auth_generation`): login/logout bumps it, and every in-flight query result is discarded when the generation changed. This prevents one operator's results from appearing in the next operator's session.
+- Optional (M6+): local application-level audit trail (who searched what, when) for internal hospital compliance. Until the hospital approves a local audit store, no staff identifier is persisted.
 
 ## 10. Milestones
 
@@ -210,6 +242,7 @@ Before implementing a milestone:
 - `search-core`: unit tests against a mock repository, no live DB required. This is the default suite that must always pass.
 - `hosxp-connector`: integration tests gated behind a feature flag (e.g. `--features integration-tests`), run only against a test/staging HOSxP instance, never production. Not part of the default `cargo test` run.
 - Any new query added to `hosxp-connector` needs a test asserting it is a `SELECT`/`WITH` statement (the read-only guard should catch violations, but test it anyway).
+- `search-core` owns `verify_password` unit tests (known MD5 digests, upper/lower hex, malformed hashes); `models` owns the `OfficerAccount` hash-redaction test. The login command is exercised by the WASM IPC contract tests in `app/tests/api_wasm.rs`.
 
 ## 13. Style and conventions
 

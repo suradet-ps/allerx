@@ -5,6 +5,7 @@
 //! detection, history merging/ordering. The only crate allowed to talk to
 //! MySQL is `hosxp-connector`, which implements this contract.
 
+pub mod auth;
 pub mod error;
 pub mod history;
 pub mod mock;
@@ -12,6 +13,7 @@ pub mod query_kind;
 pub mod repository;
 pub mod resolution;
 
+pub use auth::{md5_hex, verify_password};
 pub use error::RepositoryError;
 pub use history::merge_drug_history;
 pub use mock::MockRepository;

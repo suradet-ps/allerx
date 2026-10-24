@@ -2,6 +2,7 @@
 
 pub mod drug_search;
 pub mod icons;
+pub mod login_screen;
 pub mod patient_bar;
 pub mod patient_detail_modal;
 pub mod patient_search;

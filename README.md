@@ -16,7 +16,8 @@ assessment - a pharmacist standing mid-shift needs the answer in under a
 second. AllerX searches the hospital's [HOSxP](https://hosxp.org/)
 database, strictly read-only, and reports what the record contains.
 Nothing is written, nothing is cached, nothing that could identify a
-patient is ever logged.
+patient is ever logged. The first screen is the HOSxP **`officer`** login
+gate; the session is in-memory only.
 
 | P1-P5 ▣ | P6 docs ▣ | P6 pilot ☐ | P7 ☐ | P8 ☐ |
 |---|---|---|---|---|
@@ -27,7 +28,7 @@ with the pharmacy department is underway. Clinical validation and v1.0
 hardening wait ahead.*
 
 > Built with Tauri 2 + Leptos 0.8, answered by `search-core`, read from
-> eight HOSxP tables by `hosxp-connector` - never a write, never a lie.
+> nine HOSxP tables by `hosxp-connector` - never a write, never a lie.
 >
 > **suradet-ps**, artifact keeper
 
@@ -71,7 +72,8 @@ Three crates, one hard law: HOSxP is read-only, without exceptions.
   verdict. Tested against a mock repository - no live database in the
   test suite, ever.
 - **Reads** - `hosxp-connector` talks to MySQL/MariaDB through `sqlx`:
-  parameterized `SELECT`s naming explicit columns across eight tables.
+  parameterized `SELECT`s naming explicit columns across nine tables,
+  including the `officer` row used for login.
   Every SQL constant carries a guard test asserting it is a single read
   statement - there is no `SELECT *`, and no write of any kind.
 - **Asks** - `app` is the Leptos frontend: one search box that
@@ -93,8 +95,10 @@ Three crates, one hard law: HOSxP is read-only, without exceptions.
 
 ## ◆ RITUALS
 
-**The core ceremony** - one search, one verdict:
+**The core ceremony** - one sign-in, one search, one verdict:
 
+0. Sign in with your HOSxP `officer` account (the session ends when the
+   app closes; the password is never stored).
 1. Type a CID, an HN, or a name. The box figures out which.
 2. Add drugs as chips - batch check resolves them all against the
    formulary, one verdict band per drug, merged newest-first timeline.

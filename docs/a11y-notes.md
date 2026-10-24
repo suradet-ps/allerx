@@ -10,7 +10,7 @@ checked, how, and what is still pending a real screen reader.
 
 | Requirement | Status | Where / notes |
 |---|---|---|
-| Keyboard-only flow: search → select → drug search → verdict | ✅ code-level | All interactive elements are native `<input>`/`<button>`; Enter triggers search in both search boxes; Tab order follows DESIGN.md |
+| Keyboard-only flow: login → search → select → drug search → verdict | ✅ code-level | All interactive elements are native `<input>`/`<button>`; Enter submits the login form and both search boxes; Tab order follows DESIGN.md |
 | `aria-label` on icon-only buttons | ✅ | `search-clear` ("ล้าง"), `banner-warning__close` ("ปิด"); icons are `aria-hidden` decorative |
 | Navigation landmark label | ✅ | Single view, no nav menu; the app header is a `<header>` — a labelled nav will be added if a menu ever appears |
 | Visible focus ring | ✅ | `:focus-visible` with `2px solid var(--brand)` on every button/input (main.css) |
@@ -40,19 +40,24 @@ Windows machine with the actual app running.
 
 ## Keyboard walkthrough (to be executed on a real machine, Phase 6)
 
-1. Launch → focus starts in the patient search input (first focusable).
-2. Tab: input → clear button → (no patient) drug search input → ตรวจประวัติ
-   button → ตั้งค่า button → settings gear.
-3. Type a name, press Enter → results list; Tab into the list, Enter to
+1. Launch → login gate. Tab: ตั้งค่า (top-right) → (when unconfigured)
+   ตั้งค่าการเชื่อมต่อ in the notice → username → password → เข้าสู่ระบบ;
+   Enter on the form signs in.
+2. After sign-in: focus starts in the patient search input.
+3. Tab: input → clear button → (no patient) drug search input → ตรวจประวัติ
+   button → ตั้งค่า button → user chip (readable, not focusable) → ออกจากระบบ.
+4. Type a name, press Enter → results list; Tab into the list, Enter to
    select a patient.
-4. Patient bar appears; Tab reaches the เปลี่ยนผู้ป่วย (X) button; Enter
+5. Patient bar appears; Tab reaches the เปลี่ยนผู้ป่วย (X) button; Enter
    clears the patient.
-5. Drug search enabled; type + Enter → verdict band renders; Tab through
+6. Drug search enabled; type + Enter → verdict band renders; Tab through
    the timeline rows (readable, not focusable — they are `<li>` without
    interactive content, acceptable).
-6. Settings: open with Enter from the top bar; Tab through fields in
-   order; Escape or ปิด returns focus to the trigger.
-7. With a connection failure: banner appears; Tab reaches its ปิด button;
+7. Settings: open with Enter from the top bar or the login gate; Tab
+   through fields in order; Escape or ปิด returns focus to the trigger.
+8. Logout: Enter on ออกจากระบบ; the login gate returns with all patient
+   state cleared.
+9. With a connection failure: banner appears; Tab reaches its ปิด button;
    Enter dismisses.
 
 ## Screen-reader procedure (NVDA, Windows — pilot machine)

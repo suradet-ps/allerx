@@ -17,7 +17,7 @@ use std::cell::RefCell;
 use allerx_app::api::{self, ApiError, ApiErrorKind};
 use allerx_models::{
     ConcurrentMedication, DrugCheckResult, DrugHistoryRecord, DrugItem, HistoryVerdict,
-    PatientSummary, ResolvedHistory, VisitType,
+    PatientSummary, ResolvedHistory, SessionUser, VisitType,
 };
 use chrono::NaiveDate;
 use js_sys::Promise;
@@ -213,6 +213,49 @@ async fn non_typed_rejection_falls_back_to_generic_query_error() {
         .expect_err("mock rejects");
     assert_eq!(err.kind, ApiErrorKind::Query);
     assert!(!err.message.is_empty());
+    api::clear_mock_invoke();
+}
+
+fn sample_session() -> SessionUser {
+    SessionUser {
+        officer_id: 7,
+        login_name: "pharm".into(),
+        display_name: "เภสัชกร ทดสอบ".into(),
+        doctor_code: Some("0001".into()),
+        role: "STAFF".into(),
+    }
+}
+
+#[wasm_bindgen_test]
+async fn login_sends_credentials_and_returns_the_session_user() {
+    mock(|cmd| {
+        assert_eq!(cmd, "login");
+        resolve_ok(&sample_session())
+    });
+    let user = api::login("pharm", "secret").await.expect("mock succeeds");
+    assert_eq!(user.login_name, "pharm");
+    assert_eq!(user.display_name, "เภสัชกร ทดสอบ");
+    assert_eq!(recorded_calls(), vec!["login".to_string()]);
+    api::clear_mock_invoke();
+}
+
+#[wasm_bindgen_test]
+async fn current_session_and_logout_use_their_commands() {
+    mock(|cmd| match cmd {
+        "current_session" => resolve_ok(&Some(sample_session())),
+        "logout" => resolve_ok(&()),
+        other => panic!("unexpected command {other}"),
+    });
+    let user = api::current_session()
+        .await
+        .expect("mock succeeds")
+        .expect("session present");
+    assert_eq!(user.officer_id, 7);
+    api::logout().await.expect("logout succeeds");
+    assert_eq!(
+        recorded_calls(),
+        vec!["current_session".to_string(), "logout".to_string()]
+    );
     api::clear_mock_invoke();
 }
 
