@@ -23,7 +23,7 @@ use async_trait::async_trait;
 use chrono::NaiveDate;
 use sqlx::MySqlPool;
 
-/// Per-source row cap — must stay in sync with the `LIMIT` inside every
+/// Per-source row cap - must stay in sync with the `LIMIT` inside every
 /// `HISTORY_*` statement in `queries.rs` (enforced by a test below). At the
 /// cap, older history exists but is not returned and the UI must say so.
 const HISTORY_LIMIT: usize = 200;
@@ -45,7 +45,7 @@ type PatientRow = (
 );
 
 /// One history row as `(visit_date, drug_code, drug_name, strength,
-/// trade_name, prescriber, department, route, quantity)` — same shape for
+/// trade_name, prescriber, department, route, quantity)` - same shape for
 /// OPD and both IPD sources, including the fallback (`NULL` in the
 /// optional columns' places).
 type HistoryRow = (
@@ -60,7 +60,7 @@ type HistoryRow = (
     Option<String>,
 );
 
-/// One drug row as `(icode, name, strength, trade_name)` — again shared by
+/// One drug row as `(icode, name, strength, trade_name)` - again shared by
 /// the typed/trade/plain autocomplete tiers.
 type DrugRow = (String, String, Option<String>, Option<String>);
 
@@ -69,7 +69,7 @@ type DrugRow = (String, String, Option<String>, Option<String>);
 type OfficerRow = (i64, String, String, String, i64, Option<String>, String);
 
 /// The repository that talks to the real HOSxP database. Created from a
-/// [`connect`](crate::connect) pool — this is the only object that ever
+/// [`connect`](crate::connect) pool - this is the only object that ever
 /// executes SQL in the app.
 #[derive(Debug, Clone)]
 pub struct HosxRepository {
@@ -121,8 +121,8 @@ impl HosxRepository {
 
     /// Runs the first statement that succeeds, in order.
     ///
-    /// Statements failing with a missing-table/column error (MySQL 1146/1054
-    /// — a documented per-instance variation, AGENTS.md §6) are skipped for
+    /// Statements failing with a missing-table/column error (MySQL 1146/1054,
+    /// a documented per-instance variation, AGENTS.md §6) are skipped for
     /// the next tier, so a richer query (trade names, drug-type filter) can
     /// degrade to the safe baseline instead of breaking the app. Any other
     /// failure propagates immediately. Every statement must pass the
@@ -161,10 +161,10 @@ impl HosxRepository {
     /// several rows are [`ExactMatch::Ambiguous`] and the caller offers
     /// disambiguation instead of picking an arbitrary strength (issue #15).
     /// [`ExactMatch::NoMatch`] means the term is not in `drugitems` under
-    /// any of the three — the caller then falls back to candidate
+    /// any of the three - the caller then falls back to candidate
     /// suggestions (never a "not found" verdict, ROADMAP Phase 1).
     ///
-    /// The returned identity labels the verdict — a pharmacist searching by
+    /// The returned identity labels the verdict - a pharmacist searching by
     /// icode sees the drug's name and strength, not a bare code.
     async fn resolve_drug_item(&self, drug: &str) -> Result<ExactMatch, Error> {
         if let Some(item) = self
@@ -180,7 +180,7 @@ impl HosxRepository {
         if !matches!(by_name, ExactMatch::NoMatch) {
             return Ok(by_name);
         }
-        // A missing trade-name column is a documented schema variation —
+        // A missing trade-name column is a documented schema variation -
         // "no trade-name match", not an error.
         let by_trade_name = self
             .fetch_drug_items_tolerant(DRUG_MATCH_BY_TRADE_NAME, drug)
@@ -268,7 +268,7 @@ impl HosxRepository {
             .map_err(Error::from)
     }
 
-    /// OPD history — `opitemrece` rows without an admission number. Returns
+    /// OPD history - `opitemrece` rows without an admission number. Returns
     /// the rows and whether the source hit its cap (older rows exist).
     async fn fetch_opd_history(
         &self,
@@ -290,7 +290,7 @@ impl HosxRepository {
         ))
     }
 
-    /// IPD history — take-home rows in `opitemrece` plus in-stay rows in
+    /// IPD history - take-home rows in `opitemrece` plus in-stay rows in
     /// `iptitemrece` (AGENTS.md §6.3), run concurrently.
     async fn fetch_ipd_history(
         &self,
@@ -612,7 +612,7 @@ impl HosxRepositoryTrait for HosxRepository {
         let hn = hn.trim();
         let drug = drug.trim();
         if hn.is_empty() || drug.is_empty() {
-            // Blank input is an unresolvable term — never a "not found"
+            // Blank input is an unresolvable term - never a "not found"
             // verdict (ROADMAP Phase 1 invariant).
             return Ok(HistoryVerdict::Unresolved {
                 candidates: Vec::new(),
@@ -624,7 +624,7 @@ impl HosxRepositoryTrait for HosxRepository {
         // Resolved verdict; an unresolvable term or an ambiguous name
         // (several icodes share it, issue #15) surfaces formulary
         // candidates for the operator to disambiguate. The resolved
-        // `DrugItem` (name/strength) labels the verdict — an icode search
+        // `DrugItem` (name/strength) labels the verdict - an icode search
         // shows which drug it referred to.
         let (resolution, records, truncated) = match self.resolve_drug_item(drug).await? {
             ExactMatch::Unique(drug) => {
@@ -656,10 +656,10 @@ impl HosxRepositoryTrait for HosxRepository {
         hn: &str,
         drugs: &[String],
     ) -> Result<Vec<DrugCheckResult>, RepositoryError> {
-        // The same single question asked N times in one pass — each drug
+        // The same single question asked N times in one pass - each drug
         // runs its own OPD+IPD fan-out concurrently (pool size 5 caps the
         // load; a pharmacy batch is 2-5 drugs). Completion order differs
-        // from input order — results carry their term label, so the UI
+        // from input order - results carry their term label, so the UI
         // never relies on position.
         let mut tasks = tokio::task::JoinSet::new();
         for drug in drugs {
@@ -718,7 +718,7 @@ fn drug_from_row((icode, name, strength, trade_name): DrugRow) -> DrugItem {
     }
 }
 
-/// Ensures every executed statement passes the guard — regression test for
+/// Ensures every executed statement passes the guard - regression test for
 /// the "every query in this crate is a read statement" rule (AGENTS.md §12).
 #[cfg(test)]
 mod tests {
@@ -852,7 +852,7 @@ mod tests {
 
     #[test]
     fn history_limit_stays_in_sync_with_the_sql() {
-        // Every HISTORY_* statement carries `LIMIT 200` — keep this in lock
+        // Every HISTORY_* statement carries `LIMIT 200` - keep this in lock
         // step with HISTORY_LIMIT or the truncation flag lies.
         for sql in [
             HISTORY_OPD,

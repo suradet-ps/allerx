@@ -1,23 +1,18 @@
 //! Zeroization helpers for operator-typed secrets.
 //!
 //! A plain `String::new()` frees the buffer but leaves the plaintext bytes
-//! behind for a memory scan. Filling the owned buffer with NUL (valid UTF-8)
-//! before dropping keeps the value well-formed and overwrites its contents.
+//! behind for a memory scan. `zeroize` overwrites the buffer in place with
+//! volatile writes before clearing it, so the wipe is not lost to the
+//! optimizer.
 
 use leptos::prelude::*;
+use zeroize::Zeroize;
 
-/// Overwrites the signal's string buffer, then replaces it with an empty
-/// string. Call when a password field has served its purpose (login success,
-/// modal close, connection save).
+/// Overwrites the signal's string buffer with zeros, then clears it. Call when
+/// a password field has served its purpose (login success, modal close,
+/// connection save).
 pub fn wipe_secret(signal: &RwSignal<String>) {
-    let mut value = signal.get_untracked();
-    if !value.is_empty() {
-        // SAFETY: the buffer is owned exclusively by `value`; filling it with
-        // NUL bytes (valid UTF-8) keeps every invariant intact, and the
-        // buffer is dropped unaliased at the end of this function.
-        unsafe { value.as_mut_vec().fill(0) };
-    }
-    signal.set(String::new());
+    signal.update(|value| value.zeroize());
 }
 
 #[cfg(test)]

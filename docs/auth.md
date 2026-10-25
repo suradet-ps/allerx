@@ -1,4 +1,4 @@
-# auth.md — HOSxP officer login
+# auth.md - HOSxP officer login
 
 AllerX opens on a login gate and signs the operator in with their HOSxP
 **`officer`** account. The HOSxP database remains strictly read-only
@@ -9,8 +9,8 @@ never writes a session, token, or audit row back to HOSxP.
 
 | Table | Use |
 |---|---|
-| `officer` | **The only login source** — one row by `officer_login_name` |
-| `opduser` | **Never read** — old V3 accounts; the hospital HOSxP gateway blacklists it |
+| `officer` | **The only login source** - one row by `officer_login_name` |
+| `opduser` | **Never read** - old V3 accounts; the hospital HOSxP gateway blacklists it |
 | `onlineuser` | Never used for identity |
 | `officer_activity_log` | Existing HOSxP audit trail; AllerX does not write it |
 
@@ -44,16 +44,18 @@ Launch
         │
         └─ officer login (username + password)
               ├─ fetch one officer row by login name
+              ├─ verify MD5(password) against officer_login_password_md5
               ├─ check active = 'Y'
               ├─ check auth_type = 1 (local database)
-              ├─ verify MD5(password) against officer_login_password_md5
               └─ store an in-memory SessionUser; the workspace opens
 ```
 
 A successful login replaces any previous in-memory session. A connection
 change (settings dialog → save) clears the session on both the backend and
 the frontend and returns the operator to the login gate, because the
-officer was verified against the old database.
+officer was verified against the old database. A login that is still in
+flight when the connection changes is discarded rather than stored, so a
+session verified against the old database cannot survive the switch.
 
 ## C. Password verification
 
@@ -62,7 +64,8 @@ and compares it with the stored 32-hex digest, case-insensitively. The
 plaintext password is deserialized straight into a `secrecy::SecretString`
 at the Tauri command boundary; it is never written to disk, logged, or
 returned to the frontend. The login command does not echo whether the
-username or the password was wrong.
+username or the password was wrong, and account-state messages (disabled
+or LDAP) are returned only after the password matches.
 
 > **Unverified assumption.** The prior source survey of the sibling
 > ER-Refill project confirmed the shape (MD5, 32 hex) on a different HOSxP

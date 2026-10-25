@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 use allerx_hosxp_connector::MySqlPool;
 use allerx_hosxp_connector::config::CONFIG_FILE_NAME;
@@ -14,11 +15,11 @@ use crate::stats::QueryStats;
 /// Live reachability of HOSxP (ROADMAP Phase 3).
 ///
 /// Driven by the startup warm-up, the periodic health monitor, and query
-/// outcomes — **never** by "the config file exists", which is what the old
+/// outcomes - **never** by "the config file exists", which is what the old
 /// status dot meant. This is the value behind the top-bar connection dot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum ConnectionHealth {
-    /// No stored settings — the settings dialog is the flow.
+    /// No stored settings - the settings dialog is the flow.
     Unconfigured,
     /// A ping succeeded recently (or a query succeeded).
     Connected,
@@ -39,15 +40,20 @@ pub struct AppState {
     /// test (or by the startup warm-up). `None` until then (and after
     /// reconfiguration).
     pub pool: Arc<Mutex<Option<MySqlPool>>>,
-    /// PII-free query timing ring buffer (ROADMAP Phase 2) — command names,
+    /// PII-free query timing ring buffer (ROADMAP Phase 2) - command names,
     /// durations and outcomes only, never parameter values.
     pub stats: Arc<Mutex<QueryStats>>,
     /// Live reachability of HOSxP, kept fresh by the health monitor and
     /// every query outcome (ROADMAP Phase 3).
     pub health: Arc<Mutex<ConnectionHealth>>,
-    /// Signed-in HOSxP officer for this app process. Memory only — a restart
+    /// Signed-in HOSxP officer for this app process. Memory only - a restart
     /// requires signing in again; a connection change clears it.
     pub session: Arc<Mutex<Option<SessionUser>>>,
+    /// Bumped whenever the stored connection settings change. Login captures
+    /// it before the officer lookup and stores the session only when it is
+    /// unchanged, so a session verified against the old database cannot leak
+    /// into the new one.
+    pub connection_epoch: Arc<AtomicU64>,
 }
 
 impl AppState {
@@ -58,6 +64,7 @@ impl AppState {
             stats: Arc::new(Mutex::new(QueryStats::new())),
             health: Arc::new(Mutex::new(ConnectionHealth::Unconfigured)),
             session: Arc::new(Mutex::new(None)),
+            connection_epoch: Arc::new(AtomicU64::new(0)),
         }
     }
 

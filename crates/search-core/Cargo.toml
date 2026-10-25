@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "AllerX business logic — ranking, matching, repository contract. No sqlx, testable with a mock repository"
+description = "AllerX business logic - ranking, matching, repository contract. No sqlx, testable with a mock repository"
 
 [dependencies]
 allerx-models = { path = "../models" }

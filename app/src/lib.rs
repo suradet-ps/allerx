@@ -67,7 +67,7 @@ fn App() -> impl IntoView {
         startup_state.auth_checked.set(true);
     });
 
-    // Poll the backend's live reachability (ROADMAP Phase 3) — the status
+    // Poll the backend's live reachability (ROADMAP Phase 3) - the status
     // dot must reflect a dead database within seconds, not "config exists".
     let poll_state = state.clone();
     let poll_health = Rc::new(move || {

@@ -1,4 +1,4 @@
-# database.md — AllerX HOSxP schema verification log
+# database.md - AllerX HOSxP schema verification log
 
 The living ledger behind AGENTS.md §6 and the `// SCHEMA-UNVERIFIED:` markers
 in `crates/hosxp-connector/src/queries.rs`. AllerX reads HOSxP strictly
@@ -18,13 +18,13 @@ instance, what is still pending, and the query patterns the connector uses.
 | Item | Where used | Working assumption | Impact of being wrong |
 |---|---|---|---|
 | `drugitems.trade_name` | drug autocomplete, resolution, history (Phase 1) | Column exists | Tolerated at runtime: tiered queries fall back to the plain baseline (missing column → MySQL 1054 → fallback), so the app degrades to name-only matching. Marker stays until confirmed. |
-| `drugitems` drug-type field (`istype` vs `item_type`) | drug autocomplete typed tier (Phase 1) | `istype = '1'` = drugs/medical supplies (AGENTS.md §6.2) | If the column is absent → 1054 → fallback (autocomplete unfiltered). If it exists with different value semantics, autocomplete can silently return nothing — **must** be confirmed before pilot. |
+| `drugitems` drug-type field (`istype` vs `item_type`) | drug autocomplete typed tier (Phase 1) | `istype = '1'` = drugs/medical supplies (AGENTS.md §6.2) | If the column is absent → 1054 → fallback (autocomplete unfiltered). If it exists with different value semantics, autocomplete can silently return nothing - **must** be confirmed before pilot. |
 | `iptitemrece` table + `idate`/`itime` + `ipt.hn` | IPD in-stay history | Standard HOSxP table (some instances name it `ipitemrece`) | Tolerated at runtime: only an absent `iptitemrece` table (MySQL 1146 / SQLSTATE 42S02) yields "no in-stay records", a known coverage gap. An unknown column (1054 / 42S22) or a missing joined table fails loudly instead of dropping the source (issue #16). |
 | `kskdepartment.depcode` | department name join | `depcode` is the PK of `kskdepartment` | Wrong name → 1054 → history queries fail loudly (no fallback for this join). |
 | `opitemrece` IPD take-home branch (`an IS NOT NULL`) | IPD take-home history | This instance logs take-home meds in `opitemrece` with `an` populated | If false, IPD take-home coverage is silently empty. Must be confirmed. |
 | Pilot-hospital HN pattern (drives `detect_query_kind`) | patient search | 5–10 digits = HN, 13 digits = CID | Wrong pattern → searches classified as name search; still works, but slower and with more results. |
 | Database charset (TIS-620 vs UTF-8) | Thai name search | UTF-8 (modern instances) | TIS-620 → Thai `LIKE` matching may fail silently; name search must be re-validated. |
-| HOSxP allergy/adverse-reaction table | Phase 7 (proposed cross-check) | Table name varies by instance | n/a — not implemented yet. |
+| HOSxP allergy/adverse-reaction table | Phase 7 (proposed cross-check) | Table name varies by instance | n/a - not implemented yet. |
 | `officer` login columns and `MD5` scheme | Login gate (`docs/auth.md`) | Standard HOSxP `officer` columns; `MD5(UTF-8 password)` with no salt | Login fails for every account until corrected. Confirm with one real test account (and the password encoding) before the pilot. |
 | `officer_authentication_type_id` | Login gate | `1` = local database; `NULL` treated as `1`; LDAP rejected | Wrong semantics could reject valid local officers or admit an unsupported auth method. |
 | `officer_doctor_code` → `doctor.name` | Login display name | Code links to `doctor.code`; display-name fallback | Wrong join only affects the displayed name; login still works, falling back to the login name. |
@@ -39,10 +39,10 @@ statement that works*, in order (see `fetch_first_working` in
 `repository.rs`). Each tier is a compile-time constant that passes the
 read-only guard; tiers differ only in optional columns/filters:
 
-1. **Typed tier** — richest: trade-name matching + drug-type filter
+1. **Typed tier** - richest: trade-name matching + drug-type filter
    (`istype = '1'`, unverified).
-2. **Trade tier** — trade-name matching, no type filter.
-3. **Plain tier** — baseline every instance supports (name match only).
+2. **Trade tier** - trade-name matching, no type filter.
+3. **Plain tier** - baseline every instance supports (name match only).
 
 The IPD in-stay source additionally tolerates `iptitemrece` itself being
 absent (MySQL 1146) by yielding zero records, the pattern established in M1.
@@ -60,12 +60,12 @@ present as "no history" (issue #16).
 3. exact trade-name hits (`drugitems.trade_name`, tolerant of the missing
    column, same ordering/cap);
 4. otherwise → ranked candidates (top 10, sorted by name) surfaced as
-   `HistoryVerdict::Unresolved` — **never** a silent "not found".
+   `HistoryVerdict::Unresolved` - **never** a silent "not found".
 
 Steps 1-3 produce a `Resolved` verdict only when **exactly one** row
 matches. Several rows sharing the typed name (different strengths are
 different icodes) classify as ambiguous and surface as
-`HistoryVerdict::Unresolved` candidates too, in deterministic icode order —
+`HistoryVerdict::Unresolved` candidates too, in deterministic icode order -
 the resolver never picks an arbitrary strength, and identical searches
 present the same candidate list.
 
@@ -91,7 +91,7 @@ presenting the list as complete.
   `icode`, and history is per-icode. A pharmacist asking about "พาราเซตามอล"
   may want to see the 500 mg and 250 mg timelines together. Phase 1 keeps
   per-icode semantics (exact and honest about what was dispensed); a
-  name-grouped query is a candidate for Phase 5/7 — it changes the meaning
+  name-grouped query is a candidate for Phase 5/7 - it changes the meaning
   of the verdict and needs clinical sign-off first.
 - **Type-filter value semantics.** If `istype` uses non-`'1'` values for
   drugs on this instance, the typed tier's `WHERE` must be adjusted; the

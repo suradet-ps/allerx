@@ -1,4 +1,4 @@
-//! Patient detail modal (ROADMAP Phase 5) — the DESIGN.md-mandated detail
+//! Patient detail modal (ROADMAP Phase 5) - the DESIGN.md-mandated detail
 //! view where the full CID is revealed, plus the "ยาที่ได้รับล่าสุด"
 //! concurrent-medications snapshot (read-only, last 30 days).
 
@@ -57,7 +57,7 @@ pub fn PatientDetailModal(state: AppState) -> impl IntoView {
         meds.set(MedsState::Idle);
     });
 
-    // Escape closes the dialog from anywhere (DESIGN.md "Focus Management") —
+    // Escape closes the dialog from anywhere (DESIGN.md "Focus Management") -
     // window-level listener, guarded by the open flag so an Escape pressed
     // elsewhere never resets the meds snapshot state. The handle must stay
     // alive for the component's lifetime; dropping it unregisters the
@@ -103,12 +103,12 @@ pub fn PatientDetailModal(state: AppState) -> impl IntoView {
                     let cid = patient
                         .cid
                         .as_deref()
-                        .unwrap_or("—")
+                        .unwrap_or("-")
                         .to_string();
                     let dob = patient
                         .birth_date
                         .map(|d| d.format("%d/%m/%Y").to_string())
-                        .unwrap_or_else(|| "—".to_string());
+                        .unwrap_or_else(|| "-".to_string());
                     let sex = match patient.sex.as_deref() {
                         Some("1") => "ชาย",
                         Some("2") => "หญิง",

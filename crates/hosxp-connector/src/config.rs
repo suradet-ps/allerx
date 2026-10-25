@@ -1,6 +1,6 @@
 //! Encrypted storage of HOSxP connection settings (AGENTS.md §9).
 //!
-//! Every connection field is encrypted at rest — AES-256-GCM via
+//! Every connection field is encrypted at rest - AES-256-GCM via
 //! `encryptman`, master key held in the OS keychain via
 //! `encryptman-keyring`. Plaintext values exist only in memory for the
 //! duration of a connection; nothing is persisted or logged unencrypted.
@@ -12,7 +12,7 @@ use encryptman::{MasterKey, decrypt, encrypt};
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use serde::{Deserialize, Serialize};
 
-/// Keychain service name — used as both the keyring identifier and the
+/// Keychain service name - used as both the keyring identifier and the
 /// HKDF context (domain isolation for AllerX).
 pub const SERVICE_NAME: &str = "allerx";
 
@@ -94,7 +94,7 @@ pub fn load_vault() -> Result<VaultKeyStore, ConfigError> {
         .map_err(|e| ConfigError::Keyring(e.to_string()))
 }
 
-/// Test [`KeyStore`] from an in-memory [`MasterKey`] — no OS keychain
+/// Test [`KeyStore`] from an in-memory [`MasterKey`] - no OS keychain
 /// involved. Production code should use [`load_vault`].
 #[derive(Debug)]
 pub struct MasterKeyStore(pub MasterKey);
@@ -109,13 +109,13 @@ impl KeyStore for MasterKeyStore {
     }
 }
 
-/// HOSxP connection settings. Plaintext in memory **only** — never
+/// HOSxP connection settings. Plaintext in memory **only** - never
 /// serialized to disk in this form.
 ///
 /// The password is a [`SecretString`]: its heap buffer is zeroized on drop,
 /// and `Debug` renders it redacted. A transient plaintext copy still exists
-/// (a) in the webview's JS heap during configuration — unavoidable, the
-/// operator typed it there — and (b) inside sqlx's pool, which retains the
+/// (a) in the webview's JS heap during configuration - unavoidable, the
+/// operator typed it there - and (b) inside sqlx's pool, which retains the
 /// credentials for reconnects for the lifetime of the pool. Both are
 /// documented residuals; everything under our control is zeroized or
 /// encrypted.

@@ -1,10 +1,10 @@
 /* ==========================================================================
-   AllerX — Two-Panel Desktop Layout (Polished)
+   AllerX - Two-Panel Desktop Layout (Polished)
    Sidebar (input) + Main Canvas (output). Red brand matching app icon.
    ========================================================================== */
 
 /* ==========================================================================
-   Design Tokens — aligned with icon-master.svg palette
+   Design Tokens - aligned with icon-master.svg palette
    ========================================================================== */
 
 :root {
@@ -13,7 +13,7 @@
   --brand-dark: #881337;
   --brand-soft: #FFEBEE;
 
-  /* Status — connection dot (independent from brand) */
+  /* Status - connection dot (independent from brand) */
   --status-connected: #43A047;
   --status-disconnected: #C62828;
 
@@ -31,7 +31,7 @@
   --verdict-unresolved-text: #8a6420;
   --verdict-unresolved-border: #FFE082;
 
-  /* Surface — warm neutral */
+  /* Surface - warm neutral */
   --canvas: #FAFAFA;
   --canvas-raised: #FFFFFF;
   --surface-muted: #F5F5F5;
@@ -48,7 +48,7 @@
   /* Status */
   --warning-bg: #FFF8E1;
   /* Dark amber, not the old #F57F17 (2.6:1): this pair must pass WCAG AA
-     normal-text contrast (4.6:1) — same value as --verdict-unresolved-text,
+     normal-text contrast (4.6:1) - same value as --verdict-unresolved-text,
      per the a11y audit (docs/a11y-notes.md). */
   --warning-text: #8a6420;
 
@@ -116,7 +116,7 @@ code, .mono, .code {
 }
 
 /* ==========================================================================
-   Scrollbar — slim, unobtrusive
+   Scrollbar - slim, unobtrusive
    ========================================================================== */
 
 .sidebar::-webkit-scrollbar,
@@ -168,7 +168,7 @@ code, .mono, .code {
 }
 
 /* ==========================================================================
-   Top Bar — 44px header with logo
+   Top Bar - 44px header with logo
    ========================================================================== */
 
 .top-bar {
@@ -318,7 +318,7 @@ code, .mono, .code {
 }
 
 /* ==========================================================================
-   Drug Chips (ROADMAP Phase 5 — batch check queue)
+   Drug Chips (ROADMAP Phase 5 - batch check queue)
    ========================================================================== */
 
 .chip-list {
@@ -790,7 +790,7 @@ code, .mono, .code {
   border-color: var(--verdict-unresolved-border);
 }
 
-/* Batch verdicts (ROADMAP Phase 5) — one compact band per drug.
+/* Batch verdicts (ROADMAP Phase 5) - one compact band per drug.
    Stacked on small windows (scroll handles the overflow); a 2-column
    grid on large windows so many-drug batches stay glanceable. */
 
@@ -1306,7 +1306,7 @@ code, .mono, .code {
 }
 
 /* ==========================================================================
-   Print Sheet (ROADMAP Phase 5) — hidden on screen, the only thing in print
+   Print Sheet (ROADMAP Phase 5) - hidden on screen, the only thing in print
    ========================================================================== */
 
 .print-sheet {
@@ -1318,7 +1318,7 @@ code, .mono, .code {
     margin: 14mm;
   }
 
-  /* The print sheet is a CHILD of .app — hiding the whole app with
+  /* The print sheet is a CHILD of .app - hiding the whole app with
      `display: none` would swallow its subtree too (a child's own display
      cannot override an ancestor's none), which is exactly why the printed
      output was empty. Hide the chrome *siblings* instead. */
@@ -1426,7 +1426,7 @@ code, .mono, .code {
 }
 
 /* ==========================================================================
-   Login Gate — HOSxP officer authentication before the workspace opens
+   Login Gate - HOSxP officer authentication before the workspace opens
    ========================================================================== */
 
 .login {

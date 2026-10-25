@@ -79,7 +79,7 @@ jobs:
         run: |
           # GitHub release downloads occasionally drop the connection;
           # retry before giving up. Windows publishes a .zip asset, the
-          # other platforms a .tar.gz — extract with the matching tool.
+          # other platforms a .tar.gz - extract with the matching tool.
           mkdir -p "$HOME/.cargo/bin"
           for attempt in 1 2 3 4; do
             if [ "$RUNNER_OS" = "Windows" ]; then
@@ -92,7 +92,7 @@ jobs:
                 && tar -xzf trunk.tar.gz -C "$HOME/.cargo/bin" \
                 && break
             fi
-            echo "trunk download failed (attempt $attempt/4) — retrying in 10s"
+            echo "trunk download failed (attempt $attempt/4) - retrying in 10s"
             sleep 10
           done
           if [ "$RUNNER_OS" = "Windows" ]; then

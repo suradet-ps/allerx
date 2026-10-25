@@ -1,7 +1,7 @@
 //! In-memory, PII-free query timing ring buffer (ROADMAP Phase 2).
 //!
 //! Timing is diagnostic data, not patient data: command names, durations,
-//! and an outcome flag only — **never** parameter values (HN, CID, names;
+//! and an outcome flag only - **never** parameter values (HN, CID, names;
 //! AGENTS.md §2). Nothing is persisted and nothing leaves this process.
 //!
 //! The buffer holds the last [`QueryStats::CAPACITY`] samples, so a dev or
@@ -13,7 +13,7 @@ use std::time::Instant;
 
 use serde::Serialize;
 
-/// Number of samples kept — a busy shift's recent queries; older samples
+/// Number of samples kept - a busy shift's recent queries; older samples
 /// are evicted (newest first).
 const CAPACITY: usize = 200;
 
@@ -72,7 +72,7 @@ impl QueryStats {
         self.buffer.iter().cloned().collect()
     }
 
-    /// Drops every sample — useful before starting a measurement session.
+    /// Drops every sample - useful before starting a measurement session.
     pub fn clear(&mut self) {
         self.buffer.clear();
     }

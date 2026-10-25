@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "The only crate allowed to talk to the HOSxP MySQL database — SELECT-only, encrypted credentials"
+description = "The only crate allowed to talk to the HOSxP MySQL database - SELECT-only, encrypted credentials"
 
 [dependencies]
 allerx-models = { path = "../models" }
@@ -26,6 +26,6 @@ tempfile.workspace = true
 url.workspace = true
 
 [features]
-# Integration tests against a test/staging HOSxP instance only — never
+# Integration tests against a test/staging HOSxP instance only - never
 # production, never part of the default `cargo test` run (AGENTS.md §12).
 integration-tests = []

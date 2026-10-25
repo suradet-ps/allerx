@@ -1,4 +1,4 @@
-//! Drug term resolution — pure logic for mapping a typed drug term to an
+//! Drug term resolution - pure logic for mapping a typed drug term to an
 //! icode, and for the verdict invariant "resolution failure ⇒ never a
 //! 'not found' verdict" (ROADMAP Phase 1, Gap G1).
 //!
@@ -10,12 +10,12 @@ use allerx_models::{DrugItem, HistoryVerdict, ResolvedHistory};
 /// The outcome of mapping a typed drug term to `drugitems` entries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DrugResolution {
-    /// The term matched exactly (by icode, generic name, or trade name) —
+    /// The term matched exactly (by icode, generic name, or trade name) -
     /// history lookup proceeds against this drug, whose name/strength
     /// identity labels the verdict.
     Exact { drug: DrugItem },
     /// No exact match; `items` are the closest formulary entries (possibly
-    /// empty — the term is not in the formulary at all). The operator must
+    /// empty - the term is not in the formulary at all). The operator must
     /// disambiguate before any history lookup.
     Candidates { items: Vec<DrugItem> },
 }
@@ -23,7 +23,7 @@ pub enum DrugResolution {
 /// The result of an exact-match query against the formulary (by generic or
 /// trade name).
 ///
-/// Several `drugitems` rows can share the same name — different strengths
+/// Several `drugitems` rows can share the same name - different strengths
 /// are different icodes. Picking one silently would make identical searches
 /// resolve to different drugs (issue #15), so more than one row is
 /// ambiguity that must surface for disambiguation, never an arbitrary pick.
@@ -75,7 +75,7 @@ pub fn classify_drug_resolution(
     }
 }
 
-/// Sorts candidates by name (stable, icode tie-break) and caps the list —
+/// Sorts candidates by name (stable, icode tie-break) and caps the list -
 /// the disambiguation UI should show at most `limit` entries.
 pub fn rank_candidates(mut items: Vec<DrugItem>, limit: usize) -> Vec<DrugItem> {
     items.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.icode.cmp(&b.icode)));
@@ -86,7 +86,7 @@ pub fn rank_candidates(mut items: Vec<DrugItem>, limit: usize) -> Vec<DrugItem> 
 /// Builds the verdict contract from a resolution and (for exact hits) the
 /// fetched timeline.
 ///
-/// This is the single place where `HistoryVerdict` is constructed — the
+/// This is the single place where `HistoryVerdict` is constructed - the
 /// "resolution failed ⇒ never Resolved/NotFound" invariant is enforced here
 /// by construction: `Candidates` drops `records` and always yields
 /// `Unresolved`.

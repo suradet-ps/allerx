@@ -15,7 +15,7 @@ use crate::query_kind::QueryKind;
 /// M3 drug autocomplete, M4 medication history).
 #[async_trait]
 pub trait HosxRepository: Send + Sync {
-    /// Smoke test — verifies the connection works (`SELECT 1`).
+    /// Smoke test - verifies the connection works (`SELECT 1`).
     ///
     /// # Errors
     ///
@@ -36,7 +36,7 @@ pub trait HosxRepository: Send + Sync {
 
     /// Searches patients by HN, CID, or name (AGENTS.md §7.1).
     ///
-    /// The caller classifies the input with [`QueryKind`] first — the
+    /// The caller classifies the input with [`QueryKind`] first - the
     /// implementation runs the matching lookup (exact HN/CID match, or a
     /// name prefix match with a contains-match fallback) and returns at
     /// most 20 results.
@@ -72,7 +72,7 @@ pub trait HosxRepository: Send + Sync {
     ///
     /// The verdict contract (ROADMAP Phase 1): an **unresolvable** term
     /// returns [`HistoryVerdict::Unresolved`] with the closest formulary
-    /// candidates — never a resolved-but-empty list. Only a resolved drug
+    /// candidates - never a resolved-but-empty list. Only a resolved drug
     /// may produce the "ไม่พบประวัติ" verdict.
     ///
     /// # Errors
@@ -113,7 +113,7 @@ pub trait HosxRepository: Send + Sync {
         Ok(results)
     }
 
-    /// Recent concurrent medications for a patient (ROADMAP Phase 5) —
+    /// Recent concurrent medications for a patient (ROADMAP Phase 5) -
     /// deduped per icode, most recent first, drug category only. Powers the
     /// "ยาที่ได้รับล่าสุด" snapshot in the patient detail view.
     ///

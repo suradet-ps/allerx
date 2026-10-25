@@ -161,7 +161,7 @@ impl HosxRepository for MockRepository {
         &self,
         _hn: &str,
     ) -> Result<Vec<ConcurrentMedication>, RepositoryError> {
-        // Dedupe the mock's history per icode, keeping the latest date —
+        // Dedupe the mock's history per icode, keeping the latest date -
         // mirrors the real repository's GROUP BY semantics.
         let mut latest: HashMap<&str, (chrono::NaiveDate, &str, Option<&str>)> = HashMap::new();
         for record in &self.history {

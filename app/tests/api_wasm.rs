@@ -1,13 +1,13 @@
 //! API-layer wasm tests (ROADMAP Phase 4/5): the webview→backend contract
 //! against a fake `invoke`, in headless Chrome (run via `wasm-pack test`).
 //!
-//! These tests never touch Tauri or the database — they pin the contract
+//! These tests never touch Tauri or the database - they pin the contract
 //! shapes: command names, arg passing, batch verdict deserialization, and
 //! the typed error taxonomy (Phase 3).
 
 #![cfg(target_arch = "wasm32")]
 
-// Run in a real browser (wasm-pack test --headless --chrome) — these tests
+// Run in a real browser (wasm-pack test --headless --chrome) - these tests
 // pin IPC contract shapes, not DOM, but the mock invoke needs the browser
 // environment.
 wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);

@@ -4,12 +4,12 @@ use allerx_models::{DrugHistoryRecord, DrugItem, PatientSummary, SessionUser};
 use leptos::prelude::*;
 
 /// Live HOSxP reachability, mirrored from the backend's `connection_health`
-/// command (ROADMAP Phase 3) — drives the top-bar status dot. The backend
+/// command (ROADMAP Phase 3) - drives the top-bar status dot. The backend
 /// keeps it fresh with a 30 s ping loop and every query outcome; this
 /// frontend value is a polled copy, never computed from a file check.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ConnectionHealth {
-    /// No stored settings — the settings dialog is the flow.
+    /// No stored settings - the settings dialog is the flow.
     Unconfigured,
     /// A ping succeeded recently.
     Connected,
@@ -37,11 +37,11 @@ pub struct DrugChip {
     pub icode: Option<String>,
 }
 
-/// Per-drug verdict in the results list (ROADMAP Phase 5) — the same
+/// Per-drug verdict in the results list (ROADMAP Phase 5) - the same
 /// three-state contract as before, now labelled by its drug term.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DrugVerdict {
-    /// The term the pharmacist submitted — labels this verdict.
+    /// The term the pharmacist submitted - labels this verdict.
     pub term: String,
     pub state: DrugVerdictState,
 }
@@ -56,7 +56,7 @@ pub enum DrugVerdictState {
         records: Vec<DrugHistoryRecord>,
         truncated: bool,
     },
-    /// History searched and definitively not found — the drug resolved (its
+    /// History searched and definitively not found - the drug resolved (its
     /// identity is shown so the verdict never refers to an unknown item),
     /// but no dispensing rows exist.
     NotFound { drug: DrugItem },
@@ -88,19 +88,19 @@ pub struct AppState {
     pub settings_open: RwSignal<bool>,
     /// Whether the patient detail modal is open.
     pub detail_open: RwSignal<bool>,
-    /// Polled live reachability (ROADMAP Phase 3) — top-bar dot source.
+    /// Polled live reachability (ROADMAP Phase 3) - top-bar dot source.
     pub health: RwSignal<ConnectionHealth>,
     /// Degraded-mode banner message (ROADMAP Phase 3): set when a query
     /// cannot reach HOSxP, cleared on the next success or by the operator.
     pub db_banner: RwSignal<Option<String>>,
-    /// Monotonic counter of completed checks — the timeline uses it to
+    /// Monotonic counter of completed checks - the timeline uses it to
     /// detect "a new check replaced the view" even when the results content
     /// is identical (same terms, same counts, same truncation flags), so
     /// the per-drug filter always resets with a new check.
     pub check_seq: RwSignal<u64>,
 }
 
-/// The one loud thing on screen — only one state at a time, and the new
+/// The one loud thing on screen - only one state at a time, and the new
 /// state fully replaces the old one (DESIGN.md, verdict band rule).
 ///
 /// Since Phase 5 every check is a batch (a single drug is a batch of one),
@@ -109,7 +109,7 @@ pub struct AppState {
 /// "ไม่พบประวัติ" verdict is only ever produced when the drug is known.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum VerdictState {
-    /// Query in flight / nothing searched yet — neutral gray, never implies
+    /// Query in flight / nothing searched yet - neutral gray, never implies
     /// an answer.
     #[default]
     Pending,
@@ -174,7 +174,7 @@ impl AppState {
 }
 
 /// Merges every found drug's records into one chronological timeline,
-/// newest first, with the truncation flag OR'd across results. Pure — the
+/// newest first, with the truncation flag OR'd across results. Pure - the
 /// timeline below a multi-drug verdict is one object, not per-drug noise.
 pub fn merged_timeline(results: &[DrugVerdict]) -> (Vec<DrugHistoryRecord>, bool) {
     let mut records: Vec<DrugHistoryRecord> = results
@@ -198,7 +198,7 @@ pub fn merged_timeline(results: &[DrugVerdict]) -> (Vec<DrugHistoryRecord>, bool
 }
 
 /// The resolved drug's display identity: "name (strength)" when a strength
-/// is known — shown in verdict bands so a search by icode reveals which
+/// is known - shown in verdict bands so a search by icode reveals which
 /// drug a verdict refers to (pilot feedback).
 pub fn drug_identity(drug: &DrugItem) -> String {
     match &drug.strength {
@@ -207,7 +207,7 @@ pub fn drug_identity(drug: &DrugItem) -> String {
     }
 }
 
-/// A history record's display label: "name (strength)" — the timeline rows
+/// A history record's display label: "name (strength)" - the timeline rows
 /// always show the drug with its strength.
 pub fn record_label(record: &DrugHistoryRecord) -> String {
     match &record.strength {

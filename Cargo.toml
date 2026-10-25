@@ -6,7 +6,7 @@ members = [
     "crates/hosxp-connector",
     "src-tauri",
 ]
-# GUI shell excluded from default commands — `cargo test` at root must stay
+# GUI shell excluded from default commands - `cargo test` at root must stay
 # fast and DB-free. Check it explicitly with `-p allerx-tauri` or --workspace.
 default-members = [
     "crates/models",

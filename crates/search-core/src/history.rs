@@ -5,7 +5,7 @@ use allerx_models::{DrugHistoryRecord, VisitType};
 /// Merges OPD and IPD history into one timeline, most recent first.
 ///
 /// Records sharing the same date keep OPD before IPD (stable tie-break).
-/// The returned order is information itself — the timeline is read
+/// The returned order is information itself - the timeline is read
 /// top-to-bottom in the UI (DESIGN.md).
 pub fn merge_drug_history(
     opd: Vec<DrugHistoryRecord>,

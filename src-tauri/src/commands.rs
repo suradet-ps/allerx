@@ -1,12 +1,13 @@
 //! Tauri command adapters.
 //!
 //! Input validation and generic, PII-free error messages live here. SQL
-//! never does — the connector owns every statement (AGENTS.md §14).
+//! never does - the connector owns every statement (AGENTS.md §14).
 //!
 //! Errors cross the IPC as a typed [`CommandError`] (kind + Thai message,
 //! ROADMAP Phase 3) so the frontend can decide presentation from the kind
-//! — e.g. a connection banner — instead of matching on message text.
+//! - e.g. a connection banner - instead of matching on message text.
 
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -28,7 +29,7 @@ use crate::stats::{QuerySample, QueryStats};
 /// How often the background health monitor pings HOSxP while the app runs.
 const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(30);
 
-/// The failure class of a command (ROADMAP Phase 3 — failure taxonomy).
+/// The failure class of a command (ROADMAP Phase 3 - failure taxonomy).
 ///
 /// The frontend switches on this for presentation: `Connection` raises the
 /// degraded-mode banner, `NotConfigured` suggests the settings dialog,
@@ -41,7 +42,7 @@ pub enum CommandErrorKind {
     NotConfigured,
     /// HOSxP could not be reached (pool open or acquire failed).
     Connection,
-    /// The read-only guard rejected a statement — an internal error.
+    /// The read-only guard rejected a statement - an internal error.
     Guard,
     /// The statement failed server-side.
     Query,
@@ -52,7 +53,7 @@ pub enum CommandErrorKind {
 }
 
 /// User-facing command error: a machine-readable kind plus the Thai message
-/// that is shown verbatim (PII-free — crates never carry parameter values).
+/// that is shown verbatim (PII-free - crates never carry parameter values).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandError {
@@ -68,7 +69,7 @@ impl CommandError {
         }
     }
 
-    /// "ข้อมูลไม่ถูกต้อง: ..." — rejected before any database I/O.
+    /// "ข้อมูลไม่ถูกต้อง: ..." - rejected before any database I/O.
     fn validation(message: impl Into<String>) -> Self {
         Self::new(
             CommandErrorKind::Validation,
@@ -87,7 +88,7 @@ impl CommandError {
     }
 }
 
-/// Logs the underlying cause for developers (still PII-free — connector and
+/// Logs the underlying cause for developers (still PII-free - connector and
 /// contract errors never carry parameter values, AGENTS.md §2) and returns
 /// the user-facing Thai error.
 ///
@@ -105,7 +106,7 @@ fn dev_log(
 
 /// Same as [`dev_log`], but for repository errors, whose user-facing text
 /// depends on the variant. `action` is the Thai verb phrase describing what
-/// failed (e.g. "ค้นหาผู้ป่วย") — the Query variant renders `{action}ไม่สำเร็จ`.
+/// failed (e.g. "ค้นหาผู้ป่วย") - the Query variant renders `{action}ไม่สำเร็จ`.
 fn map_repo_error(err: RepositoryError, action: &'static str) -> CommandError {
     eprintln!("[allerx] {action} failed: {err:?}");
     match err {
@@ -141,7 +142,7 @@ async fn timed<T>(
 
 /// Reflects query outcomes in the live health state (ROADMAP Phase 3):
 /// a success means reachable, a connection failure means not. Guard/query
-/// failures do not change reachability — the database answered.
+/// failures do not change reachability - the database answered.
 async fn update_health_from_repo_result<T>(state: &AppState, result: &Result<T, RepositoryError>) {
     match result {
         Ok(_) => *state.health.lock().await = ConnectionHealth::Connected,
@@ -153,14 +154,14 @@ async fn update_health_from_repo_result<T>(state: &AppState, result: &Result<T, 
 }
 
 /// Returns the PII-free timing samples collected since app launch (dev/ops
-/// only — never rendered in the normal UI, never persisted). Command names
+/// only - never rendered in the normal UI, never persisted). Command names
 /// and durations only; no parameter values ever (AGENTS.md §2).
 #[tauri::command]
 pub async fn query_stats(state: State<'_, AppState>) -> Result<Vec<QuerySample>, CommandError> {
     Ok(state.stats.lock().await.snapshot())
 }
 
-/// Drops all collected timing samples — start a fresh measurement session.
+/// Drops all collected timing samples - start a fresh measurement session.
 #[tauri::command]
 pub async fn clear_query_stats(state: State<'_, AppState>) -> Result<(), CommandError> {
     state.stats.lock().await.clear();
@@ -173,7 +174,7 @@ pub async fn clear_query_stats(state: State<'_, AppState>) -> Result<(), Command
 /// The password arrives via the local Tauri IPC (webview → Rust, same
 /// machine) and is deserialized straight into a [`SecretString`]: zeroized
 /// when this struct drops, and `Debug`-redacted. The plaintext necessarily
-/// exists in the webview's JS heap while the operator types — that window
+/// exists in the webview's JS heap while the operator types - that window
 /// is inherent and cannot be closed from the Rust side.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -207,7 +208,7 @@ pub struct LoginInput {
 
 /// Encrypts and stores HOSxP connection settings.
 ///
-/// The plaintext fields exist only inside this call frame — nothing is
+/// The plaintext fields exist only inside this call frame - nothing is
 /// logged, and disk only ever sees ciphertext (AGENTS.md §9). The old pool
 /// is dropped and a background health check re-verifies the new settings,
 /// so the status dot reflects reality within moments of saving.
@@ -241,12 +242,15 @@ pub async fn configure_connection(
                 "บันทึกการตั้งค่าการเชื่อมต่อไม่สำเร็จ",
             )
         })?;
-    // Reconfigured — the signed-in officer was verified against the old
+    // Reconfigured - the signed-in officer was verified against the old
     // database, so the session is no longer valid. Drop the old pool and
     // re-verify in the background so the status dot is honest.
     *state.pool.lock().await = None;
     *state.health.lock().await = ConnectionHealth::Disconnected;
-    *state.session.lock().await = None;
+    let mut session = state.session.lock().await;
+    state.connection_epoch.fetch_add(1, Ordering::SeqCst);
+    *session = None;
+    drop(session);
     let probe_state = state.inner().clone();
     tauri::async_runtime::spawn(async move {
         let health = health_check(&probe_state).await;
@@ -255,7 +259,7 @@ pub async fn configure_connection(
     Ok(())
 }
 
-/// Reports whether encrypted connection settings exist on this machine —
+/// Reports whether encrypted connection settings exist on this machine -
 /// used by the first-run flow only. The status dot uses
 /// [`connection_health`], which reflects live reachability, not this.
 #[tauri::command]
@@ -266,7 +270,7 @@ pub fn connection_status(state: State<'_, AppState>) -> bool {
 /// The live connection state behind the top-bar dot (ROADMAP Phase 3).
 ///
 /// This is a read of state kept fresh by the startup warm-up, the 30-second
-/// health monitor, and every query outcome — the command itself does no I/O.
+/// health monitor, and every query outcome - the command itself does no I/O.
 #[tauri::command]
 pub async fn connection_health(
     state: State<'_, AppState>,
@@ -275,12 +279,12 @@ pub async fn connection_health(
 }
 
 /// Connects to HOSxP with the **typed** settings (not the stored ones) and
-/// runs the `SELECT 1` smoke test — so the operator can verify the form
+/// runs the `SELECT 1` smoke test - so the operator can verify the form
 /// before committing anything to disk.
 ///
 /// On success the pool is kept for subsequent queries; a later
 /// [`configure_connection`] rebuilds it. Error messages are deliberately
-/// generic — no credentials, hosts, or parameter values ever leak to the UI
+/// generic - no credentials, hosts, or parameter values ever leak to the UI
 /// or logs.
 #[tauri::command]
 pub async fn test_connection(
@@ -334,7 +338,7 @@ pub async fn test_connection(
 /// first operator query never pays connect latency. Sets the initial
 /// health state (ROADMAP Phase 3).
 ///
-/// Failures are swallowed here on purpose — the first real query retries
+/// Failures are swallowed here on purpose - the first real query retries
 /// through [`acquire_pool`] and surfaces the proper (generic) error to the
 /// operator. The outcome is recorded in the PII-free stats buffer so the
 /// cold-start measurement can see it.
@@ -358,7 +362,7 @@ pub async fn warm_up_pool(state: &AppState) {
 
 /// Startup + periodic health monitor (ROADMAP Phase 3): warms the pool
 /// once, then pings every [`HEALTH_CHECK_INTERVAL`] for the app's lifetime,
-/// keeping `state.health` honest — a dead database shows up on the status
+/// keeping `state.health` honest - a dead database shows up on the status
 /// dot within seconds, mid-shift, without waiting for a failed query.
 pub async fn run_health_monitor(state: AppState) {
     warm_up_pool(&state).await;
@@ -377,7 +381,7 @@ pub async fn run_health_monitor(state: AppState) {
 
 /// One live reachability check: ensures a pool exists (reconnecting from
 /// stored settings when needed) and pings. Updates `state.pool` and records
-/// a PII-free `health_check` sample. Never fails — the outcome IS the
+/// a PII-free `health_check` sample. Never fails - the outcome IS the
 /// return value.
 pub async fn health_check(state: &AppState) -> ConnectionHealth {
     if !state.config_path().exists() {
@@ -424,7 +428,7 @@ async fn warm_up(state: &AppState) -> Result<(), ()> {
 ///
 /// Prefers the pool already built by [`test_connection`]; when none exists,
 /// the stored encrypted settings are loaded (and decrypted) to open a fresh
-/// one. Error messages stay generic — no hosts, users, or parameter values.
+/// one. Error messages stay generic - no hosts, users, or parameter values.
 async fn acquire_pool(state: &AppState) -> Result<MySqlPool, CommandError> {
     if let Some(pool) = state.pool.lock().await.clone() {
         *state.health.lock().await = ConnectionHealth::Connected;
@@ -501,6 +505,7 @@ pub async fn login(
     // lifetime rule: memory-only, replaced on login, cleared on logout or a
     // connection change.
     *state.session.lock().await = None;
+    let connection_epoch = state.connection_epoch.load(Ordering::SeqCst);
     let pool = acquire_pool(&state).await?;
     let repo = HosxRepository::new(pool);
     let lookup = repo.fetch_officer(username).await;
@@ -509,6 +514,10 @@ pub async fn login(
     else {
         return Err(CommandError::auth("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"));
     };
+    if !verify_password(input.password.expose_secret(), &account.password_md5) {
+        return Err(CommandError::auth("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"));
+    }
+    // Only a caller who proved the password learns the account state.
     if account.auth_type_id != 1 {
         return Err(CommandError::auth(
             "บัญชีนี้ใช้การยืนยันตัวตนแบบ LDAP ซึ่งยังไม่เปิดใช้งาน",
@@ -516,9 +525,6 @@ pub async fn login(
     }
     if !account.active.eq_ignore_ascii_case("Y") {
         return Err(CommandError::auth("บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ"));
-    }
-    if !verify_password(input.password.expose_secret(), &account.password_md5) {
-        return Err(CommandError::auth("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"));
     }
 
     let display_name = if account.display_name.trim().is_empty() {
@@ -533,7 +539,12 @@ pub async fn login(
         doctor_code: account.doctor_code,
         role: "STAFF".to_string(),
     };
-    *state.session.lock().await = Some(user.clone());
+    let mut session = state.session.lock().await;
+    if state.connection_epoch.load(Ordering::SeqCst) != connection_epoch {
+        return Err(CommandError::auth("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"));
+    }
+    *session = Some(user.clone());
+    drop(session);
     Ok(user)
 }
 
@@ -565,7 +576,7 @@ async fn require_session(state: &AppState) -> Result<SessionUser, CommandError> 
 /// Patient search by HN / CID / name (AGENTS.md §7.1, milestone M2).
 ///
 /// The input type is auto-detected; an empty term short-circuits to an
-/// empty result list. Errors are generic — parameter values never reach
+/// empty result list. Errors are generic - parameter values never reach
 /// the UI or logs.
 #[tauri::command]
 pub async fn search_patients(
@@ -591,7 +602,7 @@ pub async fn search_patients(
 /// Drug-name autocomplete from `drugitems` (AGENTS.md §7.2, milestone M3).
 ///
 /// Prefix match first, contains-match fallback, at most 20 items. Errors
-/// are generic — parameter values never reach the UI or logs.
+/// are generic - parameter values never reach the UI or logs.
 #[tauri::command]
 pub async fn search_drugs(
     state: State<'_, AppState>,
@@ -618,7 +629,7 @@ pub async fn search_drugs(
 /// Each drug is checked concurrently on the backend (OPD + IPD merged
 /// most-recent-first) and the results carry their term labels. The verdict
 /// contract (ROADMAP Phase 1) applies per drug: an exact hit yields
-/// [`HistoryVerdict::Resolved`] (possibly empty — a legitimate
+/// [`HistoryVerdict::Resolved`] (possibly empty - a legitimate
 /// "ไม่พบประวัติ"); an unresolvable term yields
 /// [`HistoryVerdict::Unresolved`] with disambiguation candidates. The
 /// frontend decides the visual verdicts. Errors are generic.
@@ -644,7 +655,7 @@ pub async fn check_drugs(
     .await
 }
 
-/// Recent concurrent medications for a patient (ROADMAP Phase 5) — the
+/// Recent concurrent medications for a patient (ROADMAP Phase 5) - the
 /// "ยาที่ได้รับล่าสุด" snapshot for the detail view, deduped per icode.
 #[tauri::command]
 pub async fn fetch_concurrent_medications(

@@ -1,4 +1,4 @@
-//! Component mount tests (ROADMAP Phase 4/5) — the clinical surface
+//! Component mount tests (ROADMAP Phase 4/5) - the clinical surface
 //! rendered into a real DOM in headless Chrome (run via `wasm-pack test`).
 //!
 //! These pin the states a pharmacist actually sees: the four verdict
@@ -42,7 +42,7 @@ use web_sys::{Element, HtmlElement, HtmlInputElement, KeyboardEvent, KeyboardEve
 
 thread_local! {
     static MOUNT_SEQ: RefCell<u32> = const { RefCell::new(0) };
-    // Mount handles MUST stay alive while assertions run — dropping one
+    // Mount handles MUST stay alive while assertions run - dropping one
     // unmounts the component. The handle type is anonymous (it depends on
     // the view's `IntoView::State`), so erase it; the page is torn down at
     // the end of the suite anyway.
@@ -214,7 +214,7 @@ fn press_enter(target: &Element) {
     target.dispatch_event(&event).expect("dispatch keydown");
 }
 
-/// Dispatches Escape on `window` — the target the modals' close listeners
+/// Dispatches Escape on `window` - the target the modals' close listeners
 /// are attached to (they close from anywhere, per DESIGN.md).
 fn press_escape() {
     let init = KeyboardEventInit::new();
@@ -229,7 +229,7 @@ fn press_escape() {
 
 fn type_text(target: &HtmlInputElement, text: &str) {
     // The value is what the handler reads (event_target_value); the event
-    // just needs to be an "input" event — no init dict required.
+    // just needs to be an "input" event - no init dict required.
     target.set_value(text);
     let event = web_sys::Event::new("input").expect("input event");
     target.dispatch_event(&event).expect("dispatch input");
@@ -250,7 +250,7 @@ async fn settle() {
     }
 }
 
-/// Waits real time (browser timers) — for debounce tests.
+/// Waits real time (browser timers) - for debounce tests.
 async fn wait(ms: u32) {
     let promise = Promise::new(&mut |resolve, _reject| {
         web_sys::window()
@@ -262,7 +262,7 @@ async fn wait(ms: u32) {
 }
 
 // ---------------------------------------------------------------------------
-// Verdict band — the four states (Phase 1 contract, now under Results)
+// Verdict band - the four states (Phase 1 contract, now under Results)
 // ---------------------------------------------------------------------------
 
 #[wasm_bindgen_test]
@@ -326,7 +326,7 @@ async fn verdict_notfound_is_only_reachable_for_resolved_drugs() {
     assert!(band.class_list().contains("verdict-notfound"));
     let text = band.text_content().expect("text content");
     assert!(text.contains("ไม่พบประวัติการได้รับยานี้"));
-    // The resolved drug's identity labels the verdict — an icode search
+    // The resolved drug's identity labels the verdict - an icode search
     // (e.g. "1000152") must reveal which drug it referred to.
     assert!(text.contains("พาราเซตามอล (500 mg)"));
 }
@@ -403,8 +403,8 @@ async fn batch_renders_one_compact_band_per_drug_with_term_labels() {
     assert!(text.contains("พาราเซตามอล"));
     assert!(text.contains("แอมม็อกซิซิลลิน"));
     // Compact bands label each verdict with the resolved drug identity.
-    assert!(text.contains("พบประวัติ — พาราเซตามอล (500 mg) · ครั้งล่าสุด"));
-    assert!(text.contains("ไม่พบประวัติ — พาราเซตามอล (500 mg)"));
+    assert!(text.contains("พบประวัติ - พาราเซตามอล (500 mg) · ครั้งล่าสุด"));
+    assert!(text.contains("ไม่พบประวัติ - พาราเซตามอล (500 mg)"));
 }
 
 #[wasm_bindgen_test]
@@ -433,13 +433,13 @@ async fn batch_unresolved_band_offers_candidate_buttons_that_queue_the_drug() {
     click(&root, ".candidate-button");
     let chips = state.drug_chips.get_untracked();
     assert_eq!(chips.len(), 1);
-    // The queued chip carries the full identity — name with strength.
+    // The queued chip carries the full identity - name with strength.
     assert_eq!(chips[0].label, "พาราเซตามอล (500 mg)");
     assert_eq!(chips[0].icode.as_deref(), Some("1-001"));
 }
 
 // ---------------------------------------------------------------------------
-// Timeline — rows and truncation honesty (Phase 1)
+// Timeline - rows and truncation honesty (Phase 1)
 // ---------------------------------------------------------------------------
 
 #[wasm_bindgen_test]
@@ -510,7 +510,7 @@ async fn timeline_merges_records_across_drugs_newest_first() {
     let text = query_one(&root, ".timeline")
         .text_content()
         .expect("text content");
-    // newest (6/6) first, older (1/1) second — check order via row texts.
+    // newest (6/6) first, older (1/1) second - check order via row texts.
     let first_row = rows.item(0).expect("first row");
     let first_text = first_row.text_content().expect("row text");
     assert!(first_text.contains("06/06/2024"));
@@ -602,7 +602,7 @@ async fn timeline_filter_isolates_one_drugs_rows() {
 #[wasm_bindgen_test]
 async fn timeline_resets_filter_on_a_new_check_with_identical_content() {
     // The same drugs checked again (e.g. for a new patient) can produce
-    // byte-identical results — the per-drug filter must still reset, or the
+    // byte-identical results - the per-drug filter must still reset, or the
     // new timeline would silently show only one drug's rows.
     let state = AppState::new();
     let check = || VerdictState::Results {
@@ -643,7 +643,7 @@ async fn timeline_resets_filter_on_a_new_check_with_identical_content() {
     let rows = root.query_selector_all(".timeline-row").expect("rows");
     assert_eq!(rows.length(), 2);
 
-    // A new check with identical content — seq bumps, filter must reset.
+    // A new check with identical content - seq bumps, filter must reset.
     state.verdict.set(check());
     state.check_seq.set(1);
     settle().await;
@@ -660,7 +660,7 @@ async fn timeline_resets_filter_on_a_new_check_with_identical_content() {
 }
 
 // ---------------------------------------------------------------------------
-// Patient bar — masking and demographics (DESIGN.md)
+// Patient bar - masking and demographics (DESIGN.md)
 // ---------------------------------------------------------------------------
 
 #[wasm_bindgen_test]
@@ -680,7 +680,7 @@ async fn patient_bar_masks_cid_and_shows_hn_birth_date_sex() {
 }
 
 // ---------------------------------------------------------------------------
-// Drug search — chip queue + batch check through a fake invoke (Phase 5)
+// Drug search - chip queue + batch check through a fake invoke (Phase 5)
 // ---------------------------------------------------------------------------
 
 fn drug_search_with(mock: impl Fn(&str) -> Promise + 'static) -> (AppState, HtmlElement) {
@@ -833,7 +833,7 @@ async fn drug_search_is_disabled_until_patient_selected() {
 }
 
 // ---------------------------------------------------------------------------
-// Patient search — debounce and banner behavior
+// Patient search - debounce and banner behavior
 // ---------------------------------------------------------------------------
 
 #[wasm_bindgen_test]
@@ -920,7 +920,7 @@ async fn patient_search_connection_error_raises_banner() {
 }
 
 // ---------------------------------------------------------------------------
-// Patient detail modal (Phase 5) — full CID + recent meds snapshot
+// Patient detail modal (Phase 5) - full CID + recent meds snapshot
 // ---------------------------------------------------------------------------
 
 #[wasm_bindgen_test]
@@ -1020,7 +1020,7 @@ async fn settings_modal_escape_closes_the_dialog() {
 #[wasm_bindgen_test]
 async fn settings_modal_escape_when_closed_never_opens_or_wipes() {
     // Escape elsewhere in the app (e.g. clearing a search input) must not
-    // touch a closed dialog — the open-flag guard is the protection.
+    // touch a closed dialog - the open-flag guard is the protection.
     api::clear_mock_invoke();
     let state = AppState::new();
     let view_state = state.clone();
@@ -1092,7 +1092,7 @@ async fn print_sheet_renders_patient_and_history_content() {
     let text = query_one(&root, ".print-sheet")
         .text_content()
         .expect("sheet text");
-    assert!(text.contains("AllerX — ใบประวัติการได้รับยา"));
+    assert!(text.contains("AllerX - ใบประวัติการได้รับยา"));
     assert!(text.contains("สมชาย ใจดี"));
     assert!(
         text.contains("1101701234567"),
@@ -1102,7 +1102,7 @@ async fn print_sheet_renders_patient_and_history_content() {
     assert!(text.contains("ไม่พบประวัติ"));
     // Timeline rows in print carry the strength too.
     assert!(text.contains("พาราเซตามอล (500 mg)"));
-    // The sheet carries the print-sheet class — its on-screen hiding is a
+    // The sheet carries the print-sheet class - its on-screen hiding is a
     // CSS concern (@media print in main.css), which the test page does not
     // load; the class pin is the DOM-side contract.
     let sheet = query_one(&root, ".print-sheet");
@@ -1111,7 +1111,7 @@ async fn print_sheet_renders_patient_and_history_content() {
 
 #[wasm_bindgen_test]
 async fn health_states_round_trip_through_the_api_boundary() {
-    // The ConnectionHealth enum crosses IPC and drives the dot — pin the
+    // The ConnectionHealth enum crosses IPC and drives the dot - pin the
     // three serialized names once here.
     for (variant, name) in [
         (ConnectionHealth::Unconfigured, "Unconfigured"),

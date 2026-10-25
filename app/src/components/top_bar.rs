@@ -1,4 +1,4 @@
-//! Top bar — thin 44px header spanning full width.
+//! Top bar - thin 44px header spanning full width.
 //! Shows app name, signed-in officer, connection status, settings, and logout.
 
 use leptos::prelude::*;

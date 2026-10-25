@@ -1,4 +1,4 @@
-# reliability-notes.md — AllerX connection health & degraded operation
+# reliability-notes.md - AllerX connection health & degraded operation
 
 How AllerX behaves when HOSxP is unreachable, and how to verify it
 (ROADMAP Phase 3, Gap G2). The app must never pretend it is connected, and
@@ -16,13 +16,13 @@ Health is **never** derived from "the config file exists". It is kept fresh
 by three independent mechanisms, so a mid-shift database outage shows up
 within seconds:
 
-1. **Startup warm-up** (`warm_up_pool`) — connects and pings once at launch.
-2. **30-second health monitor** (`run_health_monitor`) — `SELECT 1` ping
+1. **Startup warm-up** (`warm_up_pool`) - connects and pings once at launch.
+2. **30-second health monitor** (`run_health_monitor`) - `SELECT 1` ping
    loop for the app's lifetime; each check lands in the PII-free stats
    buffer as a `health_check` sample.
-3. **Query outcomes** — every successful command sets `Connected`; every
+3. **Query outcomes** - every successful command sets `Connected`; every
    connection failure sets `Disconnected` (guard/query errors do not change
-   reachability — the database answered).
+   reachability - the database answered).
 
 The frontend polls `connection_health` every 30 s for the status dot; the
 banner is driven by actual failed interactions.
@@ -41,13 +41,13 @@ The frontend switches on `kind`, never on message text.
 ## Degraded-mode behavior
 
 - When a search fails with `connection`: the amber banner appears above the
-  verdict band ("เชื่อมต่อฐานข้อมูล HOSxP ไม่สำเร็จ") — the verdict band
+  verdict band ("เชื่อมต่อฐานข้อมูล HOSxP ไม่สำเร็จ") - the verdict band
   itself returns to `Pending` and never implies an answer.
 - The UI stays fully interactive: the pharmacist can still select a
   patient, type a drug, and retry. Retrying is just another query.
 - The banner is dismissed by the operator (X) or auto-cleared by the next
   successful query.
-- Raw errors never reach the UI — messages are the fixed Thai strings from
+- Raw errors never reach the UI - messages are the fixed Thai strings from
   the command boundary.
 
 ## Kill-DB scenario (manual test procedure)
@@ -57,7 +57,7 @@ health machinery:
 
 1. Start AllerX with a working connection. Green dot: "เชื่อมต่อแล้ว".
 2. Stop the MySQL/MariaDB service (or disconnect the machine from the LAN).
-3. Within ~30 s the dot turns red: "HOSxP ไม่พร้อมใช้งาน" — **without any
+3. Within ~30 s the dot turns red: "HOSxP ไม่พร้อมใช้งาน" - **without any
    user interaction** (this is the health monitor, not a failed query).
 4. Run a patient search. Expect: amber banner, no crash, no frozen UI, no
    raw error text, verdict stays `Pending`.
@@ -75,7 +75,7 @@ health machinery:
   settings dialog remains the path forward. This is by design: the app
   must not crash because the OS credential store is unreachable.
 - **Corrupt settings file**: warm-up skips; first query shows
-  "อ่านการตั้งค่าการเชื่อมต่อไม่สำเร็จ กรุณาตั้งค่าใหม่" — reopen the
+  "อ่านการตั้งค่าการเชื่อมต่อไม่สำเร็จ กรุณาตั้งค่าใหม่" - reopen the
   settings dialog and re-enter.
 - **Settings saved without a successful test**: `configure_connection`
   drops the old pool and re-verifies the new settings in the background,

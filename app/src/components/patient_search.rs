@@ -1,4 +1,4 @@
-//! Patient search — sidebar section (DESIGN.md: sidebar__section).
+//! Patient search - sidebar section (DESIGN.md: sidebar__section).
 //! Compact search box with autocomplete, adapted for sidebar layout.
 
 use std::cell::Cell;
@@ -147,7 +147,7 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
                                                         p.hn,
                                                         p.birth_date
                                                             .map(|d| d.format("%d/%m/%Y").to_string())
-                                                            .unwrap_or_else(|| "—".to_string())
+                                                            .unwrap_or_else(|| "-".to_string())
                                                     )}
                                                 </span>
                                             </li>

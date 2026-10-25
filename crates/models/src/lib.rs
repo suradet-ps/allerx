@@ -1,6 +1,6 @@
 //! AllerX domain types.
 //!
-//! This crate is the shared data model only — no sqlx, no I/O, no business
+//! This crate is the shared data model only - no sqlx, no I/O, no business
 //! logic (AGENTS.md §3–§4). Every layer (connector, search-core, Tauri
 //! shell, frontend) builds on these types.
 
@@ -22,7 +22,7 @@ pub enum VisitType {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PatientSummary {
     pub hn: String,
-    /// National ID — masked on display, see DESIGN.md.
+    /// National ID - masked on display, see DESIGN.md.
     pub cid: Option<String>,
     pub full_name_th: String,
     pub birth_date: Option<NaiveDate>,
@@ -37,7 +37,7 @@ pub struct DrugHistoryRecord {
     pub drug_code: String,
     /// Generic name.
     pub drug_name: String,
-    /// Dose strength as printed on the item, e.g. "500 mg" — carried so the
+    /// Dose strength as printed on the item, e.g. "500 mg" - carried so the
     /// timeline always shows the drug with its strength (display rule:
     /// every drug name is shown with its strength).
     pub strength: Option<String>,
@@ -54,10 +54,10 @@ pub struct DrugItem {
     pub icode: String,
     /// Display name (generic / trade as configured by the hospital).
     pub name: String,
-    /// Dose strength as printed on the item, e.g. "500 mg" — helps the
+    /// Dose strength as printed on the item, e.g. "500 mg" - helps the
     /// pharmacist pick the right presentation.
     pub strength: Option<String>,
-    /// Trade/brand name — helps disambiguate candidates and match a search
+    /// Trade/brand name - helps disambiguate candidates and match a search
     /// term the pharmacist knows by its brand (ROADMAP Phase 1).
     /// `None` when the live instance lacks the column.
     pub trade_name: Option<String>,
@@ -77,7 +77,7 @@ pub struct DrugSearchHit {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResolvedHistory {
     /// Most recent first. Empty means "patient has no dispensing history for
-    /// this drug" — a legitimate, definitive "ไม่พบประวัติ".
+    /// this drug" - a legitimate, definitive "ไม่พบประวัติ".
     pub records: Vec<DrugHistoryRecord>,
     /// True when any source hit its per-source `LIMIT`, i.e. older history
     /// exists but is not returned. The UI must not present the list as
@@ -85,7 +85,7 @@ pub struct ResolvedHistory {
     pub truncated: bool,
 }
 
-/// The answer to "has this patient had this drug, and when?" — the backend
+/// The answer to "has this patient had this drug, and when?" - the backend
 /// contract for the verdict band (ROADMAP Phase 1).
 ///
 /// The two variants are deliberately distinct: a verdict of "not found" is
@@ -96,7 +96,7 @@ pub struct ResolvedHistory {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HistoryVerdict {
     /// The drug is known; `drug` is the exact formulary entry the term
-    /// resolved to (name/strength identity — the UI shows what drug a
+    /// resolved to (name/strength identity - the UI shows what drug a
     /// verdict refers to), and `history.records` holds the dispensing
     /// timeline (empty = genuinely never dispensed).
     Resolved {
@@ -109,24 +109,24 @@ pub enum HistoryVerdict {
     Unresolved { candidates: Vec<DrugItem> },
 }
 
-/// One checked drug in a batch lookup (ROADMAP Phase 5) — the term the
+/// One checked drug in a batch lookup (ROADMAP Phase 5) - the term the
 /// pharmacist submitted plus that drug's verdict, so a multi-drug check
 /// can label each result.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DrugCheckResult {
-    /// The term submitted for this drug — the UI's label for the verdict.
+    /// The term submitted for this drug - the UI's label for the verdict.
     pub term: String,
     /// The verdict: resolved (possibly empty) or unresolved.
     pub verdict: HistoryVerdict,
 }
 
-/// One drug dispensed to a patient recently (ROADMAP Phase 5) — the
+/// One drug dispensed to a patient recently (ROADMAP Phase 5) - the
 /// "ยาที่ได้รับล่าสุด" snapshot, deduped per icode with the latest date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConcurrentMedication {
     pub drug_code: String,
     pub drug_name: String,
-    /// Dose strength as printed on the item — the med list always shows
+    /// Dose strength as printed on the item - the med list always shows
     /// the name with its strength.
     pub strength: Option<String>,
     pub trade_name: Option<String>,
@@ -139,9 +139,9 @@ pub struct ConcurrentMedication {
 pub struct OfficerAccount {
     /// `officer.officer_id`.
     pub officer_id: i64,
-    /// `officer.officer_login_name` — the username.
+    /// `officer.officer_login_name` - the username.
     pub login_name: String,
-    /// `officer.officer_login_password_md5` — 32 hex characters.
+    /// `officer.officer_login_password_md5` - 32 hex characters.
     pub password_md5: String,
     /// `officer.officer_active`; only `"Y"` is accepted.
     pub active: String,

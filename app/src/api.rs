@@ -1,8 +1,8 @@
-//! Frontend API layer — the only place the webview talks to the Tauri
+//! Frontend API layer - the only place the webview talks to the Tauri
 //! backend (AGENTS.md §1: the frontend only ever talks to the database
 //! through the Tauri backend).
 //!
-//! No hosts, no credentials, no SQL live here — every call is a thin
+//! No hosts, no credentials, no SQL live here - every call is a thin
 //! `invoke` to a Rust command, which owns all connection concerns.
 //!
 //! Errors cross the IPC as a typed [`ApiError`] (kind + Thai message,
@@ -23,7 +23,7 @@ use crate::state::ConnectionHealth;
 /// Bridge to the Tauri IPC: `invoke(cmd, args)` resolves to the command's
 /// return value, or rejects with its serialized error.
 ///
-/// Tests replace this with [`install_mock_invoke`] — in a headless-browser
+/// Tests replace this with [`install_mock_invoke`] - in a headless-browser
 /// test page `__TAURI_INTERNALS__` does not exist, so a mock is always
 /// installed before any API call in tests.
 #[wasm_bindgen]
@@ -50,7 +50,7 @@ pub fn install_mock_invoke(mock: impl Fn(&str, JsValue) -> js_sys::Promise + 'st
     MOCK_INVOKE.with(|m| *m.borrow_mut() = Some(Box::new(mock)));
 }
 
-/// Removes any installed mock — restores the real bridge.
+/// Removes any installed mock - restores the real bridge.
 pub fn clear_mock_invoke() {
     MOCK_INVOKE.with(|m| *m.borrow_mut() = None);
 }
@@ -65,7 +65,7 @@ fn call_invoke(cmd: &str, args: JsValue) -> js_sys::Promise {
     })
 }
 
-/// Failure class of a backend command — mirrors the Rust
+/// Failure class of a backend command - mirrors the Rust
 /// `CommandErrorKind` (camelCase over the wire).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,7 +89,7 @@ pub struct ApiError {
 
 /// Plaintext connection settings, typed by the operator in the settings
 /// dialog. The plaintext lives in the webview's JS heap while the operator
-/// types — a documented, unavoidable window (AGENTS.md §9); the Rust side
+/// types - a documented, unavoidable window (AGENTS.md §9); the Rust side
 /// encrypts it before anything touches disk.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -151,7 +151,7 @@ where
 
 /// Calls a Tauri command with a serializable argument object.
 ///
-/// `arg_name` must equal the command's Rust parameter name — Tauri 2 looks
+/// `arg_name` must equal the command's Rust parameter name - Tauri 2 looks
 /// up arguments by that key (e.g. `input` for `configure_connection(input)`).
 async fn call_struct_arg<T>(
     cmd: &str,
@@ -174,7 +174,7 @@ where
 }
 
 /// Core invoke path: resolves the promise, then deserializes the result.
-/// The rejection carries the backend's typed error — surface its message
+/// The rejection carries the backend's typed error - surface its message
 /// verbatim instead of hiding the cause. A rejection that does not
 /// deserialize as [`ApiError`] (an internal IPC problem) becomes a generic
 /// Query error.
@@ -202,7 +202,7 @@ pub async fn connection_status() -> bool {
         .unwrap_or(false)
 }
 
-/// Polled live reachability (ROADMAP Phase 3) — the status dot source.
+/// Polled live reachability (ROADMAP Phase 3) - the status dot source.
 pub async fn connection_health() -> Result<ConnectionHealth, ApiError> {
     call_empty("connection_health").await
 }
@@ -245,7 +245,7 @@ pub async fn current_session() -> Result<Option<SessionUser>, ApiError> {
 /// Patient search by HN / CID / name via the backend (M2).
 ///
 /// Returns `Err` only for genuine failures (no connection, not configured,
-/// query failed) — an empty list is a legitimate "no matching patients".
+/// query failed) - an empty list is a legitimate "no matching patients".
 pub async fn search_patients(term: &str) -> Result<Vec<PatientSummary>, ApiError> {
     call_string_arg("search_patients", "term", term).await
 }
@@ -256,11 +256,11 @@ pub async fn search_drugs(prefix: &str) -> Result<Vec<DrugItem>, ApiError> {
 }
 
 /// Full medication history for a patient + one or more drugs (ROADMAP
-/// Phase 5 — a single drug is a batch of one). The backend checks each drug
+/// Phase 5 - a single drug is a batch of one). The backend checks each drug
 /// concurrently and merges OPD+IPD most-recent-first. The per-drug
 /// three-state contract (ROADMAP Phase 1): `Resolved` with empty records is
 /// a legitimate "no history"; `Unresolved` means the term could not be
-/// matched to the formulary and carries disambiguation candidates — the UI
+/// matched to the formulary and carries disambiguation candidates - the UI
 /// must never show "ไม่พบประวัติ" for it.
 pub async fn check_history(hn: &str, drugs: &[String]) -> Result<Vec<DrugCheckResult>, ApiError> {
     let args = Object::new();
@@ -291,7 +291,7 @@ pub async fn check_history(hn: &str, drugs: &[String]) -> Result<Vec<DrugCheckRe
     call_raw("check_drugs", args.into()).await
 }
 
-/// Recent concurrent medications for a patient (ROADMAP Phase 5) — the
+/// Recent concurrent medications for a patient (ROADMAP Phase 5) - the
 /// "ยาที่ได้รับล่าสุด" snapshot in the patient detail view.
 pub async fn fetch_concurrent_medications(hn: &str) -> Result<Vec<ConcurrentMedication>, ApiError> {
     call_string_arg("fetch_concurrent_medications", "hn", hn).await

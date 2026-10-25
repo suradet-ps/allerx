@@ -3,7 +3,7 @@
 //! Strictly SELECT-only, enforced in layers (AGENTS.md §5):
 //! 1. DB user grants (DBA-side, out of this crate's hands)
 //! 2. `SET SESSION TRANSACTION READ ONLY` on every pooled connection ([`pool`])
-//! 3. The SQL guard in [`readonly_guard`] — defense in depth
+//! 3. The SQL guard in [`readonly_guard`] - defense in depth
 //! 4. Parameterized queries only, runtime values never interpolated
 //!
 //! Connection settings are stored encrypted at rest and decrypted only in

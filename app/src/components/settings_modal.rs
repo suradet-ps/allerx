@@ -25,13 +25,13 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
     let user = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
     // The last form operation's outcome: `Some((is_success, text))`. The
-    // flag drives the message styling — never sniff the message text for a
+    // flag drives the message styling - never sniff the message text for a
     // success marker (Thai messages contain "ได้" in both outcomes, e.g.
     // "ไม่สามารถเข้าถึงที่เก็บกุญแจของระบบได้").
     let message = RwSignal::new(None::<(bool, String)>);
     let busy = RwSignal::new(false);
 
-    // Clears every field the operator typed — the modal stays mounted (hidden
+    // Clears every field the operator typed - the modal stays mounted (hidden
     // by CSS), so without this the plaintext would linger in WASM memory for
     // the whole app session (AGENTS.md §9).
     let wipe_fields = move || {
@@ -52,7 +52,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
     // The listener sits on `window`, so focus location does not matter; the
     // open-flag guard ensures an Escape pressed elsewhere (e.g. clearing a
     // search input) never reaches `close()`, which zeroizes the typed
-    // fields. The handle must stay alive for the component's lifetime —
+    // fields. The handle must stay alive for the component's lifetime -
     // dropping it unregisters the listener.
     let escape_state = state.clone();
     let close_on_escape = Rc::clone(&close);
@@ -68,7 +68,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
     let button_close = Rc::clone(&close);
 
     // Builds a ConnectionInput from the form fields, validating the port
-    // and required fields — shared by test and save so both behave
+    // and required fields - shared by test and save so both behave
     // identically.
     let build_input = std::rc::Rc::new(move || -> Result<ConnectionInput, String> {
         let port_value = port
@@ -98,7 +98,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             if busy.get_untracked() {
                 return;
             }
-            // Test the values typed in the form, not the stored settings —
+            // Test the values typed in the form, not the stored settings -
             // verification must happen before anything is saved to disk.
             let input = match build_input() {
                 Ok(input) => input,
@@ -134,6 +134,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                 match configure_connection(&input).await {
                     Ok(()) => {
                         wipe_fields();
+                        busy.set(false);
                         save_state.configured.set(true);
                         // The backend invalidates the session on a connection
                         // change; return the operator to the login gate.
@@ -167,7 +168,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                     <p class="modal__status">
                         {move || {
                             if state.configured.get() {
-                                "เชื่อมต่อแล้ว — เข้ารหัสเก็บในเครื่อง"
+                                "เชื่อมต่อแล้ว - เข้ารหัสเก็บในเครื่อง"
                             } else {
                                 "ยังไม่ได้ตั้งค่า"
                             }

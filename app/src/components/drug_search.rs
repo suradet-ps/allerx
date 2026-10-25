@@ -1,6 +1,6 @@
-//! Drug search — sidebar section (DESIGN.md: sidebar__section).
+//! Drug search - sidebar section (DESIGN.md: sidebar__section).
 //! Autocomplete drug search with a chip queue: type/pick drugs, then check
-//! them all at once (ROADMAP Phase 5 — a single drug is a batch of one).
+//! them all at once (ROADMAP Phase 5 - a single drug is a batch of one).
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -90,7 +90,7 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                         })
                         .collect::<Vec<_>>();
                     // Single-drug unresolved: the band points at the
-                    // suggestions list — make the backend's candidates
+                    // suggestions list - make the backend's candidates
                     // visible there so disambiguation is one click away.
                     if let [
                         DrugVerdict {
@@ -104,7 +104,7 @@ pub fn DrugSearch(state: AppState) -> impl IntoView {
                     state
                         .verdict
                         .set(VerdictState::Results { results: verdicts });
-                    // A new check replaced the view — bump the seq so the
+                    // A new check replaced the view - bump the seq so the
                     // timeline can reset its per-drug filter even when the
                     // new results look identical to the old ones (same
                     // terms/counts/truncation flags).

@@ -1,4 +1,4 @@
-# cargo-audit configuration — mirrors deny.toml so the dedicated release
+# cargo-audit configuration - mirrors deny.toml so the dedicated release
 # audit and the per-PR cargo-deny check agree on what is knowingly accepted.
 #
 # RUSTSEC-2024-0429 (glib unsoundness) is intentionally NOT ignored: cargo
