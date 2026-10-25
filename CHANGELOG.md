@@ -6,6 +6,8 @@ Phase 1 completion, v0.3.0 marks the Phase 6 pilot start.
 
 ## [Unreleased]
 
+## [0.4.0] - officer login gate
+
 - Security: bumped `crypto-bigint` to 0.7.8 to address RUSTSEC-2026-0387
   (timing variability in constant-time operations on the RSA auth path);
   `cargo deny check` passes again.
@@ -91,7 +93,8 @@ here together so the history is honest:
   (full CID reveal + recent-meds snapshot), print sheet, all documented
   in DESIGN.md and this roadmap.
 
-[Unreleased]: https://github.com/suradet-ps/allerx/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/suradet-ps/allerx/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/suradet-ps/allerx/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/suradet-ps/allerx/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/suradet-ps/allerx/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/suradet-ps/allerx/compare/v0.2.0...v0.3.0

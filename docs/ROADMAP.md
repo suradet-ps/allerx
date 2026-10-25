@@ -115,9 +115,8 @@ HOSxP contains; the clinician interprets.
 
 ## Current State (verified against the repo, not assumed)
 
-- **Version**: `0.3.0` (pilot-start bump, per Phase 8's version
-  discipline) in the root workspace, `app/Cargo.toml`, and
-  `tauri.conf.json`; history in `CHANGELOG.md`.
+- **Version**: `0.4.0` (officer login gate) in the root workspace,
+  `app/Cargo.toml`, and `tauri.conf.json`; history in `CHANGELOG.md`.
 - **Stack**: Tauri 2 + Rust 2024 desktop shell; Leptos 0.8 CSR frontend
   (WASM via Trunk, `app/` is its own workspace); `crates/models` (domain
   types, no I/O), `crates/search-core` (pure logic + `HosxRepository` trait +
