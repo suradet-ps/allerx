@@ -34,7 +34,7 @@ const DEFAULT_SSL_MODE: MySqlSslMode = MySqlSslMode::Preferred;
 ///
 /// The `SET` is *tolerated*: on servers that lack the variable the
 /// statement fails and the session proceeds without a timeout. This is an
-/// optimization, not a security boundary — the read-only `SET` above it is
+/// optimization, not a security boundary - the read-only `SET` above it is
 /// the one that must never fail.
 const STATEMENT_TIMEOUT_SESSION_SQL: &str = "SET SESSION max_execution_time = 5000";
 
@@ -53,7 +53,7 @@ const STATEMENT_TIMEOUT_SESSION_SQL: &str = "SET SESSION max_execution_time = 50
 /// # Errors
 ///
 /// Returns [`Error::Connect`] when the pool cannot be opened (network,
-/// credentials, server down) — distinct from [`Error::Database`] so the
+/// credentials, server down) - distinct from [`Error::Database`] so the
 /// command layer can tell "cannot reach HOSxP" from "query failed".
 pub async fn connect(cfg: &HosxConfig) -> Result<MySqlPool, Error> {
     let options = MySqlConnectOptions::new()
@@ -63,7 +63,7 @@ pub async fn connect(cfg: &HosxConfig) -> Result<MySqlPool, Error> {
         .username(&cfg.user)
         .ssl_mode(configured_ssl_mode())
         // sqlx keeps its own plaintext copy of the password inside the
-        // pool (needed to reconnect) — documented residual, out of our
+        // pool (needed to reconnect) - documented residual, out of our
         // control. Everything under our control is zeroized on drop.
         .password(cfg.password.expose_secret());
 
@@ -75,7 +75,7 @@ pub async fn connect(cfg: &HosxConfig) -> Result<MySqlPool, Error> {
                 sqlx::query(READ_ONLY_SESSION_SQL)
                     .execute(&mut *conn)
                     .await?;
-                // Best-effort SELECT timeout — see SELECT_TIMEOUT_MS.
+                // Best-effort SELECT timeout - see SELECT_TIMEOUT_MS.
                 let _ = sqlx::query(STATEMENT_TIMEOUT_SESSION_SQL)
                     .execute(&mut *conn)
                     .await;

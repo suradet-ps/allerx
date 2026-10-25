@@ -11,6 +11,7 @@ use leptos::prelude::*;
 
 use crate::api::{ConnectionInput, configure_connection, test_connection};
 use crate::components::icons::{IconPlug, IconSave, IconX};
+use crate::secret::wipe_secret;
 use crate::state::AppState;
 
 /// Default MySQL port, prefilled in the port field.
@@ -24,36 +25,21 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
     let user = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
     // The last form operation's outcome: `Some((is_success, text))`. The
-    // flag drives the message styling — never sniff the message text for a
+    // flag drives the message styling - never sniff the message text for a
     // success marker (Thai messages contain "ได้" in both outcomes, e.g.
     // "ไม่สามารถเข้าถึงที่เก็บกุญแจของระบบได้").
     let message = RwSignal::new(None::<(bool, String)>);
     let busy = RwSignal::new(false);
 
-    /// Zeroizes an operator-typed field before dropping it — plain
-    /// `String::new()` only frees the buffer, leaving the plaintext bytes behind
-    /// for a memory scan. NUL is valid UTF-8, so the fill keeps the String
-    /// well-formed while it is still alive inside this function.
-    fn wipe_field(signal: &RwSignal<String>) {
-        let mut value = signal.get_untracked();
-        if !value.is_empty() {
-            // SAFETY: the buffer is owned exclusively by `value`; filling it with
-            // NUL bytes (valid UTF-8) keeps every invariant intact, and the
-            // buffer is dropped unaliased at the end of this function.
-            unsafe { value.as_mut_vec().fill(0) };
-        }
-        signal.set(String::new());
-    }
-
-    // Clears every field the operator typed — the modal stays mounted (hidden
+    // Clears every field the operator typed - the modal stays mounted (hidden
     // by CSS), so without this the plaintext would linger in WASM memory for
     // the whole app session (AGENTS.md §9).
     let wipe_fields = move || {
-        wipe_field(&host);
-        wipe_field(&port);
-        wipe_field(&database);
-        wipe_field(&user);
-        wipe_field(&password);
+        wipe_secret(&host);
+        wipe_secret(&port);
+        wipe_secret(&database);
+        wipe_secret(&user);
+        wipe_secret(&password);
     };
 
     let close = Rc::new(move || {
@@ -66,7 +52,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
     // The listener sits on `window`, so focus location does not matter; the
     // open-flag guard ensures an Escape pressed elsewhere (e.g. clearing a
     // search input) never reaches `close()`, which zeroizes the typed
-    // fields. The handle must stay alive for the component's lifetime —
+    // fields. The handle must stay alive for the component's lifetime -
     // dropping it unregisters the listener.
     let escape_state = state.clone();
     let close_on_escape = Rc::clone(&close);
@@ -82,7 +68,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
     let button_close = Rc::clone(&close);
 
     // Builds a ConnectionInput from the form fields, validating the port
-    // and required fields — shared by test and save so both behave
+    // and required fields - shared by test and save so both behave
     // identically.
     let build_input = std::rc::Rc::new(move || -> Result<ConnectionInput, String> {
         let port_value = port
@@ -112,7 +98,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             if busy.get_untracked() {
                 return;
             }
-            // Test the values typed in the form, not the stored settings —
+            // Test the values typed in the form, not the stored settings -
             // verification must happen before anything is saved to disk.
             let input = match build_input() {
                 Ok(input) => input,
@@ -131,9 +117,11 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
             });
         })
     };
+    let save_state = state.clone();
     let run_save = {
         let build_input = std::rc::Rc::clone(&build_input);
         std::rc::Rc::new(move || {
+            let save_state = save_state.clone();
             let input = match build_input() {
                 Ok(input) => input,
                 Err(err_message) => {
@@ -146,8 +134,11 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                 match configure_connection(&input).await {
                     Ok(()) => {
                         wipe_fields();
-                        state.configured.set(true);
-                        state.settings_open.set(false);
+                        busy.set(false);
+                        save_state.configured.set(true);
+                        // The backend invalidates the session on a connection
+                        // change; return the operator to the login gate.
+                        save_state.clear_session();
                     }
                     Err(error) => {
                         message.set(Some((false, error.message)));
@@ -177,7 +168,7 @@ pub fn SettingsModal(state: AppState) -> impl IntoView {
                     <p class="modal__status">
                         {move || {
                             if state.configured.get() {
-                                "เชื่อมต่อแล้ว — เข้ารหัสเก็บในเครื่อง"
+                                "เชื่อมต่อแล้ว - เข้ารหัสเก็บในเครื่อง"
                             } else {
                                 "ยังไม่ได้ตั้งค่า"
                             }

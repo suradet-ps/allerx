@@ -1,4 +1,4 @@
-//! Timeline — dense scrollable list in main canvas.
+//! Timeline - dense scrollable list in main canvas.
 //! Two-line rows: date | badge | drug (line 1), meta (line 2).
 //! Since Phase 5 the timeline merges every found drug's records into one
 //! chronological view (each row already shows its drug name); a filter bar
@@ -10,10 +10,10 @@ use leptos::prelude::*;
 use crate::components::icons::IconCalendar;
 use crate::state::{AppState, DrugVerdictState, VerdictState, merged_timeline};
 
-/// A cheap content fingerprint of a results list — used to detect "a new
+/// A cheap content fingerprint of a results list - used to detect "a new
 /// check replaced the view" without an Effect (see [`Timeline`]). Includes
 /// the check sequence so an identical re-check (same terms, counts and
-/// truncation flags — e.g. the same drugs checked for a new patient) still
+/// truncation flags - e.g. the same drugs checked for a new patient) still
 /// counts as a new view and resets the per-drug filter.
 fn results_key(seq: u64, results: &[crate::state::DrugVerdict]) -> String {
     format!(
@@ -38,7 +38,7 @@ fn results_key(seq: u64, results: &[crate::state::DrugVerdict]) -> String {
 pub fn Timeline(state: AppState) -> impl IntoView {
     // The checked-drug term the timeline is filtered to (`None` = all).
     let filter = RwSignal::new(None::<String>);
-    // A new check result replaces the view — reset the filter with it.
+    // A new check result replaces the view - reset the filter with it.
     // Tracked by a content key, NOT an Effect: writing to a signal from an
     // Effect during mount broke the event-listener attachment in the wasm
     // tests (leptos 0.8), so the reset happens here in the render closure,
@@ -87,7 +87,7 @@ pub fn Timeline(state: AppState) -> impl IntoView {
         }
         let total = records.len();
         let footer = if truncated {
-            format!("แสดง {total} รายการล่าสุด — มีประวัติเก่ากว่านี้")
+            format!("แสดง {total} รายการล่าสุด - มีประวัติเก่ากว่านี้")
         } else {
             format!("ทั้งหมด {total} รายการ")
         };
@@ -152,10 +152,10 @@ pub fn Timeline(state: AppState) -> impl IntoView {
                                 };
                                 let date = r.visit_date.format("%d/%m/%Y").to_string();
                                 let drug_label = crate::state::record_label(r);
-                                let prescriber = r.prescriber.as_deref().unwrap_or("—");
-                                let department = r.department.as_deref().unwrap_or("—");
+                                let prescriber = r.prescriber.as_deref().unwrap_or("-");
+                                let department = r.department.as_deref().unwrap_or("-");
                                 // The meta line carries the prescriber and
-                                // department only — quantity and usage are
+                                // department only - quantity and usage are
                                 // not shown (pilot feedback).
                                 let meta_text = format!("{prescriber} @ {department}");
                                 view! {

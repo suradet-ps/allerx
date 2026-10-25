@@ -10,6 +10,7 @@
 
 pub mod api;
 pub mod components;
+pub mod secret;
 pub mod state;
 
 use std::cell::RefCell;
@@ -20,6 +21,7 @@ use leptos::prelude::*;
 
 use components::drug_search::DrugSearch;
 use components::icons::{IconPrinter, IconX};
+use components::login_screen::{LoginScreen, StartupSplash};
 use components::patient_bar::PatientBar;
 use components::patient_detail_modal::PatientDetailModal;
 use components::patient_search::PatientSearch;
@@ -46,16 +48,26 @@ pub fn run() {
 fn App() -> impl IntoView {
     let state = AppState::new();
 
-    // First-run check: no stored settings → open the settings dialog.
+    // Startup probe: connection config, live health, and any in-memory
+    // session. The login gate is the first screen; no stored settings →
+    // open the settings dialog immediately.
+    let startup_state = state.clone();
     leptos::task::spawn_local(async move {
         let configured = api::connection_status().await;
-        state.configured.set(configured);
+        startup_state.configured.set(configured);
         if !configured {
-            state.settings_open.set(true);
+            startup_state.settings_open.set(true);
         }
+        if let Ok(health) = api::connection_health().await {
+            startup_state.health.set(health);
+        }
+        if let Ok(Some(user)) = api::current_session().await {
+            startup_state.finish_login(user);
+        }
+        startup_state.auth_checked.set(true);
     });
 
-    // Poll the backend's live reachability (ROADMAP Phase 3) — the status
+    // Poll the backend's live reachability (ROADMAP Phase 3) - the status
     // dot must reflect a dead database within seconds, not "config exists".
     let poll_state = state.clone();
     let poll_health = Rc::new(move || {
@@ -85,58 +97,71 @@ fn App() -> impl IntoView {
     *poll_loop.borrow_mut() = Some(Rc::clone(&trigger) as Rc<dyn Fn()>);
     trigger();
 
+    let shell_state = state.clone();
     view! {
         <div class="app">
-            <TopBar state=state.clone() />
-            <div class="app__body">
-                <aside class="sidebar">
-                    <PatientSearch state=state.clone() />
-                    <PatientBar state=state.clone() />
-                    <DrugSearch state=state.clone() />
-                </aside>
-                <main class="main-canvas">
-                    {move || {
-                        state.db_banner.get().map(|message| {
-                            view! {
-                                <div class="banner-warning">
-                                    <span>{message}</span>
-                                    <button
-                                        class="banner-warning__close"
-                                        on:click=move |_| state.db_banner.set(None)
-                                        aria-label="ปิด"
-                                    >
-                                        <IconX class="icon" />
-                                    </button>
-                                </div>
-                            }
-                        })
-                    }}
-                    {move || {
-                        let has_results = matches!(state.verdict.get(), VerdictState::Results { .. });
-                        let has_patient = state.patient.get().is_some();
-                        (has_results && has_patient).then(|| {
-                            view! {
-                                <div class="print-toolbar">
-                                    <button
-                                        class="button-secondary button-secondary--inline"
-                                        on:click=move |_| {
-                                            if let Some(window) = web_sys::window() {
-                                                let _ = window.print();
-                                            }
+            {move || {
+                let state = shell_state.clone();
+                if !state.auth_checked.get() {
+                    view! { <StartupSplash /> }.into_any()
+                } else if state.session.get().is_none() {
+                    view! { <LoginScreen state=state.clone() /> }.into_any()
+                } else {
+                    view! {
+                        <TopBar state=state.clone() />
+                        <div class="app__body">
+                            <aside class="sidebar">
+                                <PatientSearch state=state.clone() />
+                                <PatientBar state=state.clone() />
+                                <DrugSearch state=state.clone() />
+                            </aside>
+                            <main class="main-canvas">
+                                {move || {
+                                    state.db_banner.get().map(|message| {
+                                        view! {
+                                            <div class="banner-warning">
+                                                <span>{message}</span>
+                                                <button
+                                                    class="banner-warning__close"
+                                                    on:click=move |_| state.db_banner.set(None)
+                                                    aria-label="ปิด"
+                                                >
+                                                    <IconX class="icon" />
+                                                </button>
+                                            </div>
                                         }
-                                    >
-                                        <IconPrinter class="icon" />
-                                        "พิมพ์ประวัติ"
-                                    </button>
-                                </div>
-                            }
-                                .into_any()
-                        })
-                    }}
-                    <VerdictBand state=state.clone() />
-                    <Timeline state=state.clone() />
-                </main>
-            </div>
+                                    })
+                                }}
+                                {move || {
+                                    let has_results = matches!(state.verdict.get(), VerdictState::Results { .. });
+                                    let has_patient = state.patient.get().is_some();
+                                    (has_results && has_patient).then(|| {
+                                        view! {
+                                            <div class="print-toolbar">
+                                                <button
+                                                    class="button-secondary button-secondary--inline"
+                                                    on:click=move |_| {
+                                                        if let Some(window) = web_sys::window() {
+                                                            let _ = window.print();
+                                                        }
+                                                    }
+                                                >
+                                                    <IconPrinter class="icon" />
+                                                    "พิมพ์ประวัติ"
+                                                </button>
+                                            </div>
+                                        }
+                                            .into_any()
+                                    })
+                                }}
+                                <VerdictBand state=state.clone() />
+                                <Timeline state=state.clone() />
+                            </main>
+                        </div>
+                    }
+                        .into_any()
+                }
+            }}
             <SettingsModal state=state.clone() />
             <PatientDetailModal state=state.clone() />
             <PrintSheet state=state.clone() />

@@ -4,7 +4,7 @@
 //! database; tests and the frontend use [`MockRepository`](crate::mock::MockRepository).
 
 use allerx_models::{
-    ConcurrentMedication, DrugCheckResult, DrugItem, HistoryVerdict, PatientSummary,
+    ConcurrentMedication, DrugCheckResult, DrugItem, HistoryVerdict, OfficerAccount, PatientSummary,
 };
 use async_trait::async_trait;
 
@@ -15,7 +15,7 @@ use crate::query_kind::QueryKind;
 /// M3 drug autocomplete, M4 medication history).
 #[async_trait]
 pub trait HosxRepository: Send + Sync {
-    /// Smoke test — verifies the connection works (`SELECT 1`).
+    /// Smoke test - verifies the connection works (`SELECT 1`).
     ///
     /// # Errors
     ///
@@ -23,9 +23,20 @@ pub trait HosxRepository: Send + Sync {
     /// the database, or [`RepositoryError::Query`] when the statement fails.
     async fn ping(&self) -> Result<(), RepositoryError>;
 
+    /// Reads one `officer` account by login name for local password
+    /// verification. The password hash stays in the backend.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RepositoryError::Connection`] / [`RepositoryError::Query`].
+    async fn fetch_officer(
+        &self,
+        login_name: &str,
+    ) -> Result<Option<OfficerAccount>, RepositoryError>;
+
     /// Searches patients by HN, CID, or name (AGENTS.md §7.1).
     ///
-    /// The caller classifies the input with [`QueryKind`] first — the
+    /// The caller classifies the input with [`QueryKind`] first - the
     /// implementation runs the matching lookup (exact HN/CID match, or a
     /// name prefix match with a contains-match fallback) and returns at
     /// most 20 results.
@@ -61,7 +72,7 @@ pub trait HosxRepository: Send + Sync {
     ///
     /// The verdict contract (ROADMAP Phase 1): an **unresolvable** term
     /// returns [`HistoryVerdict::Unresolved`] with the closest formulary
-    /// candidates — never a resolved-but-empty list. Only a resolved drug
+    /// candidates - never a resolved-but-empty list. Only a resolved drug
     /// may produce the "ไม่พบประวัติ" verdict.
     ///
     /// # Errors
@@ -102,7 +113,7 @@ pub trait HosxRepository: Send + Sync {
         Ok(results)
     }
 
-    /// Recent concurrent medications for a patient (ROADMAP Phase 5) —
+    /// Recent concurrent medications for a patient (ROADMAP Phase 5) -
     /// deduped per icode, most recent first, drug category only. Powers the
     /// "ยาที่ได้รับล่าสุด" snapshot in the patient detail view.
     ///

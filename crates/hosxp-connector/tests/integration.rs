@@ -1,6 +1,6 @@
 //! Integration tests against a **test/staging** HOSxP instance only
 //! (AGENTS.md §12). Never run against production, never part of the default
-//! `cargo test` run — gate with:
+//! `cargo test` run - gate with:
 //!
 //! ```text
 //! cargo test --features integration-tests
@@ -51,7 +51,7 @@ async fn read_only_session_rejects_dml() {
         .await
         .expect("SET SESSION TRANSACTION READ ONLY must succeed");
 
-    // The session must refuse to create anything — proof the connector's
+    // The session must refuse to create anything - proof the connector's
     // session mode really blocks writes (AGENTS.md §5.2).
     let result = sqlx::query("CREATE TEMPORARY TABLE _allerx_guard_probe (id INT)")
         .execute(&mut *conn)

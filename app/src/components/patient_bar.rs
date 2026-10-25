@@ -1,4 +1,4 @@
-//! Patient bar — compact sidebar context strip (DESIGN.md: patient-bar).
+//! Patient bar - compact sidebar context strip (DESIGN.md: patient-bar).
 //! Shows selected patient info with a "change patient" button.
 
 use leptos::prelude::*;
@@ -19,16 +19,16 @@ pub fn PatientBar(state: AppState) -> impl IntoView {
             .cid
             .as_deref()
             .map(mask_cid)
-            .unwrap_or_else(|| "—".to_string());
+            .unwrap_or_else(|| "-".to_string());
         let dob = patient
             .birth_date
             .map(|d| d.format("%d/%m/%Y").to_string())
-            .unwrap_or_else(|| "—".to_string());
+            .unwrap_or_else(|| "-".to_string());
         let sex = patient
             .sex
             .as_deref()
             .map(sex_label)
-            .unwrap_or_else(|| "—".to_string());
+            .unwrap_or_else(|| "-".to_string());
         Some(
             view! {
                 <div class="sidebar__section">
@@ -75,7 +75,7 @@ pub fn PatientBar(state: AppState) -> impl IntoView {
 fn mask_cid(cid: &str) -> String {
     let chars: Vec<char> = cid.chars().collect();
     if chars.len() != 13 {
-        return "—".to_string();
+        return "-".to_string();
     }
     let mut masked = String::with_capacity(17);
     masked.push(chars[0]);
@@ -109,8 +109,8 @@ mod tests {
 
     #[test]
     fn masks_short_or_empty_cid_to_placeholder() {
-        assert_eq!(mask_cid(""), "—");
-        assert_eq!(mask_cid("12345"), "—");
+        assert_eq!(mask_cid(""), "-");
+        assert_eq!(mask_cid("12345"), "-");
     }
 
     #[test]

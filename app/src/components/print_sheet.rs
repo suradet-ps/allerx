@@ -1,4 +1,4 @@
-//! Print sheet (ROADMAP Phase 5) — a printable Thai patient+history sheet
+//! Print sheet (ROADMAP Phase 5) - a printable Thai patient+history sheet
 //! attached to a consultation note. Hidden on screen (`display: none`),
 //! the only thing visible in `@media print`. Read-only and ephemeral: no
 //! files are written, `window.print()` renders the current state.
@@ -23,7 +23,7 @@ pub fn PrintSheet(state: AppState) -> impl IntoView {
             view! {
                 <div class="print-sheet">
                     <header class="print-sheet__header">
-                        <h1>"AllerX — ใบประวัติการได้รับยา"</h1>
+                        <h1>"AllerX - ใบประวัติการได้รับยา"</h1>
                         <p>{format!("พิมพ์เมื่อ: {printed_on}")}</p>
                     </header>
                     <section class="print-sheet__patient">
@@ -37,13 +37,13 @@ pub fn PrintSheet(state: AppState) -> impl IntoView {
                             </tr>
                             <tr>
                                 <td>"CID"</td>
-                                <td>{patient.cid.clone().unwrap_or_else(|| "—".to_string())}</td>
+                                <td>{patient.cid.clone().unwrap_or_else(|| "-".to_string())}</td>
                                 <td>"วันเกิด"</td>
                                 <td>
                                     {patient
                                         .birth_date
                                         .map(|d| d.format("%d/%m/%Y").to_string())
-                                        .unwrap_or_else(|| "—".to_string())}
+                                        .unwrap_or_else(|| "-".to_string())}
                                 </td>
                             </tr>
                         </table>
@@ -69,25 +69,25 @@ pub fn PrintSheet(state: AppState) -> impl IntoView {
                                                         allerx_models::VisitType::Ipd => "IPD",
                                                     };
                                                     format!(
-                                                        "ครั้งล่าสุด {} ({}) — ทั้งหมด {} ครั้ง",
+                                                        "ครั้งล่าสุด {} ({}) - ทั้งหมด {} ครั้ง",
                                                         rec.visit_date.format("%d/%m/%Y"),
                                                         vt,
                                                         records.len()
                                                     )
                                                 })
-                                                .unwrap_or_else(|| "—".to_string());
+                                                .unwrap_or_else(|| "-".to_string());
                                             let extra = if *truncated {
-                                                " — มีประวัติเก่ากว่านี้"
+                                                " - มีประวัติเก่ากว่านี้"
                                             } else {
                                                 ""
                                             };
-                                            ("พบประวัติ", format!("{identity} — {when}{extra}"))
+                                            ("พบประวัติ", format!("{identity} - {when}{extra}"))
                                         }
                                         DrugVerdictState::NotFound { drug } => {
                                             let identity = crate::state::drug_identity(drug);
                                             (
                                                 "ไม่พบประวัติ",
-                                                format!("{identity} — ไม่เคยมีรายการจ่ายยา"),
+                                                format!("{identity} - ไม่เคยมีรายการจ่ายยา"),
                                             )
                                         }
                                         DrugVerdictState::Unresolved { .. } => {
@@ -134,8 +134,8 @@ pub fn PrintSheet(state: AppState) -> impl IntoView {
                                                     allerx_models::VisitType::Ipd => "IPD",
                                                 };
                                                 let drug_label = crate::state::record_label(r);
-                                                let prescriber = r.prescriber.as_deref().unwrap_or("—");
-                                                let department = r.department.as_deref().unwrap_or("—");
+                                                let prescriber = r.prescriber.as_deref().unwrap_or("-");
+                                                let department = r.department.as_deref().unwrap_or("-");
                                                 view! {
                                                     <tr>
                                                         <td>{r.visit_date.format("%d/%m/%Y").to_string()}</td>
@@ -160,7 +160,7 @@ pub fn PrintSheet(state: AppState) -> impl IntoView {
                             view! { <span></span> }.into_any()
                         }}
                         <p>
-                            "เอกสารนี้พิมพ์จาก AllerX เพื่อประกอบการประเมินแพ้ยา — HOSxP ยังคงเป็นแหล่งข้อมูลหลัก ตรวจสอบกับเวชระเบียนก่อนตัดสินใจ"
+                            "เอกสารนี้พิมพ์จาก AllerX เพื่อประกอบการประเมินแพ้ยา - HOSxP ยังคงเป็นแหล่งข้อมูลหลัก ตรวจสอบกับเวชระเบียนก่อนตัดสินใจ"
                         </p>
                     </footer>
                 </div>

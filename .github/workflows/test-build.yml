@@ -55,7 +55,7 @@ jobs:
               && tar -xzf trunk.tar.gz \
               && sudo mv trunk /usr/local/bin/ \
               && break
-            echo "trunk download failed (attempt $attempt/4) — retrying in 10s"
+            echo "trunk download failed (attempt $attempt/4) - retrying in 10s"
             sleep 10
           done
           test -x /usr/local/bin/trunk
@@ -67,10 +67,10 @@ jobs:
         run: |
           # The beforeBuildCommand runs trunk build, which downloads the
           # wasm-bindgen CLI from GitHub releases and occasionally flakes
-          # mid-connection — retry the whole build (caches make this cheap).
+          # mid-connection - retry the whole build (caches make this cheap).
           for attempt in 1 2 3 4; do
             cargo tauri build --no-bundle && exit 0
-            echo "tauri build failed (attempt $attempt/4) — retrying in 10s"
+            echo "tauri build failed (attempt $attempt/4) - retrying in 10s"
             sleep 10
           done
           exit 1
@@ -114,7 +114,7 @@ jobs:
             curl.exe -LsSf https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-pc-windows-msvc.zip -o trunk.zip \
               && powershell.exe -NoProfile -NonInteractive -Command "Expand-Archive -LiteralPath (Resolve-Path trunk.zip).Path -DestinationPath '$TRUNK_DIR' -Force" \
               && break
-            echo "trunk download failed (attempt $attempt/4) — retrying in 10s"
+            echo "trunk download failed (attempt $attempt/4) - retrying in 10s"
             sleep 10
           done
           test -x "$HOME/.cargo/bin/trunk.exe"
@@ -130,7 +130,7 @@ jobs:
           # NSIS (.exe) and MSI installers per bundle.targets "all".
           for attempt in 1 2 3 4; do
             cargo tauri build && exit 0
-            echo "tauri build failed (attempt $attempt/4) — retrying in 10s"
+            echo "tauri build failed (attempt $attempt/4) - retrying in 10s"
             sleep 10
           done
           exit 1

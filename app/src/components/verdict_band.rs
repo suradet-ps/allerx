@@ -1,4 +1,4 @@
-//! Verdict band — prominent result banner at top of main canvas.
+//! Verdict band - prominent result banner at top of main canvas.
 //! The signature element. One verdict per checked drug; a single-drug
 //! check renders the full-size band, a batch renders stacked compact bands
 //! (ROADMAP Phase 5).
@@ -15,7 +15,7 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
             let has_patient = state.patient.get().is_some();
             let configured = state.configured.get();
             let hint = if !configured {
-                "ยังไม่ได้ตั้งค่าการเชื่อมต่อ HOSxP — กดปุ่ม ตั้งค่า เพื่อเริ่มใช้งาน"
+                "ยังไม่ได้ตั้งค่าการเชื่อมต่อ HOSxP - กดปุ่ม ตั้งค่า เพื่อเริ่มใช้งาน"
             } else if !has_patient {
                 "เลือกผู้ป่วยทางด้านซ้าย แล้วพิมพ์ชื่อยาเพื่อตรวจประวัติ"
             } else {
@@ -47,7 +47,7 @@ pub fn VerdictBand(state: AppState) -> impl IntoView {
     }
 }
 
-/// The single-drug verdict — the full-size band (DESIGN.md). The resolved
+/// The single-drug verdict - the full-size band (DESIGN.md). The resolved
 /// drug's name/strength always labels the verdict, so an icode search
 /// shows which drug it refers to (pilot feedback).
 fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl IntoView {
@@ -68,14 +68,14 @@ fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl 
                     (
                         record.visit_date.format("%d/%m/%Y").to_string(),
                         visit_type,
-                        record.prescriber.as_deref().unwrap_or("—").to_string(),
-                        record.department.as_deref().unwrap_or("—").to_string(),
+                        record.prescriber.as_deref().unwrap_or("-").to_string(),
+                        record.department.as_deref().unwrap_or("-").to_string(),
                     )
                 }
-                None => ("—".to_string(), "—", "—".to_string(), "—".to_string()),
+                None => ("-".to_string(), "-", "-".to_string(), "-".to_string()),
             };
             let truncation_suffix = if *truncated {
-                " — มีประวัติเก่ากว่านี้"
+                " - มีประวัติเก่ากว่านี้"
             } else {
                 ""
             };
@@ -86,7 +86,7 @@ fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl 
                         <p class="verdict-band__headline">"พบประวัติการได้รับยานี้"</p>
                         <p class="verdict-band__detail">
                             {format!(
-                                "{identity} — ครั้งล่าสุด {date} ({visit_type}) โดย {prescriber} @ {department} — ทั้งหมด {} ครั้ง{truncation_suffix}",
+                                "{identity} - ครั้งล่าสุด {date} ({visit_type}) โดย {prescriber} @ {department} - ทั้งหมด {} ครั้ง{truncation_suffix}",
                                 records.len()
                             )}
                         </p>
@@ -103,7 +103,7 @@ fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl 
                     <div class="verdict-band__content">
                         <p class="verdict-band__headline">"ไม่พบประวัติการได้รับยานี้"</p>
                         <p class="verdict-band__detail">
-                            {format!("{identity} — ไม่เคยมีรายการจ่ายยานี้ในประวัติผู้ป่วย")}
+                            {format!("{identity} - ไม่เคยมีรายการจ่ายยานี้ในประวัติผู้ป่วย")}
                         </p>
                     </div>
                 </section>
@@ -114,12 +114,12 @@ fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl 
             let (headline, detail) = if candidates.is_empty() {
                 (
                     "ไม่พบยานี้ในทะเบียนยา".to_string(),
-                    "ไม่สามารถตรวจประวัติได้ — ตรวจสอบการสะกดชื่อยา หรือสอบถามผู้สั่งยา".to_string(),
+                    "ไม่สามารถตรวจประวัติได้ - ตรวจสอบการสะกดชื่อยา หรือสอบถามผู้สั่งยา".to_string(),
                 )
             } else {
                 (
                     "ไม่สามารถยืนยันประวัติได้".to_string(),
-                    "ไม่พบชื่อที่ตรงกับยาในทะเบียน — เลือกยาจากรายการแนะนำทางด้านซ้าย แล้วกดตรวจประวัติ"
+                    "ไม่พบชื่อที่ตรงกับยาในทะเบียน - เลือกยาจากรายการแนะนำทางด้านซ้าย แล้วกดตรวจประวัติ"
                         .to_string(),
                 )
             };
@@ -137,7 +137,7 @@ fn render_single(result: &crate::state::DrugVerdict, _state: &AppState) -> impl 
     }
 }
 
-/// The batch verdict — one compact band per checked drug, term-labelled.
+/// The batch verdict - one compact band per checked drug, term-labelled.
 fn render_batch(results: &[crate::state::DrugVerdict], state: &AppState) -> impl IntoView {
     view! {
         <section class="verdict-batch">
@@ -165,16 +165,16 @@ fn render_batch(results: &[crate::state::DrugVerdict], state: &AppState) -> impl
                                         format!("ทั้งหมด {} ครั้ง", records.len()),
                                     )
                                 }
-                                None => ("—".to_string(), "—", "ทั้งหมด 0 ครั้ง".to_string()),
+                                None => ("-".to_string(), "-", "ทั้งหมด 0 ครั้ง".to_string()),
                             };
-                            let truncation = if *truncated { " — มีประวัติเก่ากว่านี้" } else { "" };
+                            let truncation = if *truncated { " - มีประวัติเก่ากว่านี้" } else { "" };
                             view! {
                                 <div class="verdict-band verdict-band--compact verdict-found">
                                     <IconCheckCircle class="verdict-band__icon" />
                                     <div class="verdict-band__content">
                                         <p class="verdict-band__term">{term}</p>
                                         <p class="verdict-band__detail">
-                                            {format!("พบประวัติ — {identity} · ครั้งล่าสุด {date} ({visit_type}) · {count}{truncation}")}
+                                            {format!("พบประวัติ - {identity} · ครั้งล่าสุด {date} ({visit_type}) · {count}{truncation}")}
                                         </p>
                                     </div>
                                 </div>
@@ -189,7 +189,7 @@ fn render_batch(results: &[crate::state::DrugVerdict], state: &AppState) -> impl
                                     <div class="verdict-band__content">
                                         <p class="verdict-band__term">{term}</p>
                                         <p class="verdict-band__detail">
-                                            {format!("ไม่พบประวัติ — {identity}")}
+                                            {format!("ไม่พบประวัติ - {identity}")}
                                         </p>
                                     </div>
                                 </div>
@@ -205,9 +205,9 @@ fn render_batch(results: &[crate::state::DrugVerdict], state: &AppState) -> impl
                                         <p class="verdict-band__term">{term.clone()}</p>
                                         <p class="verdict-band__detail">
                                             {if candidates.is_empty() {
-                                                "ไม่พบยานี้ในทะเบียนยา — ตรวจสอบการสะกด".to_string()
+                                                "ไม่พบยานี้ในทะเบียนยา - ตรวจสอบการสะกด".to_string()
                                             } else {
-                                                "ไม่พบชื่อที่ตรงกับยาในทะเบียน — เลือกยาจากรายการ".to_string()
+                                                "ไม่พบชื่อที่ตรงกับยาในทะเบียน - เลือกยาจากรายการ".to_string()
                                             }}
                                         </p>
                                         {if candidates.is_empty() {

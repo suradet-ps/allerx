@@ -10,7 +10,7 @@ pub enum Error {
     /// Connection settings could not be loaded, decrypted, or stored.
     #[error("connection settings error: {0}")]
     Config(#[from] crate::config::ConfigError),
-    /// The pool could not open — network, credentials, or server down.
+    /// The pool could not open - network, credentials, or server down.
     ///
     /// Kept distinct from [`Error::Database`] so the command layer can tell
     /// "cannot reach HOSxP" from "a statement failed". The inner error

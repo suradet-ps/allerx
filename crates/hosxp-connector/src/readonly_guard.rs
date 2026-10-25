@@ -1,6 +1,6 @@
 //! Defense-in-depth SQL guard (AGENTS.md §5.3).
 //!
-//! This is **not** the security boundary — DB user grants and session
+//! This is **not** the security boundary - DB user grants and session
 //! read-only mode are. This layer exists to catch mistakes early: any
 //! outgoing statement that is not a single `SELECT`/`WITH` is rejected.
 
@@ -17,8 +17,8 @@ pub const PING_SQL: &str = "SELECT 1";
 pub struct GuardError;
 
 /// Accepts only a single read statement, case-insensitively, after leading
-/// SQL comments. Anything else — `INSERT`, `UPDATE`, `DELETE`, DDL, multiple
-/// statements — is rejected.
+/// SQL comments. Anything else - `INSERT`, `UPDATE`, `DELETE`, DDL, multiple
+/// statements - is rejected.
 ///
 /// # Examples
 ///
@@ -53,7 +53,7 @@ pub fn assert_read_only(sql: &str) -> Result<(), GuardError> {
 }
 
 /// True when the statement contains a `;` outside string literals (`'`/`"`)
-/// or quoted identifiers (backticks) — i.e. multiple statements, or a
+/// or quoted identifiers (backticks) - i.e. multiple statements, or a
 /// stray trailing semicolon. Failing closed is the safe direction here.
 fn has_semicolon_outside_quotes(sql: &str) -> bool {
     let mut quote = None;

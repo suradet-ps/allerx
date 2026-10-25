@@ -3,7 +3,8 @@
 use std::collections::HashMap;
 
 use allerx_models::{
-    ConcurrentMedication, DrugHistoryRecord, DrugItem, HistoryVerdict, PatientSummary,
+    ConcurrentMedication, DrugHistoryRecord, DrugItem, HistoryVerdict, OfficerAccount,
+    PatientSummary,
 };
 use async_trait::async_trait;
 
@@ -19,6 +20,7 @@ pub struct MockRepository {
     patients: Vec<PatientSummary>,
     drugs: Vec<DrugItem>,
     history: Vec<DrugHistoryRecord>,
+    officers: Vec<OfficerAccount>,
 }
 
 impl MockRepository {
@@ -29,6 +31,7 @@ impl MockRepository {
             patients: Vec::new(),
             drugs: Vec::new(),
             history: Vec::new(),
+            officers: Vec::new(),
         }
     }
 
@@ -49,6 +52,12 @@ impl MockRepository {
         self.history = history;
         self
     }
+
+    /// Sets the `officer` accounts [`fetch_officer`](Self::fetch_officer) returns.
+    pub fn with_officers(mut self, officers: Vec<OfficerAccount>) -> Self {
+        self.officers = officers;
+        self
+    }
 }
 
 #[async_trait]
@@ -59,6 +68,17 @@ impl HosxRepository for MockRepository {
         } else {
             Err(RepositoryError::Connection)
         }
+    }
+
+    async fn fetch_officer(
+        &self,
+        login_name: &str,
+    ) -> Result<Option<OfficerAccount>, RepositoryError> {
+        Ok(self
+            .officers
+            .iter()
+            .find(|officer| officer.login_name.eq_ignore_ascii_case(login_name))
+            .cloned())
     }
 
     async fn search_patients(
@@ -141,7 +161,7 @@ impl HosxRepository for MockRepository {
         &self,
         _hn: &str,
     ) -> Result<Vec<ConcurrentMedication>, RepositoryError> {
-        // Dedupe the mock's history per icode, keeping the latest date —
+        // Dedupe the mock's history per icode, keeping the latest date -
         // mirrors the real repository's GROUP BY semantics.
         let mut latest: HashMap<&str, (chrono::NaiveDate, &str, Option<&str>)> = HashMap::new();
         for record in &self.history {

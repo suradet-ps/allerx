@@ -1,4 +1,4 @@
-//! Patient search — sidebar section (DESIGN.md: sidebar__section).
+//! Patient search - sidebar section (DESIGN.md: sidebar__section).
 //! Compact search box with autocomplete, adapted for sidebar layout.
 
 use std::cell::Cell;
@@ -28,9 +28,11 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
             error.set(None);
             return;
         }
+        let generation = state.auth_generation.get_untracked();
         leptos::task::spawn_local(async move {
             searched.set(true);
             match api::search_patients(&query).await {
+                _ if state.auth_generation.get_untracked() != generation => {}
                 Ok(list) => {
                     state.db_banner.set(None);
                     error.set(None);
@@ -145,7 +147,7 @@ pub fn PatientSearch(state: AppState) -> impl IntoView {
                                                         p.hn,
                                                         p.birth_date
                                                             .map(|d| d.format("%d/%m/%Y").to_string())
-                                                            .unwrap_or_else(|| "—".to_string())
+                                                            .unwrap_or_else(|| "-".to_string())
                                                     )}
                                                 </span>
                                             </li>

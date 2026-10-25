@@ -1,12 +1,12 @@
-# deployment.md — AllerX DBA sign-off & installer runbook
+# deployment.md - AllerX DBA sign-off & installer runbook
 
 The Phase 6 checklist (ROADMAP): everything that must be true before the
 pilot starts. Part A is for the HOSxP DBA; Part B is for whoever cuts the
-release and prepares the pilot PC. Nothing here writes to HOSxP data — the
+release and prepares the pilot PC. Nothing here writes to HOSxP data - the
 only writes anywhere are the DBA's own `CREATE USER`/`GRANT`, executed by
 the DBA under their own process, never by AllerX.
 
-## Part A — DBA sign-off checklist
+## Part A - DBA sign-off checklist
 
 The pilot starts only when A1–A4 are all checked and every finding is
 recorded in [database.md](database.md) (removing the matching
@@ -19,49 +19,51 @@ recorded in [database.md](database.md) (removing the matching
 CREATE USER 'allerx_ro'@'<pilot-pc-host-or-ip>' IDENTIFIED BY '<password>';
 GRANT SELECT ON <schema>.* TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 
--- Verify: exactly these two rows — Alter routine etc. must NOT appear.
+-- Verify: exactly these two rows - Alter routine etc. must NOT appear.
 SHOW GRANTS FOR 'allerx_ro'@'<pilot-pc-host-or-ip>';
 ```
 
-- `SELECT` only. No `INSERT`/`UPDATE`/`DELETE`, no DDL, no temp tables —
+- `SELECT` only. No `INSERT`/`UPDATE`/`DELETE`, no DDL, no temp tables -
   not "for convenience", ever (AGENTS.md §2).
 - The password travels via the hospital's password manager, never chat or
   email; it is entered once into AllerX's settings dialog and stored
   encrypted (`encryptman`, AGENTS.md §9).
 - The app adds three more read-only layers on top (session mode, SQL
-  guard, parameterized queries) — but the grant is the boundary that
+  guard, parameterized queries) - but the grant is the boundary that
   matters.
 
 #### Which tables does AllerX read? (the least-privilege answer)
 
 AllerX executes exactly the statements in
-`crates/hosxp-connector/src/queries.rs` — compile-time constants,
+`crates/hosxp-connector/src/queries.rs` - compile-time constants,
 SELECT-only, parameterized. Their complete table/column surface:
 
 | Table | Columns read | Used by |
 |---|---|---|
+| `officer` | `officer_id`, `officer_login_name`, `officer_login_password_md5`, `officer_active`, `officer_authentication_type_id`, `officer_doctor_code`, `officer_pname`, `officer_fname`, `officer_lname` | login gate (HOSxP officer authentication, docs/auth.md) |
 | `patient` | `hn`, `cid`, `pname`, `fname`, `lname`, `birthday`, `sex` | patient search (HN / CID / name) |
 | `drugitems` | `icode`, `name`, `strength`, `trade_name`¹, `istype`¹ | drug autocomplete, resolution, history join, recent meds |
 | `opitemrece` | `vstdate`, `vsttime`, `an`, `hn`, `icode`, `qty`, `doctor`, `dep_code`, `drugusage` | OPD history, IPD take-home history, recent meds |
 | `iptitemrece`² | `idate`, `itime`, `an`, `icode`, `qty`, `doctor`, `depcode`, `drugusage` | IPD in-stay history |
 | `ipt` | `an`, `hn` | IPD in-stay join only |
-| `doctor` | `code`, `name` | prescriber name |
+| `doctor` | `code`, `name` | prescriber name; login display-name fallback |
 | `kskdepartment` | `depcode`, `department` | department name |
 | `drugusage` | `drugusage`, `name1` | usage line |
 
 No other table is ever referenced; the health ping / connection test is
 `SELECT 1` and touches nothing.
 
-> ¹ optional columns — grant only when confirmed present (checklist A3);
+> ¹ optional columns - grant only when confirmed present (checklist A3);
 > statements using them fall back automatically when absent.
 > ² the whole table may be absent or named differently per instance;
 > tolerated at runtime ("no in-stay records").
 
-**Table-level grants** (recommended — least privilege that stays
+**Table-level grants** (recommended - least privilege that stays
 maintainable):
 
 ```sql
 CREATE USER 'allerx_ro'@'<pilot-pc-host-or-ip>' IDENTIFIED BY '<password>';
+GRANT SELECT ON <schema>.officer       TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT ON <schema>.patient       TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT ON <schema>.drugitems     TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT ON <schema>.opitemrece    TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
@@ -75,24 +77,28 @@ SHOW GRANTS FOR 'allerx_ro'@'<pilot-pc-host-or-ip>'; -- verify: SELECT rows only
 ```
 
 **Column-level grants** (the maximum form): every statement selects
-explicit columns — there is no `SELECT *` anywhere — so column-level
+explicit columns - there is no `SELECT *` anywhere - so column-level
 privileges work today:
 
 ```sql
+GRANT SELECT (officer_id, officer_login_name, officer_login_password_md5, officer_active,
+               officer_authentication_type_id, officer_doctor_code,
+               officer_pname, officer_fname, officer_lname)
+  ON <schema>.officer TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (hn, cid, pname, fname, lname, birthday, sex) ON <schema>.patient TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (icode, name, strength)                      ON <schema>.drugitems TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 -- + trade_name / istype after checklist A3 confirms they exist
 GRANT SELECT (vstdate, vsttime, an, hn, icode, qty, doctor, dep_code, drugusage) ON <schema>.opitemrece   TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (idate, itime, an, icode, qty, doctor, depcode, drugusage)          ON <schema>.iptitemrece  TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (an, hn)                                     ON <schema>.ipt            TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
-GRANT SELECT (code, name)                                 ON <schema>.doctor         TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
+GRANT SELECT (code, name)                                 ON <schema>.doctor         TO 'allerx_ro'@'<pilot-pc-host-or-ip>'; -- also login display-name fallback
 GRANT SELECT (depcode, department)                        ON <schema>.kskdepartment  TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 GRANT SELECT (drugusage, name1)                           ON <schema>.drugusage      TO 'allerx_ro'@'<pilot-pc-host-or-ip>';
 ```
 
 Trade-off, stated honestly: column-level is audit-proof minimal, but any
 future harmless addition (e.g. selecting one more descriptive column)
-fails until the DBA re-grants — pick it only if the hospital wants that
+fails until the DBA re-grants - pick it only if the hospital wants that
 friction. Table-level is the default recommendation; both are far tighter
 than `<schema>.*`.
 
@@ -109,7 +115,7 @@ SHOW CREATE TABLE patient;
 ```
 
 Expected: `utf8mb4`/`utf8`. If the instance is **TIS-620**, record it in
-`database.md` — Thai `LIKE` matching can fail silently, so name search
+`database.md` - Thai `LIKE` matching can fail silently, so name search
 must be re-validated against live rows before sign-off.
 
 ### A3. Schema confirmation (clears the Debt Ledger)
@@ -124,7 +130,7 @@ into [database.md](database.md):
 | 3 | IPD in-stay table: `iptitemrece` vs `ipitemrece` | `SHOW TABLES LIKE '%itemrece%';` | ☐ |
 | 4 | `kskdepartment.depcode` is the PK | `SHOW COLUMNS FROM kskdepartment;` | ☐ |
 | 5 | IPD take-home meds land in `opitemrece` with `an` populated | `SELECT COUNT(*) FROM opitemrece WHERE an IS NOT NULL AND qty > 0;` (non-zero?) | ☐ |
-| 6 | Pilot-hospital HN pattern (digits count/format) | Ask IT/reception for the *format* — no real HNs needed | ☐ |
+| 6 | Pilot-hospital HN pattern (digits count/format) | Ask IT/reception for the *format* - no real HNs needed | ☐ |
 | 7 | Allergy/adverse-reaction table (Phase 7 groundwork) | `SHOW TABLES LIKE '%allergy%';` / `SHOW TABLES LIKE '%adr%';` | ☐ |
 
 Items 2 and 5 are **must-confirm-before-pilot**: they change what the
@@ -154,7 +160,7 @@ and their process); requests are PII-free and safe under the read-only
 model. If a budget from `perf-baseline.md` is later missed, the missing
 index named there is the first suspect.
 
-### A5. TLS on the HOSxP MySQL/MariaDB server (advisory — the app degrades safely)
+### A5. TLS on the HOSxP MySQL/MariaDB server (advisory - the app degrades safely)
 
 The pilot HOSxP instance has TLS disabled, so AllerX connects with
 `ssl-mode=Preferred`: TLS is used when the server offers it, and the
@@ -178,9 +184,9 @@ ALLERX_HOSXP_SSL_MODE=verify_ca         # + verify the chain
 ALLERX_HOSXP_SSL_MODE=verify_identity   # + verify the hostname
 ```
 
-**Sign-off:** A1 ☐ A2 ☐ A3 ☐ A4 ☐ A5 ☐ — dated, recorded in `database.md`.
+**Sign-off:** A1 ☐ A2 ☐ A3 ☐ A4 ☐ A5 ☐ - dated, recorded in `database.md`.
 
-## Part B — Installer & release runbook
+## Part B - Installer & release runbook
 
 ### B1. Pre-tag smoke build (never let a tag be the first Windows bundle)
 
@@ -188,7 +194,7 @@ ALLERX_HOSXP_SSL_MODE=verify_identity   # + verify the hostname
    on `main`.
 2. Both jobs run; download the `allerx-windows-installers` artifact from
    the `build-windows-installer` job (NSIS `.exe` + MSI).
-3. Install the NSIS `.exe` on any handy Windows box first — only after it
+3. Install the NSIS `.exe` on any handy Windows box first - only after it
    installs cleanly does a tag make sense.
 
 ### B2. Cut the release
@@ -203,26 +209,26 @@ ALLERX_HOSXP_SSL_MODE=verify_identity   # + verify the hostname
 
 | # | Check | Reference |
 |---|---|---|
-| 1 | WebView2 Runtime present — **pre-install the Evergreen offline installer**: the hospital LAN has no internet and the Tauri bootstrapper would otherwise try to download it | Microsoft WebView2 offline installer |
-| 2 | Installer completes; app launches to the first-run settings modal | — |
-| 3 | Connect against the **staging** HOSxP; one search round-trip renders a verdict band | — |
+| 1 | WebView2 Runtime present - **pre-install the Evergreen offline installer**: the hospital LAN has no internet and the Tauri bootstrapper would otherwise try to download it | Microsoft WebView2 offline installer |
+| 2 | Installer completes; app launches to the first-run settings modal | - |
+| 3 | Connect against the **staging** HOSxP; one search round-trip renders a verdict band | - |
 | 4 | Kill-DB recovery scenario passes on this machine | [reliability-notes.md](reliability-notes.md) |
 | 5 | Keyring/DPI/hygiene checks pass | [pilot-notes.md](pilot-notes.md) |
 | 6 | Keyboard walkthrough + NVDA pass logged | [a11y-notes.md](a11y-notes.md) |
 
-### B4. Code-signing posture — decided: unsigned for the pilot (v0.x)
+### B4. Code-signing posture - decided: unsigned for the pilot (v0.x)
 
 Single-department internal distribution does not justify certificate cost
 and process yet. Consequences, stated plainly:
 
-- Windows SmartScreen will warn ("More info → Run anyway") — put these
+- Windows SmartScreen will warn ("More info → Run anyway") - put these
   instructions in the handover note.
-- Hospital AV may heuristically flag an unsigned new binary — give IT the
+- Hospital AV may heuristically flag an unsigned new binary - give IT the
   installer hash and install path for whitelisting.
 - Revisit before any multi-department rollout: purchase an OV code-signing
   cert or adopt hospital-IT-managed signing.
 
-### B5. Auto-update posture — decided: manual installs for v0.x
+### B5. Auto-update posture - decided: manual installs for v0.x
 
 The Tauri updater is deliberately not configured: hospital IT controls
 what runs on clinic PCs, and silent self-update is exactly the kind of
