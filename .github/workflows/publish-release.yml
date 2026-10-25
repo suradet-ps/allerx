@@ -30,7 +30,55 @@ jobs:
         # dedicated audit on the release path (ROADMAP Phase 4).
         run: cargo audit
 
+  create-release:
+    name: Create GitHub release
+    needs: cargo-audit
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    outputs:
+      release-id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Resolve the release tag
+        id: tag
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" == v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            version="$(jq -r '.version' src-tauri/tauri.conf.json)"
+            tag="v$version"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create or reuse the release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          # Release creation is owned by this job so the build matrix
+          # cannot race itself on the "already exists" API error.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; reusing it."
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "AllerX $TAG" \
+              --notes "See the assets to download this version and install."
+          fi
+          id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.id')"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
   publish-tauri:
+    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -102,13 +150,13 @@ jobs:
           fi
 
       - name: Build Tauri App
-        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: "AllerX v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
-          releaseDraft: false
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.release-id }}
+          # The updater is deliberately not configured (B5 in docs/deployment.md);
+          # skipping these also avoids the parallel latest.json upload race.
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
           args: ${{ matrix.args }}
