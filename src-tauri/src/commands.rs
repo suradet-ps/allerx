@@ -291,6 +291,18 @@ pub async fn test_connection(
     state: State<'_, AppState>,
     input: ConnectionInput,
 ) -> Result<ConnectionTestResult, CommandError> {
+    // Box the connect/ping future; see search_patients for why.
+    Box::pin(test_connection_inner(state, input)).await
+}
+
+/// Connects with the typed settings and runs the `SELECT 1` smoke test.
+///
+/// Split from the command wrapper so the release IPC future stays small
+/// (see [`search_patients`]).
+async fn test_connection_inner(
+    state: State<'_, AppState>,
+    input: ConnectionInput,
+) -> Result<ConnectionTestResult, CommandError> {
     let cfg = HosxConfig::new(
         input.host,
         input.port,
@@ -487,6 +499,18 @@ pub async fn login(
     state: State<'_, AppState>,
     input: LoginInput,
 ) -> Result<SessionUser, CommandError> {
+    // Box the DB/login future so Tauri's release IPC wrapper does not build
+    // it on the already-deep WebView2 callback stack (see search_patients).
+    Box::pin(login_inner(state, input)).await
+}
+
+/// Verifies the HOSxP officer password and installs the in-memory session.
+///
+/// Split from the command wrapper so the release IPC future stays small.
+async fn login_inner(
+    state: State<'_, AppState>,
+    input: LoginInput,
+) -> Result<SessionUser, CommandError> {
     let username = input.username.trim();
     if username.is_empty() {
         return Err(CommandError::validation("กรุณากรอกชื่อผู้ใช้"));
@@ -583,6 +607,22 @@ pub async fn search_patients(
     state: State<'_, AppState>,
     term: String,
 ) -> Result<Vec<PatientSummary>, CommandError> {
+    // Keep the outer future small. Tauri's release IPC wrapper spawns this
+    // future from a deep WebView2 callback; the search future (sqlx pool +
+    // query state) is large enough to overflow the stack when left unboxed.
+    // Debug builds already box the task in `respond_async_serialized_dyn`,
+    // which is why `cargo tauri dev` does not crash.
+    Box::pin(search_patients_inner(state, term)).await
+}
+
+/// Runs the patient query and records the result in health/stats.
+///
+/// Boxed by [`search_patients`] so Tauri's release IPC wrapper does not build
+/// this future on the deep WebView2 callback stack.
+async fn search_patients_inner(
+    state: State<'_, AppState>,
+    term: String,
+) -> Result<Vec<PatientSummary>, CommandError> {
     require_session(&state).await?;
     let term = term.trim().to_string();
     if term.is_empty() {
@@ -605,6 +645,17 @@ pub async fn search_patients(
 /// are generic - parameter values never reach the UI or logs.
 #[tauri::command]
 pub async fn search_drugs(
+    state: State<'_, AppState>,
+    term: String,
+) -> Result<Vec<DrugItem>, CommandError> {
+    // Box the query future; see search_patients for why.
+    Box::pin(search_drugs_inner(state, term)).await
+}
+
+/// Runs the drug-autocomplete query tiers and returns at most 20 items.
+///
+/// Split from the command wrapper so the release IPC future stays small.
+async fn search_drugs_inner(
     state: State<'_, AppState>,
     term: String,
 ) -> Result<Vec<DrugItem>, CommandError> {
@@ -639,6 +690,20 @@ pub async fn check_drugs(
     hn: String,
     drugs: Vec<String>,
 ) -> Result<Vec<DrugCheckResult>, CommandError> {
+    // Box the batch future (JoinSet + per-drug history state); see
+    // search_patients for why.
+    Box::pin(check_drugs_inner(state, hn, drugs)).await
+}
+
+/// Fans a drug batch out through concurrent history checks and collects the
+/// verdicts.
+///
+/// Split from the command wrapper so the release IPC future stays small.
+async fn check_drugs_inner(
+    state: State<'_, AppState>,
+    hn: String,
+    drugs: Vec<String>,
+) -> Result<Vec<DrugCheckResult>, CommandError> {
     require_session(&state).await?;
     let hn = hn.trim().to_string();
     if hn.is_empty() || drugs.is_empty() {
@@ -659,6 +724,17 @@ pub async fn check_drugs(
 /// "ยาที่ได้รับล่าสุด" snapshot for the detail view, deduped per icode.
 #[tauri::command]
 pub async fn fetch_concurrent_medications(
+    state: State<'_, AppState>,
+    hn: String,
+) -> Result<Vec<ConcurrentMedication>, CommandError> {
+    // Box the query future; see search_patients for why.
+    Box::pin(fetch_concurrent_medications_inner(state, hn)).await
+}
+
+/// Reads the recent concurrent-medication snapshot for one patient.
+///
+/// Split from the command wrapper so the release IPC future stays small.
+async fn fetch_concurrent_medications_inner(
     state: State<'_, AppState>,
     hn: String,
 ) -> Result<Vec<ConcurrentMedication>, CommandError> {
