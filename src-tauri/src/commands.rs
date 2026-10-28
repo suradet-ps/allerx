@@ -295,6 +295,10 @@ pub async fn test_connection(
     Box::pin(test_connection_inner(state, input)).await
 }
 
+/// Connects with the typed settings and runs the `SELECT 1` smoke test.
+///
+/// Split from the command wrapper so the release IPC future stays small
+/// (see [`search_patients`]).
 async fn test_connection_inner(
     state: State<'_, AppState>,
     input: ConnectionInput,
@@ -500,6 +504,9 @@ pub async fn login(
     Box::pin(login_inner(state, input)).await
 }
 
+/// Verifies the HOSxP officer password and installs the in-memory session.
+///
+/// Split from the command wrapper so the release IPC future stays small.
 async fn login_inner(
     state: State<'_, AppState>,
     input: LoginInput,
@@ -608,6 +615,10 @@ pub async fn search_patients(
     Box::pin(search_patients_inner(state, term)).await
 }
 
+/// Runs the patient query and records the result in health/stats.
+///
+/// Boxed by [`search_patients`] so Tauri's release IPC wrapper does not build
+/// this future on the deep WebView2 callback stack.
 async fn search_patients_inner(
     state: State<'_, AppState>,
     term: String,
@@ -641,6 +652,9 @@ pub async fn search_drugs(
     Box::pin(search_drugs_inner(state, term)).await
 }
 
+/// Runs the drug-autocomplete query tiers and returns at most 20 items.
+///
+/// Split from the command wrapper so the release IPC future stays small.
 async fn search_drugs_inner(
     state: State<'_, AppState>,
     term: String,
@@ -681,6 +695,10 @@ pub async fn check_drugs(
     Box::pin(check_drugs_inner(state, hn, drugs)).await
 }
 
+/// Fans a drug batch out through concurrent history checks and collects the
+/// verdicts.
+///
+/// Split from the command wrapper so the release IPC future stays small.
 async fn check_drugs_inner(
     state: State<'_, AppState>,
     hn: String,
@@ -713,6 +731,9 @@ pub async fn fetch_concurrent_medications(
     Box::pin(fetch_concurrent_medications_inner(state, hn)).await
 }
 
+/// Reads the recent concurrent-medication snapshot for one patient.
+///
+/// Split from the command wrapper so the release IPC future stays small.
 async fn fetch_concurrent_medications_inner(
     state: State<'_, AppState>,
     hn: String,
