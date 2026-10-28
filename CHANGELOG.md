@@ -6,6 +6,12 @@ Phase 1 completion, v0.3.0 marks the Phase 6 pilot start.
 
 ## [Unreleased]
 
+- Fixed: release builds no longer stack-overflow when searching patients.
+  Tauri boxes command futures in debug but not in release, so the large
+  patient/drug/history command futures now box themselves before the IPC
+  wrapper spawns them. `cargo tauri dev` was unaffected, which is why the
+  crash only appeared in the installed build.
+
 ## [0.4.0] - officer login gate
 
 - Security: bumped `crypto-bigint` to 0.7.8 to address RUSTSEC-2026-0387
